@@ -6,6 +6,7 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { usePermissions } from "@/hooks/usePermission";
 import type { Promotion, Coupon, PromotionKind, CouponKind } from "@/lib/promotions";
 import { isPromotionActive, isCouponActive } from "@/lib/promotions";
+import { PREDEFINED_CATEGORIES } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput, formatMoneyInput, parseMoney } from "@/components/ui/money-input";
@@ -130,7 +131,7 @@ export default function Promocoes() {
   });
 
   const categories = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(PREDEFINED_CATEGORIES);
     (productsQuery.data ?? []).forEach((p) => {
       if (p.category && p.category.trim()) set.add(p.category.trim());
     });
