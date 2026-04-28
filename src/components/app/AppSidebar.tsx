@@ -134,10 +134,13 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {extras.map((item) => (
-                <SidebarMenuItem key={item.url}>
+                <SidebarMenuItem key={item.url} className={collapsed ? "flex justify-center" : ""}>
                   <SidebarMenuButton
                     asChild
-                    className={isActive(item.url) ? "bg-sidebar-accent font-medium text-sidebar-primary" : ""}
+                    className={cn(
+                      isActive(item.url) ? "bg-sidebar-accent font-medium text-sidebar-primary" : "",
+                      collapsed && "justify-center",
+                    )}
                   >
                     <NavLink to={item.url} onClick={handleNavClick}>
                       <item.icon className="h-4 w-4" />
