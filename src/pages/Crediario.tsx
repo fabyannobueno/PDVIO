@@ -87,10 +87,24 @@ interface CrediarioEntry {
   reference_date: string; // YYYY-MM-DD
   due_date: string | null;
   notes: string | null;
+  payment_method: string | null;
   created_at: string;
   is_late_fee?: boolean;
   parent_entry_id?: string | null;
 }
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "cash", label: "Dinheiro" },
+  { value: "credit_card", label: "Cartão de crédito" },
+  { value: "debit_card", label: "Cartão de débito" },
+  { value: "pix", label: "PIX" },
+  { value: "ticket", label: "Ticket / Vale" },
+  { value: "other", label: "Outro" },
+] as const;
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = Object.fromEntries(
+  PAYMENT_METHOD_OPTIONS.map((m) => [m.value, m.label]),
+);
 
 interface CompanySettings {
   crediario_late_fee_percent: number;
@@ -463,6 +477,7 @@ export default function Crediario() {
       reference_date: string;
       due_date: string | null;
       notes: string | null;
+      payment_method: string | null;
     }) => {
       // Limit check on charges (only for new entries; updating reuses existing logic)
       if (input.kind === "charge") {
@@ -496,6 +511,7 @@ export default function Crediario() {
             reference_date: input.reference_date,
             due_date: input.kind === "charge" ? input.due_date : null,
             notes: input.notes,
+            payment_method: input.kind === "payment" ? input.payment_method : null,
           })
           .eq("id", input.id);
         if (error) throw error;
@@ -511,6 +527,7 @@ export default function Crediario() {
             reference_date: input.reference_date,
             due_date: input.kind === "charge" ? input.due_date : null,
             notes: input.notes,
+            payment_method: input.kind === "payment" ? input.payment_method : null,
             created_by: user?.id ?? null,
           });
         if (error) throw error;
@@ -803,6 +820,7 @@ interface CadernetaProps {
     reference_date: string;
     due_date: string | null;
     notes: string | null;
+    payment_method: string | null;
   }) => Promise<unknown>;
   onDeleteEntry: (id: string) => Promise<unknown>;
   onSaveLimit: (limit: number | null) => Promise<unknown>;
@@ -994,6 +1012,14 @@ function CadernetaDialog({
                           </span>
                         </div>
                         <p className="text-sm break-words">{e.description || "—"}</p>
+                        {e.kind === "payment" && e.payment_method && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Forma de pagamento:{" "}
+                            <span className="font-medium text-foreground">
+                              {PAYMENT_METHOD_LABEL[e.payment_method] ?? e.payment_method}
+                            </span>
+                          </p>
+                        )}
                         {e.kind === "charge" && e.due_date && (
                           <p className="text-[11px] text-muted-foreground">
                             Vencimento:{" "}
@@ -1039,6 +1065,11 @@ function CadernetaDialog({
                                   {e.kind === "charge" ? "Débito" : "Pagamento"}
                                 </Badge>
                                 <span className="text-sm">{e.description || "—"}</span>
+                                {e.kind === "payment" && e.payment_method && (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {PAYMENT_METHOD_LABEL[e.payment_method] ?? e.payment_method}
+                                  </Badge>
+                                )}
                               </div>
                               {e.notes && (
                                 <p className="mt-0.5 text-[11px] text-muted-foreground">{e.notes}</p>
@@ -1136,6 +1167,7 @@ interface EntryFormProps {
     reference_date: string;
     due_date: string | null;
     notes: string | null;
+    payment_method: string | null;
   }) => Promise<void>;
   isSaving: boolean;
 }
@@ -1149,6 +1181,7 @@ function EntryFormDialog({ customer, kind, initial, onClose, onSubmit, isSaving 
   const [refDate, setRefDate] = useState(initial?.reference_date ?? todayISO());
   const [dueDate, setDueDate] = useState(initial?.due_date ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [paymentMethod, setPaymentMethod] = useState<string>(initial?.payment_method ?? "cash");
 
   const submit = async () => {
     const amount = parseMoney(amountStr);
@@ -1160,6 +1193,10 @@ function EntryFormDialog({ customer, kind, initial, onClose, onSubmit, isSaving 
       toast.error("Informe uma descrição");
       return;
     }
+    if (k === "payment" && !paymentMethod) {
+      toast.error("Selecione a forma de pagamento");
+      return;
+    }
     await onSubmit({
       kind: k,
       description: description.trim(),
@@ -1167,6 +1204,7 @@ function EntryFormDialog({ customer, kind, initial, onClose, onSubmit, isSaving 
       reference_date: refDate,
       due_date: k === "charge" && dueDate ? dueDate : null,
       notes: notes.trim() || null,
+      payment_method: k === "payment" ? paymentMethod : null,
     });
   };
 
@@ -1235,6 +1273,23 @@ function EntryFormDialog({ customer, kind, initial, onClose, onSubmit, isSaving 
                   data-testid="input-entry-due"
                 />
               </div>
+            </div>
+          )}
+          {k === "payment" && (
+            <div>
+              <Label>Forma de pagamento</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger data-testid="select-entry-payment-method">
+                  <SelectValue placeholder="Selecione a forma de pagamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
           <div>
