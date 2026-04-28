@@ -731,7 +731,7 @@ export default function Balanca() {
                               value={barcode}
                               format="EAN13"
                               height={50}
-                              width={1.6}
+                              width={2.4}
                               fontSize={12}
                               margin={0}
                             />
