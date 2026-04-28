@@ -419,6 +419,239 @@ function generateSKU(name: string): string {
   return `${prefix}-${suffix}`;
 }
 
+// ── Auto-categorization by product name ────────────────────────────────────────
+// Maps common Brazilian product/keyword terms (lowercased, no accents) to one of
+// the categories from PREDEFINED_CATEGORIES. The longest matching keyword wins,
+// so "vinho tinto" beats "tinto" and "agua com gas" beats "agua".
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  Lanches: [
+    "hamburguer", "hamburgue", "burguer", "burger", "x-burger", "x-tudo",
+    "x-salada", "x-egg", "x-bacon", "x-cala", "x-frango", "x-fil", "xis",
+    "hot dog", "hotdog", "cachorro quente", "sanduiche", "sanduba",
+    "lanche", "misto quente", "americano", "beirute", "wrap",
+  ],
+  Pizzaria: ["pizza", "calzone", "esfiha", "esfirra", "broto"],
+  Pratos: [
+    "prato feito", "pf ", "executivo", "almoco", "refeicao",
+    "filet", "file mignon a", "strogonoff", "estrogonoff", "parmegiana",
+    "feijoada", "moqueca", "risoto", "tropeiro", "baiao",
+  ],
+  Marmitas: ["marmita", "marmitex", "quentinha"],
+  "Porções": ["porcao", "batata frita", "polenta frita", "frango a passarinho", "isca de"],
+  Saladas: ["salada"],
+  Sopas: ["sopa", "caldo verde", "canja", "sopao", "creme de"],
+  Salgados: [
+    "salgado", "coxinha", "kibe", "quibe", "pastel", "empada",
+    "enroladinho", "risole", "rissole", "croquete", "bolinha de queijo",
+    "bolinho de bacalhau", "esfiha",
+  ],
+  Sorveteria: ["sorvete", "picole", "casquinha", "milkshake", "milk shake", "sundae"],
+  "Açaí e Sucos": ["acai", "vitamina", "smoothie", "suco natural", "suco de"],
+  Cafeteria: [
+    "cafe expresso", "cafezinho", "cappuccino", "capuccino", "latte",
+    "espresso", "expresso", "mocha", "chocolate quente",
+  ],
+  "Combos e Promoções": ["combo", "promocao", "promo", "kit ", "oferta"],
+
+  "Doces e Sobremesas": [
+    "bolo", "torta doce", "brigadeiro", "beijinho", "brownie",
+    "mousse", "pudim", "trufa", "doce de", "sobremesa", "churros",
+    "pacoca", "cocada", "marshmallow", "petit gateau",
+  ],
+  "Biscoitos e Snacks": [
+    "biscoito", "bolacha", "salgadinho", "chips", "doritos", "ruffles",
+    "fandangos", "cheetos", "pipoca", "cracker", "wafer", "cookie",
+  ],
+  Matinais: [
+    "cereal", "granola", "sucrilhos", "aveia", "nescau", "toddy",
+    "leite em po", "achocolatado",
+  ],
+  Padaria: [
+    "pao frances", "pao de queijo", "pao integral", "pao de forma",
+    "pao doce", "paes", " pao ", "baguete", "bisnaga", "croissant",
+    "focaccia", "ciabatta", "brioche", "rosca",
+  ],
+  Confeitaria: ["torta ", "cupcake", "macaron", "eclair"],
+
+  Hortifruti: [
+    "banana", "maca ", " maca", "laranja", "abacaxi", "uva", "melancia",
+    "melao", "mamao", "manga", "abacate", "limao", "morango", "pera",
+    "pessego", "kiwi", "tangerina", "mexerica", "ameixa",
+    "tomate", "alface", "cebola", "cenoura", "batata ", "batata-",
+    "mandioca", "abobora", "pepino", "pimentao", "brocolis", "couve",
+    "beterraba", "repolho", "espinafre", "salsa", "cebolinha",
+    "alho", "gengibre", "ovo ", "ovos", " hortifruti",
+  ],
+  "Açougue": [
+    "carne", "contra file", "picanha", "alcatra", "filet mignon",
+    "file mignon", "costela", "cupim", "fraldinha", "maminha",
+    "patinho", "acem", "musculo", "bisteca", "frango", "peito de frango",
+    "coxa de frango", "sobrecoxa", "asa de frango", "peru", "lombo",
+    "pernil", "linguica", "salsicha", "moida",
+  ],
+  Peixaria: [
+    "peixe", "salmao", "atum", "sardinha", "tilapia", "bacalhau",
+    "pescada", "merluza", "camarao", "lula", "polvo", "mexilhao",
+    "ostra", "lagosta", "siri", "marisco",
+  ],
+  "Frios e Laticínios": [
+    "queijo", "mussarela", "muzzarela", "parmesao", "cheddar",
+    "gorgonzola", "brie", "ricota", "requeijao", "manteiga", "margarina",
+    "iogurte", "leite", "creme de leite", "leite condensado", "nata",
+    "presunto", "peito de peru", "mortadela", "salame", "copa", "blanquet",
+    "bacon",
+  ],
+  Congelados: [
+    "congelado", "polpa de fruta", "lasanha congelada", "pizza congelada",
+    "nuggets", "hamburguer congelado",
+  ],
+
+  Bebidas: [
+    "refrigerante", "coca cola", "coca-cola", "pepsi", "guarana", "fanta",
+    "sprite", "sukita", "tubaina", "agua mineral", "agua com gas",
+    "agua tonica", "agua sem gas", " agua ", "nectar", "isotonico",
+    "gatorade", "powerade", "energetico", "red bull", "monster", "baly",
+    " cha ", "cha gelado", "cha mate", "mate leao", "nestea", "h2o",
+  ],
+  "Bebidas Alcoólicas": [
+    "cerveja", "chopp", "ipa", "lager", "pilsen", "weiss", "stout",
+    "vinho", " tinto", " branco", "rose", "espumante", "prosecco",
+    "champanhe", "champagne", "whisky", "whiskey", "vodka", "gin ",
+    "cachaca", "pinga", "conhaque", " rum", "tequila", "vermute",
+    "licor", "jagermeister", "baileys", "batida", "caipirinha",
+    "caipiroska", "drink", "absinto",
+  ],
+
+  Limpeza: [
+    "detergente", "sabao em po", "sabao liquido", "sabao de coco",
+    "desinfetante", "agua sanitaria", "alvejante", "amaciante",
+    "lustra movel", "multiuso", "limpa vidro", "veja ", " omo",
+    "brilhante", "comfort", "ype", "pinho sol", "esponja", "vassoura",
+    "rodo", "pano de chao", "saco de lixo",
+  ],
+  "Higiene Pessoal": [
+    "shampoo", "condicionador", "sabonete", "escova de dente",
+    "creme dental", "pasta de dente", "fio dental", "antisseptico bucal",
+    "enxaguante", "desodorante", "antitranspirante", "papel higienico",
+    "lenco umedecido", "absorvente", "fralda",
+  ],
+  Perfumaria: ["perfume", "colonia", "deo colonia", "body splash"],
+  "Cosméticos": [
+    "hidratante", "creme facial", "locao", "batom", "esmalte", "base ",
+    "po facial", "maquiagem", "rimel", "sombra", "blush",
+  ],
+  "Cuidados com Bebê": ["mamadeira", "chupeta", "papinha", "talco"],
+  "Descartáveis": [
+    "copo descartavel", "prato descartavel", "talher descartavel",
+    "guardanapo", "papel toalha", "papel aluminio", "filme pvc",
+  ],
+
+  "Farmácia": [
+    "remedio", "dipirona", "paracetamol", "ibuprofeno", "omeprazol",
+    "novalgina", "tylenol", "neosaldina", "advil", "aspirina",
+    "comprimido", "capsula", "xarope", "pomada", "antialergico",
+  ],
+  Suplementos: [
+    "whey", "creatina", "bcaa", "hipercalorico", "suplemento",
+    "proteina ", "vitamina c", "vitamina d", "vitamina b",
+    "polivitaminico", "termogenico",
+  ],
+
+  "Pet Shop": [
+    "racao", "petisco pet", "areia para gato", "coleira",
+    "antipulgas", "tapete higienico", "biscoito pet",
+  ],
+
+  "Bebê e Infantil": ["mamadeira", "chupeta", "fralda"],
+  Brinquedos: ["brinquedo", "boneca", "carrinho de brinquedo", "lego", "pelucia"],
+  Papelaria: [
+    "caderno", "caneta", "lapis", "borracha", "regua", "mochila",
+    "estojo", "papel sulfite", "cola escolar", "agenda", "marca texto",
+  ],
+  "Eletrônicos": [
+    "fone de ouvido", "headphone", "headset", "caixa de som", "mouse",
+    "teclado", "ssd ", " hd ", "pendrive", "cabo usb", "carregador",
+  ],
+  "Eletrodomésticos": [
+    "liquidificador", "batedeira", "micro-ondas", "microondas",
+    "geladeira", "fogao", "ferro de passar", "ventilador", "aspirador",
+    "cafeteira",
+  ],
+  "Informática": ["notebook", "computador", "monitor", "impressora"],
+  "Telefonia e Acessórios": [
+    "capa de celular", "capinha", "pelicula", "fone bluetooth",
+  ],
+  "Cama, Mesa e Banho": [
+    "lencol", "fronha", "toalha de banho", "toalha de rosto", "edredom",
+    "cobertor", "travesseiro", "jogo de cama",
+  ],
+  "Utilidades Domésticas": [
+    "panela", "frigideira", "tigela", "jarra", " colher ", " garfo ",
+    " faca ", "concha de", "escorredor", "abridor",
+  ],
+  Ferramentas: [
+    "martelo", "chave de fenda", "chave allen", "alicate", "furadeira",
+    "parafusadeira", "serra ", "broca", "trena",
+  ],
+  "Material de Construção": [
+    "cimento", "areia", "brita", "tijolo", "telha", "prego ", "parafuso",
+    "argamassa", "rejunte",
+  ],
+  "Elétrica e Hidráulica": [
+    "fio eletrico", "tomada", "interruptor", "cano pvc", "conexao pvc",
+    "lampada", "disjuntor", "fita isolante",
+  ],
+  "Tintas e Acessórios": [
+    "tinta acrilica", "tinta esmalte", "tinta latex", "pincel", "rolo de pintura",
+    "lixa", "massa corrida", "thinner",
+  ],
+  Jardinagem: ["adubo", "vaso ", "semente", "fertilizante", "terra adubada"],
+  Automotivo: [
+    "oleo de motor", "oleo lubrificante", "filtro de oleo", "pneu",
+    "bateria automotiva", "cera automotiva", "lava auto",
+  ],
+  "Calçados": ["tenis", "sapato", "sandalia", "chinelo", "bota", "sapatilha"],
+  "Vestuário": [
+    "camiseta", "camisa", "calca", "bermuda", "vestido", "saia",
+    "blusa", "jaqueta", "casaco", "meia ", "cueca", "calcinha", "sutia",
+  ],
+  "Acessórios": ["cinto", "carteira", "boné", "bone "],
+  "Joias e Bijuterias": ["anel", "colar", "brinco", "pulseira", "relogio"],
+  "Esporte e Lazer": ["bola", "bicicleta", "halter", "chuteira", "luva de boxe"],
+  Livraria: ["livro", "revista", "gibi", "biblia"],
+  Games: ["jogo de", "xbox", "playstation", "nintendo", "controle ps", "controle xbox"],
+  "Decoração": ["quadro decorativo", "vaso decorativo", "almofada"],
+  Festas: ["balao", "vela de aniversario", "fantasia"],
+
+  Embalagens: [
+    "caixa de pizza", "caixa para", "embalagem", "saco para pao",
+    "papelao", "fita adesiva", "papel kraft",
+  ],
+  Tabacaria: ["cigarro", "charuto", "isqueiro", "fumo", "papel de seda", "seda "],
+  Recargas: ["recarga", "cartao presente", "gift card"],
+};
+
+function normalizeForCategory(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function guessCategory(name: string): string | null {
+  const n = ` ${normalizeForCategory(name)} `;
+  if (n.trim().length < 3) return null;
+  let bestCat: string | null = null;
+  let bestLen = 0;
+  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    for (const kw of keywords) {
+      const k = normalizeForCategory(kw);
+      if (n.includes(k) && k.length > bestLen) {
+        bestCat = cat;
+        bestLen = k.length;
+      }
+    }
+  }
+  return bestCat;
+}
+
 // ── Barcode lookup (USB/Bluetooth reader + camera) ─────────────────────────────
 
 // Cleans a category string like "en:dairy-products" → "Dairy Products"
@@ -1496,7 +1729,19 @@ export default function Produtos() {
                 data-testid="input-product-name"
                 required
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value.toUpperCase() }))}
+                onChange={(e) => {
+                  const name = e.target.value.toUpperCase();
+                  setForm((f) => {
+                    const next = { ...f, name };
+                    // Auto-suggest the category from the name, but only if
+                    // the user hasn't picked one yet (don't overwrite manual choices).
+                    if (!f.category) {
+                      const guess = guessCategory(name);
+                      if (guess) next.category = guess;
+                    }
+                    return next;
+                  });
+                }}
                 placeholder="EX: HAMBÚRGUER ARTESANAL"
                 style={{ textTransform: "uppercase" }}
               />
