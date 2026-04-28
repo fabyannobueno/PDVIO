@@ -140,7 +140,7 @@ export default function Balanca() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 5;
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
