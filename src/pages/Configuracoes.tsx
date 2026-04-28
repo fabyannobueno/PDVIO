@@ -629,9 +629,9 @@ export default function Configuracoes() {
     if (document.trim()) {
       const digits = document.replace(/\D/g, "");
       const label = digits.length === 14 ? "CNPJ" : digits.length === 11 ? "CPF" : "Documento";
-      lines.push(`${label} ${document.trim()}`);
+      lines.push(`${label}: ${document.trim()}`);
     }
-    if (phone.trim()) lines.push(`Tel ${phone.trim()}`);
+    if (phone.trim()) lines.push(`Tel: ${phone.trim()}`);
     const header = lines.join("\n");
     if (header && header !== printer.header) {
       setPrinter((prev) => {
