@@ -249,7 +249,7 @@ export default function Dashboard() {
   const onboardingLoading = loadingProducts || loadingRecent || loadingSales;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 p-6 md:p-8 animate-fade-in">
+    <div className="space-y-8 p-6 md:p-8 animate-fade-in">
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-subtle p-8">
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gradient-primary opacity-10 blur-3xl" />

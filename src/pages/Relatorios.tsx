@@ -746,7 +746,7 @@ export default function Relatorios() {
   const now = new Date();
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-6 md:p-8 animate-fade-in">
+    <div className="space-y-6 p-6 md:p-8 animate-fade-in">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -267,7 +267,7 @@ export default function Clientes() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-6 md:p-8 animate-fade-in overflow-y-auto h-full">
+    <div className="space-y-6 p-6 md:p-8 animate-fade-in overflow-y-auto h-full">
 
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

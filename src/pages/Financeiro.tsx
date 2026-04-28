@@ -286,7 +286,7 @@ export default function Financeiro() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-6 md:p-8 animate-fade-in">
+    <div className="space-y-6 p-6 md:p-8 animate-fade-in">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>

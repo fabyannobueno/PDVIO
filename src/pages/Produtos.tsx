@@ -1651,7 +1651,7 @@ export default function Produtos() {
     (error as any)?.message?.includes("does not exist");
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-4 p-4 sm:space-y-6 sm:p-6 md:p-8 animate-fade-in">
+    <div className="space-y-4 p-4 sm:space-y-6 sm:p-6 md:p-8 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

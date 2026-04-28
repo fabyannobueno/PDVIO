@@ -263,7 +263,7 @@ export default function Fornecedores() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-8 animate-fade-in">
+    <div className="space-y-6 p-4 md:p-8 animate-fade-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Fornecedores</h1>

@@ -508,7 +508,7 @@ export default function Caixa() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-6 md:p-8 animate-fade-in">
+    <div className="space-y-6 p-6 md:p-8 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Caixa</h1>
         <p className="text-sm text-muted-foreground mt-1">
