@@ -58,7 +58,19 @@ import {
   Percent,
   Package,
   Search,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -221,6 +233,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [form, setForm] = useState<PromotionForm>(EMPTY_PROMO_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [categoryComboOpen, setCategoryComboOpen] = useState(false);
 
   const promotionsQuery = useQuery({
     queryKey: ["promotions", companyId],
@@ -530,27 +543,73 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Categoria</Label>
-                  <Select
-                    value={form.category || undefined}
-                    onValueChange={(v) => setForm({ ...form, category: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.length === 0 ? (
-                        <div className="px-2 py-3 text-sm text-muted-foreground">
-                          Cadastre categorias em Produtos primeiro.
-                        </div>
-                      ) : (
-                        categories.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={categoryComboOpen}
+                        className={cn(
+                          "w-full justify-between font-normal",
+                          !form.category && "text-muted-foreground",
+                        )}
+                      >
+                        <span className="truncate">
+                          {form.category || "Selecione…"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[--radix-popover-trigger-width] min-w-[260px] p-0"
+                      align="start"
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                    >
+                      <Command
+                        filter={(value, search) => {
+                          const s = search
+                            .toLowerCase()
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "");
+                          const vNorm = value
+                            .toLowerCase()
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "");
+                          return vNorm.includes(s) ? 1 : 0;
+                        }}
+                      >
+                        <CommandInput placeholder="Buscar categoria..." />
+                        <CommandList
+                          className="max-h-64 overflow-y-auto overscroll-contain"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
+                          <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                          <CommandGroup>
+                            {categories.map((c) => (
+                              <CommandItem
+                                key={c}
+                                value={c}
+                                onSelect={() => {
+                                  setForm((f) => ({ ...f, category: c }));
+                                  setCategoryComboOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    form.category === c ? "opacity-100" : "opacity-0",
+                                  )}
+                                />
+                                {c}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="promo-pct">Desconto (%)</Label>
