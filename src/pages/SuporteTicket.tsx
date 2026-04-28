@@ -436,6 +436,45 @@ export default function SuporteTicket() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
+  // -------- Auto-encerramento por inatividade do cliente --------
+  // Se o atendente humano respondeu e o cliente ficou 5 dias sem responder,
+  // o chamado é fechado automaticamente quando esta página é aberta.
+  const INACTIVITY_LIMIT_MS = 5 * 24 * 60 * 60 * 1000;
+  const autoClosedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ticket || messages.length === 0) return;
+    if (ticket.status !== "human_assigned") return;
+    if (autoClosedRef.current === ticket.id) return;
+
+    // Considera apenas mensagens reais da conversa (ignora mensagens de sistema)
+    const conv = messages.filter((m) => !isSystemMessage(m));
+    if (conv.length === 0) return;
+    const last = conv[conv.length - 1];
+    if (!isAgentMessage(last)) return;
+
+    const elapsed = Date.now() - new Date(last.created_at).getTime();
+    if (elapsed < INACTIVITY_LIMIT_MS) return;
+
+    autoClosedRef.current = ticket.id;
+    (async () => {
+      try {
+        await insertMessage({
+          author_type: "system",
+          body: "Chamado encerrado automaticamente: passaram-se 5 dias sem resposta do cliente após o último contato do atendente. Se ainda precisar de ajuda, abra um novo chamado.",
+          metadata: { auto_closed: true, reason: "user_inactivity_5d" },
+        });
+        await updateTicket({
+          status: "closed",
+          resolved_at: new Date().toISOString(),
+        } as any);
+      } catch (err) {
+        console.error("Falha ao encerrar chamado por inatividade:", err);
+        autoClosedRef.current = null;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticket?.id, ticket?.status, messages]);
+
   // -------- Render --------
   const meta = useMemo(
     () => (ticket ? STATUS_META[ticket.status] ?? STATUS_META.open : STATUS_META.open),
