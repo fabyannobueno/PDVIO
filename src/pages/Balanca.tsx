@@ -624,11 +624,18 @@ export default function Balanca() {
                     </span>
                   </div>
 
-                  <div className="mt-2 flex justify-center">
+                  <div className="mt-2 w-full overflow-hidden [&_svg]:!w-full [&_svg]:!h-auto">
                     {barcode ? (
-                      <Barcode value={barcode} format="EAN13" height={50} width={1.6} />
+                      <Barcode
+                        value={barcode}
+                        format="EAN13"
+                        height={80}
+                        width={3}
+                        fontSize={18}
+                        margin={0}
+                      />
                     ) : (
-                      <p className="py-4 text-xs text-destructive">
+                      <p className="py-4 text-center text-xs text-destructive">
                         {barcodeError ?? "Capture um peso para gerar o código."}
                       </p>
                     )}
