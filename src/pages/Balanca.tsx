@@ -684,40 +684,41 @@ export default function Balanca() {
                   return (
                     <div className="rounded-md border-2 border-black bg-white p-2 text-black shadow-sm">
                       {activeCompany?.name && (
-                        <p className="text-center text-[10px] font-bold uppercase tracking-wide">
+                        <p className="text-[10px] font-bold uppercase tracking-wide">
                           {activeCompany.name}
                         </p>
                       )}
-                      <p className="mt-0.5 line-clamp-2 border-y border-black py-0.5 text-center text-base font-extrabold uppercase leading-tight">
-                        {selected.name}
-                      </p>
+                      <div className="flex items-baseline gap-2 border-b border-black pb-0.5">
+                        <span className="line-clamp-1 flex-1 text-lg font-extrabold uppercase leading-none">
+                          {selected.name}
+                        </span>
+                        <span className="text-sm font-bold leading-none">kg</span>
+                      </div>
 
-                      <div className="mt-1 flex justify-between gap-2 border-b border-black pb-1 text-[11px]">
+                      <div className="mt-1 flex justify-between gap-3 text-[11px]">
                         <div className="flex flex-col gap-0.5">
                           <div className="flex justify-between gap-2">
-                            <span className="font-semibold uppercase">EMBALADO EM:</span>
+                            <span className="font-semibold">Data Pesagem:</span>
                             <span className="font-mono font-bold tabular-nums">{packagedStr}</span>
                           </div>
                           {expiresStr && (
                             <div className="flex justify-between gap-2">
-                              <span className="font-semibold uppercase">VALIDO ATE:</span>
+                              <span className="font-semibold">Validade:</span>
                               <span className="font-mono font-bold tabular-nums">{expiresStr}</span>
                             </div>
                           )}
+                          <div className="flex justify-between gap-2">
+                            <span className="font-semibold">Tara(T):</span>
+                            <span className="font-mono font-bold tabular-nums">{fmtKg(tare)}kg</span>
+                          </div>
                         </div>
                         <div className="flex flex-col gap-0.5 text-right">
-                          {tare > 0 && (
-                            <div className="flex justify-end gap-2">
-                              <span className="font-semibold uppercase">TARA:</span>
-                              <span className="font-mono font-bold tabular-nums">{fmtKg(tare)} kg (T)</span>
-                            </div>
-                          )}
                           <div className="flex justify-end gap-2">
-                            <span className="font-semibold uppercase">PESO:</span>
-                            <span className="font-mono font-bold tabular-nums">{fmtKg(weightKg)} kg</span>
+                            <span className="font-semibold">Peso(L):</span>
+                            <span className="font-mono font-bold tabular-nums">{fmtKg(weightKg)}kg</span>
                           </div>
                           <div className="flex justify-end gap-2">
-                            <span className="font-semibold uppercase">PREÇO/kg R$:</span>
+                            <span className="font-semibold">R$ / kg:</span>
                             <span className="font-mono font-bold tabular-nums">{fmtBRL(pricePerKg)}</span>
                           </div>
                         </div>
@@ -740,9 +741,11 @@ export default function Balanca() {
                             </p>
                           )}
                         </div>
-                        <div className="flex shrink-0 flex-col items-end leading-none">
-                          <span className="text-[10px] font-bold uppercase">TOTAL R$</span>
-                          <span className="font-mono text-2xl font-extrabold tabular-nums">
+                        <div className="flex shrink-0 flex-col items-stretch leading-none">
+                          <span className="bg-black px-2 py-0.5 text-center text-[10px] font-extrabold uppercase tracking-wider text-white">
+                            TOTAL R$
+                          </span>
+                          <span className="pt-0.5 text-right font-mono text-2xl font-extrabold tabular-nums leading-none">
                             {fmtBRL(totalPrice)}
                           </span>
                         </div>

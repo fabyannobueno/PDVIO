@@ -2,10 +2,10 @@
 // Impressão de etiquetas de pesagem (popup HTML + window.print()).
 //
 // Layout: padrão de balança térmica brasileira (Filizola, Toledo, Elgin,
-// Argox e similares). Topo com nome do produto centralizado, duas colunas
-// de informações (EMBALADO EM / VALIDO ATE × TARA / PESO / PREÇO/kg), e na
-// base o código de barras EAN-13 à esquerda com o TOTAL R$ em destaque à
-// direita.
+// Argox e similares). Título do produto à esquerda em destaque, duas
+// colunas de informações (Data Pesagem / Tara × Peso / R$ por kg), e na
+// base o código de barras EAN-13 à esquerda com a faixa preta TOTAL R$ e
+// o valor em destaque à direita.
 //
 // Tamanhos suportados:
 //   • 40 × 40 mm — etiqueta compacta de pesagem
@@ -46,6 +46,7 @@ interface SizeStyle {
   height: number;         // mm
   padding: string;
   titleFs: string;
+  unitFs: string;
   infoLblFs: string;
   infoValFs: string;
   totalLblFs: string;
@@ -53,8 +54,8 @@ interface SizeStyle {
   barcodeHeightMm: number;
   barcodeWidth: number;   // bar thickness in JsBarcode units
   barcodeFontPt: number;
-  /** Largura aproximada do bloco do código de barras (mm). */
   barcodeBlockMm: number;
+  totalBlockMm: number;
 }
 
 const SIZE_STYLES: Record<WeighLabelSize, SizeStyle> = {
@@ -62,43 +63,49 @@ const SIZE_STYLES: Record<WeighLabelSize, SizeStyle> = {
     width: 40,
     height: 40,
     padding: "1mm 1.5mm",
-    titleFs: "7.5pt",
-    infoLblFs: "4.5pt",
-    infoValFs: "5pt",
+    titleFs: "8pt",
+    unitFs: "6pt",
+    infoLblFs: "5pt",
+    infoValFs: "5.5pt",
     totalLblFs: "5.5pt",
-    totalValFs: "11pt",
-    barcodeHeightMm: 7,
+    totalValFs: "13pt",
+    barcodeHeightMm: 8,
     barcodeWidth: 1.1,
     barcodeFontPt: 5,
     barcodeBlockMm: 22,
+    totalBlockMm: 14,
   },
   "60x40": {
     width: 60,
     height: 40,
     padding: "1.4mm 2mm",
-    titleFs: "10pt",
-    infoLblFs: "5.5pt",
-    infoValFs: "6.5pt",
+    titleFs: "11pt",
+    unitFs: "8pt",
+    infoLblFs: "6pt",
+    infoValFs: "7pt",
     totalLblFs: "7pt",
-    totalValFs: "15pt",
-    barcodeHeightMm: 9,
+    totalValFs: "18pt",
+    barcodeHeightMm: 10,
     barcodeWidth: 1.4,
     barcodeFontPt: 6,
-    barcodeBlockMm: 32,
+    barcodeBlockMm: 30,
+    totalBlockMm: 22,
   },
   "60x80": {
     width: 60,
     height: 80,
     padding: "2.5mm 3mm",
-    titleFs: "12pt",
-    infoLblFs: "7pt",
-    infoValFs: "8.5pt",
+    titleFs: "13pt",
+    unitFs: "10pt",
+    infoLblFs: "7.5pt",
+    infoValFs: "9pt",
     totalLblFs: "9pt",
-    totalValFs: "18pt",
+    totalValFs: "22pt",
     barcodeHeightMm: 14,
     barcodeWidth: 1.9,
     barcodeFontPt: 8,
-    barcodeBlockMm: 35,
+    barcodeBlockMm: 33,
+    totalBlockMm: 24,
   },
 };
 
@@ -190,34 +197,32 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     const expiresStr = d.expiresAt && d.expiresAt.trim() ? d.expiresAt.trim() : "";
     const tara = typeof d.tareKg === "number" && d.tareKg > 0 ? d.tareKg : 0;
 
-    // Coluna esquerda: datas
+    // Coluna esquerda: data de pesagem + tara
     const leftLines: string[] = [
-      `<div class="row"><span class="lbl">EMBALADO EM:</span><span class="val">${packagedStr}</span></div>`,
+      `<div class="row"><span class="lbl">Data Pesagem:</span><span class="val">${packagedStr}</span></div>`,
     ];
     if (expiresStr) {
       leftLines.push(
-        `<div class="row"><span class="lbl">VALIDO ATE:</span><span class="val">${escapeHtml(expiresStr)}</span></div>`,
+        `<div class="row"><span class="lbl">Validade:</span><span class="val">${escapeHtml(expiresStr)}</span></div>`,
       );
     }
+    leftLines.push(
+      `<div class="row"><span class="lbl">Tara(T):</span><span class="val">${KG_NUMBER(tara)}kg</span></div>`,
+    );
 
-    // Coluna direita: tara, peso, preço/kg
-    const rightLines: string[] = [];
-    if (tara > 0) {
-      rightLines.push(
-        `<div class="row"><span class="lbl">TARA:</span><span class="val">${KG_NUMBER(tara)} kg (T)</span></div>`,
-      );
-    }
-    rightLines.push(
-      `<div class="row"><span class="lbl">PESO:</span><span class="val">${KG_NUMBER(d.weightKg)} kg</span></div>`,
-    );
-    rightLines.push(
-      `<div class="row"><span class="lbl">PREÇO/kg R$:</span><span class="val">${BRL_NUMBER(d.pricePerKg)}</span></div>`,
-    );
+    // Coluna direita: peso líquido + preço/kg
+    const rightLines: string[] = [
+      `<div class="row"><span class="lbl">Peso(L):</span><span class="val">${KG_NUMBER(d.weightKg)}kg</span></div>`,
+      `<div class="row"><span class="lbl">R$ / kg:</span><span class="val">${BRL_NUMBER(d.pricePerKg)}</span></div>`,
+    ];
 
     return `
       <article class="label">
         ${d.companyName ? `<div class="company">${escapeHtml(d.companyName)}</div>` : ""}
-        <div class="title">${escapeHtml(d.productName)}</div>
+        <div class="title">
+          <span class="t-name">${escapeHtml(d.productName)}</span>
+          <span class="t-unit">kg</span>
+        </div>
         <div class="info">
           <div class="col">${leftLines.join("")}</div>
           <div class="col right">${rightLines.join("")}</div>
@@ -225,7 +230,7 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
         <div class="footer">
           <div class="barcode">${barcodeSvg}</div>
           <div class="total">
-            <div class="t-lbl">TOTAL R$</div>
+            <div class="t-banner">TOTAL R$</div>
             <div class="t-val">${BRL_NUMBER(d.totalPrice)}</div>
           </div>
         </div>
@@ -261,29 +266,38 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     font-size: ${style.infoLblFs};
     font-weight: 700;
     text-transform: uppercase;
-    text-align: center;
+    text-align: left;
     line-height: 1.05;
     color: #000;
   }
   .title {
+    display: flex;
+    align-items: baseline;
+    gap: 1.2mm;
+    line-height: 1;
+    padding: 0.2mm 0 0.4mm;
+    border-bottom: 0.25mm solid #000;
+    margin-bottom: 0.4mm;
+  }
+  .t-name {
     font-size: ${style.titleFs};
     font-weight: 800;
     text-transform: uppercase;
-    text-align: center;
-    line-height: 1.05;
-    border-top: 0.4mm solid #000;
-    border-bottom: 0.4mm solid #000;
-    padding: 0.3mm 0;
-    margin-top: 0.3mm;
     word-break: break-word;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .t-unit {
+    font-size: ${style.unitFs};
+    font-weight: 700;
+    flex: 0 0 auto;
   }
 
   .info {
     display: flex;
     justify-content: space-between;
-    gap: 1.5mm;
-    padding: 0.6mm 0;
-    border-bottom: 0.2mm solid #000;
+    gap: 2mm;
+    padding: 0.2mm 0;
     flex: 0 0 auto;
   }
   .info .col { display: flex; flex-direction: column; gap: 0.2mm; min-width: 0; }
@@ -299,8 +313,6 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     font-size: ${style.infoLblFs};
     font-weight: 600;
     color: #000;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
   }
   .info .val {
     font-size: ${style.infoValFs};
@@ -311,9 +323,9 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
   .footer {
     margin-top: auto;
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
     justify-content: space-between;
-    gap: 1mm;
+    gap: 1.5mm;
     padding-top: 0.5mm;
   }
   .barcode {
@@ -328,23 +340,30 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     display: block;
   }
   .total {
-    flex: 0 0 auto;
+    flex: 0 0 ${style.totalBlockMm}mm;
     display: flex; flex-direction: column;
-    align-items: flex-end;
+    align-items: stretch;
     justify-content: flex-end;
     text-align: right;
   }
-  .t-lbl {
+  .t-banner {
+    background: #000;
+    color: #fff;
     font-size: ${style.totalLblFs};
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    line-height: 1;
+    text-align: center;
+    line-height: 1.15;
+    padding: 0.3mm 0.6mm;
+    letter-spacing: 0.04em;
   }
   .t-val {
     font-size: ${style.totalValFs};
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     line-height: 1;
+    text-align: right;
+    padding-top: 0.3mm;
   }
 
   @media screen {
