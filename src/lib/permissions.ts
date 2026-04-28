@@ -94,9 +94,6 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
   ],
   waiter: [
     "view_comandas",
-    "view_clientes",
-    "view_crediario",
-    "manage_customers",
   ],
   kitchen: [
     "view_kds",
