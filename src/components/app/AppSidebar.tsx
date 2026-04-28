@@ -34,6 +34,7 @@ import {
 import { Logo } from "@/components/Logo";
 import { usePermissions } from "@/hooks/usePermission";
 import type { Permission } from "@/lib/permissions";
+import { scrollAppToTop } from "@/lib/scrollToTop";
 
 type NavItem = { title: string; url: string; icon: typeof LayoutDashboard; perm: Permission };
 
@@ -78,7 +79,7 @@ export function AppSidebar() {
 
   const handleNavClick = () => {
     if (isMobile) setOpenMobile(false);
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+    scrollAppToTop();
   };
 
   const renderItem = (item: NavItem) => (
