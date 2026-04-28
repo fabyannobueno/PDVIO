@@ -7,7 +7,7 @@ export function Logo({ className, showText = true }: { className?: string; showT
   if (!showText) {
     return (
       <div className={cn("flex items-center justify-center", className)}>
-        <img src={logoIcon} alt="PDVIO" className="h-10 w-14 object-contain" />
+        <img src={logoIcon} alt="PDVIO" className="h-12 w-16 object-contain" />
       </div>
     );
   }
