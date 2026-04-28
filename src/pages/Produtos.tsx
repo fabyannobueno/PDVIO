@@ -83,6 +83,7 @@ const PREDEFINED_CATEGORIES = [
   "Confeitaria",
   "Frios",
   "Frios e Laticínios",
+  "Laticínios",
   "Congelados",
   "Bebidas",
   "Bebidas Alcoólicas",
@@ -515,8 +516,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   ],
   "Frios e Laticínios": [
     "queijo", "mussarela", "muzzarela", "parmesao", "cheddar",
-    "gorgonzola", "brie", "ricota", "requeijao", "manteiga", "margarina",
-    "iogurte", "leite", "creme de leite", "leite condensado", "nata",
+    "gorgonzola", "brie", "ricota", "requeijao",
+  ],
+  "Laticínios": [
+    "leite ", " leite", "leite integral", "leite desnatado",
+    "leite semidesnatado", "leite condensado", "creme de leite",
+    "manteiga", "margarina", "iogurte", "danone", "yogurte", "yakult",
+    "nata ", " nata", "chantilly", "kefir", "queijinho petit",
   ],
   Frios: [
     "presunto", "peito de peru", "mortadela", "salame", "copa lombo",
