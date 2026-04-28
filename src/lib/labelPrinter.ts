@@ -251,6 +251,9 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     font-family: "Helvetica Neue", Arial, sans-serif;
     color: #000; background: #fff;
     -webkit-font-smoothing: antialiased;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
   }
   .label {
     width: ${style.width}mm;
@@ -347,8 +350,8 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     text-align: right;
   }
   .t-banner {
-    background: #000;
-    color: #fff;
+    background: #000 !important;
+    color: #fff !important;
     font-size: ${style.totalLblFs};
     font-weight: 800;
     text-transform: uppercase;
@@ -356,6 +359,12 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     line-height: 1.15;
     padding: 0.3mm 0.6mm;
     letter-spacing: 0.04em;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+    /* Fallback: borda preta densa simula a faixa caso o navegador
+       remova mesmo o background, garantindo contraste no rótulo. */
+    box-shadow: inset 0 0 0 100mm #000;
   }
   .t-val {
     font-size: ${style.totalValFs};
