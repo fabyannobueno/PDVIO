@@ -624,14 +624,14 @@ export default function Balanca() {
                     </span>
                   </div>
 
-                  <div className="mt-2 w-full overflow-hidden [&_svg]:!w-full [&_svg]:!h-auto">
+                  <div className="mt-2 flex w-full justify-center overflow-hidden">
                     {barcode ? (
                       <Barcode
                         value={barcode}
                         format="EAN13"
-                        height={80}
-                        width={3}
-                        fontSize={18}
+                        height={50}
+                        width={1.8}
+                        fontSize={14}
                         margin={0}
                       />
                     ) : (
