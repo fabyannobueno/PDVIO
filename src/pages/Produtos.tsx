@@ -73,6 +73,11 @@ import { searchNcm, formatNcm, type BrasilApiNcm } from "@/lib/brasilApiNcm";
 const PREDEFINED_CATEGORIES = [
   // Mercado / supermercado
   "Mercearia",
+  "Massas e Grãos",
+  "Molhos & Condimentos",
+  "Molhos Picantes",
+  "Temperos e Especiarias",
+  "Enlatados e Conservas",
   "Hortifruti",
   "Frutas",
   "Legumes",
@@ -428,118 +433,227 @@ function generateSKU(name: string): string {
 // ── Auto-categorization by product name ────────────────────────────────────────
 // Maps common Brazilian product/keyword terms (lowercased, no accents) to one of
 // the categories from PREDEFINED_CATEGORIES. The longest matching keyword wins,
-// so "vinho tinto" beats "tinto" and "agua com gas" beats "agua".
+// so "molho de tomate" beats "tomate" and "agua com gas" beats "agua".
+//
+// IMPORTANTE: as chaves deste objeto DEVEM existir em PREDEFINED_CATEGORIES.
+// Caso contrário, o auto-sugerir vai propor uma categoria que não está
+// disponível no dropdown.
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  // ── Restaurante / Lanchonete ────────────────────────────────────────────
   Lanches: [
-    "hamburguer", "hamburgue", "burguer", "burger", "x-burger", "x-tudo",
-    "x-salada", "x-egg", "x-bacon", "x-cala", "x-frango", "x-fil", "xis",
-    "hot dog", "hotdog", "cachorro quente", "sanduiche", "sanduba",
-    "lanche", "misto quente", "americano", "beirute", "wrap",
+    "hamburguer", "hamburgue", "burguer", "burger", "x-burger", "x burger",
+    "x-tudo", "x tudo", "x-salada", "x salada", "x-egg", "x egg",
+    "x-bacon", "x bacon", "x-cala", "x calabresa", "x-frango", "x frango",
+    "x-fil", "x file", "xis", "hot dog", "hotdog", "cachorro quente",
+    "sanduiche", "sanduba", "lanche", "misto quente", "americano",
+    "beirute", "wrap", "tapioca recheada",
   ],
-  Pizzaria: ["pizza", "calzone", "esfiha", "esfirra", "broto"],
+  Pizzaria: [
+    "pizza", "calzone", "esfiha", "esfirra", "broto",
+    "pizza brotinho", "pizza grande", "pizza media",
+  ],
   Pratos: [
     "prato feito", "pf ", "executivo", "almoco", "refeicao",
-    "filet", "file mignon a", "strogonoff", "estrogonoff", "parmegiana",
-    "feijoada", "moqueca", "risoto", "tropeiro", "baiao",
+    "filet a parmegiana", "file a parmegiana", "file mignon a",
+    "strogonoff", "estrogonoff", "parmegiana", "feijoada", "moqueca",
+    "risoto", "tropeiro", "baiao de dois", "escondidinho",
   ],
   Marmitas: ["marmita", "marmitex", "quentinha"],
-  "Porções": ["porcao", "batata frita", "polenta frita", "frango a passarinho", "isca de"],
-  Saladas: ["salada"],
-  Sopas: ["sopa", "caldo verde", "canja", "sopao", "creme de"],
+  "Porções": [
+    "porcao", "batata frita", "polenta frita", "frango a passarinho",
+    "isca de", "anel de cebola", "onion rings", "mandioca frita",
+    "tabua de frios",
+  ],
+  Saladas: [
+    "salada", "salada caesar", "salada caprese", "salada grega",
+    "salada tropical",
+  ],
+  Sopas: [
+    "sopa", "caldo verde", "canja", "sopao", "creme de mandioquinha",
+    "creme de abobora", "creme de ervilha", "caldinho de feijao",
+  ],
   Salgados: [
     "salgado", "coxinha", "kibe", "quibe", "pastel", "empada",
     "enroladinho", "risole", "rissole", "croquete", "bolinha de queijo",
-    "bolinho de bacalhau", "esfiha",
+    "bolinho de bacalhau",
   ],
-  Sorveteria: ["sorvete", "picole", "casquinha", "milkshake", "milk shake", "sundae"],
-  "Açaí e Sucos": ["acai", "vitamina", "smoothie", "suco natural", "suco de"],
+  Sorveteria: [
+    "sorvete", "picole", "casquinha", "milkshake", "milk shake", "sundae",
+    "acai cremoso", "gelato",
+  ],
+  "Açaí e Sucos": [
+    "acai", "vitamina", "smoothie", "suco natural", "suco de",
+    "suco verde", "suco detox", "suco prensado",
+  ],
   Cafeteria: [
     "cafe expresso", "cafezinho", "cappuccino", "capuccino", "latte",
-    "espresso", "expresso", "mocha", "chocolate quente",
+    "espresso", "expresso", "mocha", "chocolate quente", "macchiato",
+    "affogato", "cha quente",
   ],
-  "Combos e Promoções": ["combo", "promocao", "promo", "kit ", "oferta"],
+  "Combos e Promoções": [
+    "combo", "promocao", "promo", "kit ", "oferta", "leve 2 pague 1",
+    "combo familia", "combo casal",
+  ],
 
-  "Doces e Sobremesas": [
-    "bolo", "torta doce", "brigadeiro", "beijinho", "brownie",
-    "mousse", "pudim", "trufa", "doce de", "sobremesa", "churros",
-    "pacoca", "cocada", "marshmallow", "petit gateau",
-  ],
-  "Biscoitos e Snacks": [
-    "biscoito", "bolacha", "cracker", "wafer", "cookie", "torrada",
-  ],
-  "Salgadinhos & Snacks": [
-    "salgadinho", "chips", "doritos", "ruffles", "fandangos", "cheetos",
-    "pipoca", "torcida", "fofura", "elma chips", "pringles", "tortilhas",
-    "amendoim",
-  ],
-  Matinais: [
-    "cereal", "granola", "sucrilhos", "aveia", "nescau", "toddy",
-    "leite em po", "achocolatado",
-  ],
+  // ── Padaria / Confeitaria ──────────────────────────────────────────────
   Padaria: [
     "pao frances", "pao de queijo", "pao integral", "pao de forma",
     "pao doce", "paes", " pao ", "baguete", "bisnaga", "croissant",
-    "focaccia", "ciabatta", "brioche", "rosca",
+    "focaccia", "ciabatta", "brioche", "rosca", "broa de milho",
+    "pao sirio", "pao arabe", "pao de hamburguer", "pao de hot dog",
   ],
-  Confeitaria: ["torta ", "cupcake", "macaron", "eclair"],
+  Confeitaria: [
+    "torta ", "cupcake", "macaron", "eclair", "naked cake", "bem casado",
+    "tortinha de", "mini bolo",
+  ],
+  "Doces e Sobremesas": [
+    "bolo", "torta doce", "brigadeiro", "beijinho", "brownie",
+    "mousse", "pudim", "trufa", "doce de", "sobremesa", "churros",
+    "pacoca", "cocada", "marshmallow", "petit gateau", "alfajor",
+    "chocolate", "bombom", "barra de chocolate", "kitkat", "snickers",
+    "twix", "lacta", "garoto", "nutella", "kinder", "ovo de pascoa",
+    "balinha", "bala ", " bala", "pirulito", "chiclete", "goma de mascar",
+    "geleia", "doce em calda", "leite condensado",
+  ],
 
-  Hortifruti: ["hortifruti", "ovo ", "ovos"],
+  // ── Mercearia / Básicos ────────────────────────────────────────────────
+  Mercearia: [
+    "arroz", "feijao", "feijao preto", "feijao carioca", "feijao branco",
+    "feijao fradinho", "lentilha", "grao de bico", "ervilha seca",
+    "soja em grao", "milho de pipoca", "fuba", "polvilho", "tapioca",
+    "amido de milho", "maizena", "fermento", "fermento biologico",
+    "fermento quimico", "po royal", "acucar", "acucar refinado",
+    "acucar cristal", "acucar mascavo", "acucar demerara", "adocante",
+    "stevia", "sucralose", "sal ", " sal", "sal grosso", "sal refinado",
+    "sal rosa", "oleo de soja", "oleo de girassol", "oleo de canola",
+    "oleo de milho", "oleo de coco", "azeite", "azeite extra virgem",
+    "azeite virgem", "vinagre", "vinagre branco", "vinagre de vinho",
+    "vinagre de maca", "vinagre balsamico", "farinha de trigo",
+    "farinha de mandioca", "farinha de rosca", "farinha lactea",
+    "leite em po", "leite condensado", "creme de leite", "doce de leite",
+    "achocolatado em po", "cha em saquinho", "cafe em po", "cafe moido",
+    "cafe em graos", "capsula de cafe",
+  ],
+
+  "Massas e Grãos": [
+    "macarrao", "macarrao espaguete", "macarrao parafuso", "macarrao penne",
+    "macarrao talharim", "macarrao instantaneo", "miojo", "espaguete",
+    "spaghetti", "lasanha massa", "ravioli", "nhoque", "nhoque de batata",
+    "talharim", "fettuccine", "fettucine", "rigatoni", "fusilli", "penne",
+    "tortellini", "capeletti", "canelone", "noodles", "yakisoba massa",
+  ],
+
+  "Molhos & Condimentos": [
+    "molho", "molho de tomate", "molho ao sugo", "molho pomodoro",
+    "molho bolonhesa", "molho branco", "molho 4 queijos",
+    "molho quatro queijos", "molho pesto", "molho rose",
+    "molho barbecue", "molho bbq", "molho ingles", "molho shoyu",
+    "shoyu", "molho de soja", "molho teriyaki", "molho tarê", "tare",
+    "molho de pimenta", "tabasco", "sriracha", "ketchup", "catchup",
+    "mostarda", "maionese", "maionese verde", "molho rose",
+    "molho tartaro", "molho golf", "molho cesar", "molho caesar",
+    "extrato de tomate", "polpa de tomate", "passata", "ervas finas",
+    "tempero pronto", "caldo concentrado", "caldo knorr", "caldo maggi",
+  ],
+
+  "Temperos e Especiarias": [
+    "tempero", "tempero baiano", "tempero completo", "sazon", "sazón",
+    "alecrim", "manjericao", "oregano", "tomilho", "louro", "manjerona",
+    "salvia", "endro", "estragao", "pimenta do reino", "pimenta branca",
+    "pimenta calabresa", "pimenta sirian", "noz moscada", "cravo",
+    "canela", "canela em pau", "canela em po", "anis", "anis estrelado",
+    "cardamomo", "cominho", "coentro em po", "coentro em graos",
+    "curry", "caril", "paprica", "paprica doce", "paprica defumada",
+    "cúrcuma", "curcuma", "açafrão", "acafrao", "gergelim", "chimichurri",
+    "colorau", "urucum", "lemon pepper", "lemon-pepper", "garam masala",
+    "fundo de carne", "knorr", "ajinomoto",
+  ],
+
+  "Enlatados e Conservas": [
+    "milho em conserva", "ervilha em conserva", "seleta de legumes",
+    "palmito", "azeitona", "azeitonas verdes", "azeitonas pretas",
+    "alcaparra", "picles", "atum em lata", "sardinha em lata",
+    "salsicha em lata", "carne enlatada", "patê", "pate de",
+    "champignon", "cogumelo em conserva", "tomate pelati", "tomate pelado",
+    "feijao em lata", "leite de coco lata",
+  ],
+
+  // ── Frescos / Hortifruti ──────────────────────────────────────────────
+  Hortifruti: ["hortifruti", "ovo ", "ovos", "ovo branco", "ovo vermelho", "ovo caipira"],
   Frutas: [
     "banana", "maca ", " maca", "laranja", "abacaxi", "uva", "melancia",
     "melao", "mamao", "manga", "abacate", "limao", "morango", "pera",
     "pessego", "kiwi", "tangerina", "mexerica", "ameixa", "goiaba",
     "maracuja", "caqui", "figo", "pitaya", "framboesa", "mirtilo",
-    "amora", "coco verde", "fruta",
+    "amora", "coco verde", "coco seco", "fruta", "ameixa preta",
+    "uva passa", "tamara", "damasco",
   ],
   Legumes: [
     "tomate", "cenoura", "batata ", "batata-", "batata doce",
+    "batata bolinha", "batata baroa", "batata yacon",
     "mandioca", "abobora", "abobrinha", "pepino", "pimentao", "beterraba",
-    "chuchu", "berinjela", "quiabo", "vagem", "milho verde", "ervilha",
-    "alho", "gengibre",
+    "chuchu", "berinjela", "quiabo", "vagem", "milho verde", "ervilha fresca",
+    "alho", "gengibre", "cebola", "cebola roxa", "cebola branca",
+    "inhame", "cara ", "rabanete", "nabo", "palmito pupunha",
   ],
   Verduras: [
-    "alface", "couve", "espinafre", "salsa", "cebolinha", "rucula",
+    "alface", "alface lisa", "alface crespa", "alface americana",
+    "couve", "espinafre", "salsa", "cebolinha", "rucula",
     "agriao", "almeirao", "acelga", "repolho", "brocolis", "couve flor",
-    "couve-flor", "verdura", "folha verde", "cheiro verde",
+    "couve-flor", "verdura", "folha verde", "cheiro verde", "hortela",
+    "manjericao fresco",
   ],
   "Açougue": [
-    "carne", "contra file", "picanha", "alcatra", "filet mignon",
-    "file mignon", "costela", "cupim", "fraldinha", "maminha",
-    "patinho", "acem", "musculo", "bisteca", "frango", "peito de frango",
-    "coxa de frango", "sobrecoxa", "asa de frango", "peru", "lombo",
-    "pernil", "linguica", "salsicha", "moida",
+    "carne", "contra file", "contra-file", "picanha", "alcatra",
+    "filet mignon", "file mignon", "costela", "cupim", "fraldinha",
+    "maminha", "patinho", "acem", "musculo", "bisteca", "frango",
+    "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango",
+    "peru", "lombo", "pernil", "linguica", "linguica calabresa",
+    "linguica toscana", "salsicha", "moida", "carne moida",
+    "carne suina", "costelinha de porco", "panceta", "pancetta",
+    "kafta", "espetinho", "churrasco", "fraldao", "picanha suina",
   ],
   Peixaria: [
     "peixe", "salmao", "atum", "sardinha", "tilapia", "bacalhau",
     "pescada", "merluza", "camarao", "lula", "polvo", "mexilhao",
-    "ostra", "lagosta", "siri", "marisco",
+    "ostra", "lagosta", "siri", "marisco", "robalo", "linguado",
+    "tambaqui", "pirarucu", "anchova",
   ],
   "Frios e Laticínios": [
     "queijo", "mussarela", "muzzarela", "parmesao", "cheddar",
-    "gorgonzola", "brie", "ricota", "requeijao",
+    "gorgonzola", "brie", "ricota", "requeijao", "queijo minas",
+    "queijo coalho", "queijo prato", "queijo provolone",
+    "queijo reino", "catupiry",
   ],
   "Laticínios": [
     "leite ", " leite", "leite integral", "leite desnatado",
-    "leite semidesnatado", "leite condensado", "creme de leite",
+    "leite semidesnatado", "leite zero lactose", "leite a2",
     "manteiga", "margarina", "iogurte", "danone", "yogurte", "yakult",
     "nata ", " nata", "chantilly", "kefir", "queijinho petit",
+    "petit suisse", "danoninho", "bebida lactea",
   ],
   Frios: [
     "presunto", "peito de peru", "mortadela", "salame", "copa lombo",
-    "blanquet", "bacon", "apresuntado", "salsicha tipo hot",
-    "frios fatiados",
+    "copa-lombo", "blanquet", "bacon", "apresuntado",
+    "salsicha tipo hot", "frios fatiados", "lombo defumado",
   ],
   Congelados: [
-    "congelado", "polpa de fruta", "lasanha congelada", "pizza congelada",
-    "nuggets", "hamburguer congelado",
+    "congelado", "polpa de fruta", "lasanha congelada",
+    "pizza congelada", "nuggets", "hamburguer congelado",
+    "batata pre-frita", "batata pre frita", "vegetais congelados",
+    "pao de queijo congelado", "esfiha congelada", "pastel congelado",
   ],
 
+  // ── Bebidas ────────────────────────────────────────────────────────────
   Bebidas: [
     "refrigerante", "coca cola", "coca-cola", "pepsi", "guarana", "fanta",
     "sprite", "sukita", "tubaina", "agua mineral", "agua com gas",
     "agua tonica", "agua sem gas", " agua ", "nectar", "isotonico",
     "gatorade", "powerade", "energetico", "red bull", "monster", "baly",
     " cha ", "cha gelado", "cha mate", "mate leao", "nestea", "h2o",
+    "suco em caixinha", "suco de caixinha", "suco de garrafa",
+    "suco prontinho", "del valle", "ades", "soya", "agua de coco",
+    "kuat", "soda limonada", "antarctica guarana",
   ],
   "Bebidas Alcoólicas": [
     "cerveja", "chopp", "ipa", "lager", "pilsen", "weiss", "stout",
@@ -547,116 +661,241 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "champanhe", "champagne", "whisky", "whiskey", "vodka", "gin ",
     "cachaca", "pinga", "conhaque", " rum", "tequila", "vermute",
     "licor", "jagermeister", "baileys", "batida", "caipirinha",
-    "caipiroska", "drink", "absinto",
+    "caipiroska", "drink", "absinto", "heineken", "brahma", "skol",
+    "antarctica", "itaipava", "amstel", "stella artois", "corona",
+    "budweiser", "becks", "eisenbahn", "original", "bohemia",
+    "spaten", "sake", "soju",
+  ],
+  "Biscoitos e Snacks": [
+    "biscoito", "bolacha", "cracker", "wafer", "cookie", "torrada",
+    "biscoito recheado", "biscoito agua e sal", "biscoito maizena",
+    "biscoito maria", "rosquinha",
+  ],
+  "Salgadinhos & Snacks": [
+    "salgadinho", "chips", "doritos", "ruffles", "fandangos", "cheetos",
+    "pipoca", "torcida", "fofura", "elma chips", "pringles", "tortilhas",
+    "amendoim", "amendoim japones", "castanha", "castanha de caju",
+    "castanha do para", "noz", "mix de castanhas",
+  ],
+  Matinais: [
+    "cereal", "granola", "sucrilhos", "aveia", "nescau", "toddy",
+    "achocolatado", "mel ", " mel", "geleia ", "torrada light",
+    "barra de cereal", "muffin", "pancake mix",
   ],
 
+  // ── Limpeza / Higiene / Beleza ─────────────────────────────────────────
   Limpeza: [
     "detergente", "sabao em po", "sabao liquido", "sabao de coco",
     "desinfetante", "agua sanitaria", "alvejante", "amaciante",
     "lustra movel", "multiuso", "limpa vidro", "veja ", " omo",
     "brilhante", "comfort", "ype", "pinho sol", "esponja", "vassoura",
-    "rodo", "pano de chao", "saco de lixo",
+    "rodo", "pano de chao", "saco de lixo", "limpador", "tira manchas",
+    "cera liquida", "lustra moveis", "removedor", "soda caustica",
+    "escova de vaso", "naftalina",
   ],
   "Higiene Pessoal": [
     "shampoo", "condicionador", "sabonete", "escova de dente",
     "creme dental", "pasta de dente", "fio dental", "antisseptico bucal",
-    "enxaguante", "desodorante", "antitranspirante", "papel higienico",
-    "lenco umedecido", "absorvente", "fralda",
+    "enxaguante", "enxaguante bucal", "desodorante", "antitranspirante",
+    "papel higienico", "lenco umedecido", "absorvente", "fralda",
+    "lamina de barbear", "aparelho de barbear", "espuma de barbear",
+    "gel de barbear", "cotonete", "algodao", "loção pos barba",
+    "fio dental", "creme depilatorio", "cera depilatoria",
   ],
-  Perfumaria: ["perfume", "colonia", "deo colonia", "body splash"],
+  Perfumaria: [
+    "perfume", "colonia", "deo colonia", "body splash", "agua de colonia",
+    "edt", "edp", "eau de toilette", "eau de parfum",
+  ],
   "Cosméticos": [
     "hidratante", "creme facial", "locao", "batom", "esmalte", "base ",
-    "po facial", "maquiagem", "rimel", "sombra", "blush",
+    "po facial", "maquiagem", "rimel", "sombra", "blush", "delineador",
+    "lapis de olho", "corretivo", "primer facial", "tonico facial",
+    "demaquilante", "mascara facial", "protetor solar", "bloqueador solar",
+    "creme para o rosto", "serum", "hidratante labial", "lip balm",
   ],
-  "Cuidados com Bebê": ["mamadeira", "chupeta", "papinha", "talco"],
+  "Cuidados com Bebê": [
+    "mamadeira", "chupeta", "papinha", "talco", "pomada para assadura",
+    "lenço umedecido bebê", "shampoo infantil", "sabonete infantil",
+  ],
   "Descartáveis": [
     "copo descartavel", "prato descartavel", "talher descartavel",
     "guardanapo", "papel toalha", "papel aluminio", "filme pvc",
+    "filme plastico", "saco plastico", "potinho descartavel",
+    "embalagem descartavel",
   ],
 
+  // ── Saúde ──────────────────────────────────────────────────────────────
   "Farmácia": [
     "remedio", "dipirona", "paracetamol", "ibuprofeno", "omeprazol",
-    "novalgina", "tylenol", "neosaldina", "advil", "aspirina",
+    "novalgina", "tylenol", "neosaldina", "advil", "aspirina", "buscopan",
     "comprimido", "capsula", "xarope", "pomada", "antialergico",
+    "anti-inflamatorio", "antitermico", "antiacido", "antigripal",
+    "soro fisiologico", "agua oxigenada", "alcool 70", "alcool gel",
+    "termometro", "esparadrapo", "curativo", "band aid", "band-aid",
+    "atadura", "gaze",
   ],
   Suplementos: [
-    "whey", "creatina", "bcaa", "hipercalorico", "suplemento",
+    "whey", "whey protein", "creatina", "bcaa", "hipercalorico", "suplemento",
     "proteina ", "vitamina c", "vitamina d", "vitamina b",
-    "polivitaminico", "termogenico",
+    "polivitaminico", "termogenico", "colageno", "omega 3", "omega-3",
+    "glutamina", "albumina", "pre treino", "pre-treino",
+  ],
+  "Saúde e Bem-estar": [
+    "mascara descartavel", "mascara facial cirurgica", "mascara n95",
+    "mascara pff2", "luva descartavel", "tira de pressao",
+    "monitor de pressao", "oximetro", "glicosimetro", "fita para glicemia",
+    "preservativo", "camisinha", "lubrificante intimo", "absorvente noturno",
+    "coletor menstrual",
   ],
 
+  // ── Pet ────────────────────────────────────────────────────────────────
   "Pet Shop": [
-    "racao", "petisco pet", "areia para gato", "coleira",
-    "antipulgas", "tapete higienico", "biscoito pet",
+    "racao", "racao premium", "racao super premium", "petisco pet",
+    "petisco para caes", "petisco para gatos", "areia para gato",
+    "areia higienica", "coleira", "antipulgas", "tapete higienico",
+    "biscoito pet", "snack canino", "snack felino", "shampoo pet",
+    "brinquedo pet", "casinha pet", "comedouro", "bebedouro pet",
   ],
 
-  "Bebê e Infantil": ["mamadeira", "chupeta", "fralda"],
-  Brinquedos: ["brinquedo", "boneca", "carrinho de brinquedo", "lego", "pelucia"],
+  // ── Loja / departamentos ──────────────────────────────────────────────
+  "Bebê e Infantil": [
+    "mamadeira", "chupeta", "fralda", "fralda descartavel",
+    "fralda noturna", "fralda piscina", "babador",
+  ],
+  Brinquedos: [
+    "brinquedo", "boneca", "carrinho de brinquedo", "lego", "pelucia",
+    "quebra cabeca", "quebra-cabeca", "jogo de tabuleiro", "playmobil",
+    "ursinho", "bola de futebol brinquedo", "patinete", "skate infantil",
+  ],
   Papelaria: [
     "caderno", "caneta", "lapis", "borracha", "regua", "mochila",
     "estojo", "papel sulfite", "cola escolar", "agenda", "marca texto",
+    "marcador", "post-it", "post it", "grampeador", "grampo",
+    "clips ", "tesoura escolar", "apontador", "lapiseira", "papel cartao",
   ],
   "Eletrônicos": [
     "fone de ouvido", "headphone", "headset", "caixa de som", "mouse",
     "teclado", "ssd ", " hd ", "pendrive", "cabo usb", "carregador",
+    "power bank", "powerbank", "smartwatch", "smart watch",
+    "controle remoto", "tv ", " televisao", " televisor",
   ],
   "Eletrodomésticos": [
     "liquidificador", "batedeira", "micro-ondas", "microondas",
     "geladeira", "fogao", "ferro de passar", "ventilador", "aspirador",
-    "cafeteira",
+    "cafeteira", "air fryer", "airfryer", "torradeira", "sanduicheira",
+    "mixer", "processador de alimentos", "panela eletrica",
+    "panela de pressao eletrica", "purificador de agua", "bebedouro",
   ],
-  "Informática": ["notebook", "computador", "monitor", "impressora"],
+  "Informática": [
+    "notebook", "computador", "monitor", "impressora", "all in one",
+    "desktop", "gabinete pc", "placa de video", "placa mae",
+    "memoria ram", "cooler", "fonte atx",
+  ],
   "Telefonia e Acessórios": [
     "capa de celular", "capinha", "pelicula", "fone bluetooth",
+    "fone de ouvido bluetooth", "carregador celular", "cabo lightning",
+    "cabo type-c", "cabo type c", "suporte para celular",
   ],
   "Cama, Mesa e Banho": [
     "lencol", "fronha", "toalha de banho", "toalha de rosto", "edredom",
-    "cobertor", "travesseiro", "jogo de cama",
+    "cobertor", "travesseiro", "jogo de cama", "manta", "colcha",
+    "jogo americano", "toalha de mesa", "guardanapo de tecido",
   ],
   "Utilidades Domésticas": [
     "panela", "frigideira", "tigela", "jarra", " colher ", " garfo ",
-    " faca ", "concha de", "escorredor", "abridor",
+    " faca ", "concha de", "escorredor", "abridor", "ralador",
+    "espremedor", "tabua de corte", "porta tempero", "porta-tempero",
+    "potes hermeticos", "garrafa termica", "marmita termica",
   ],
   Ferramentas: [
     "martelo", "chave de fenda", "chave allen", "alicate", "furadeira",
-    "parafusadeira", "serra ", "broca", "trena",
+    "parafusadeira", "serra ", "broca", "trena", "nivel laser",
+    "esmerilhadeira", "marreta",
   ],
   "Material de Construção": [
     "cimento", "areia", "brita", "tijolo", "telha", "prego ", "parafuso",
-    "argamassa", "rejunte",
+    "argamassa", "rejunte", "cal hidratada", "gesso", "porcelanato",
+    "ceramica", "azulejo",
   ],
   "Elétrica e Hidráulica": [
     "fio eletrico", "tomada", "interruptor", "cano pvc", "conexao pvc",
-    "lampada", "disjuntor", "fita isolante",
+    "lampada", "disjuntor", "fita isolante", "extensao eletrica",
+    "filtro de linha", "registro hidraulico", "torneira", "ducha",
   ],
   "Tintas e Acessórios": [
-    "tinta acrilica", "tinta esmalte", "tinta latex", "pincel", "rolo de pintura",
-    "lixa", "massa corrida", "thinner",
+    "tinta acrilica", "tinta esmalte", "tinta latex", "pincel",
+    "rolo de pintura", "lixa", "massa corrida", "thinner",
+    "fundo preparador", "verniz", "selador",
   ],
-  Jardinagem: ["adubo", "vaso ", "semente", "fertilizante", "terra adubada"],
+  Jardinagem: [
+    "adubo", "vaso ", "semente", "fertilizante", "terra adubada",
+    "terra vegetal", "regador", "mangueira de jardim", "pa de jardim",
+    "tesoura de poda",
+  ],
   Automotivo: [
     "oleo de motor", "oleo lubrificante", "filtro de oleo", "pneu",
-    "bateria automotiva", "cera automotiva", "lava auto",
+    "bateria automotiva", "cera automotiva", "lava auto", "para choque",
+    "para-choque", "limpa para brisa", "shampoo automotivo", "aditivo",
+    "fluido de freio", "agua para radiador", "calota",
   ],
-  "Calçados": ["tenis", "sapato", "sandalia", "chinelo", "bota", "sapatilha"],
+  "Calçados": [
+    "tenis", "sapato", "sandalia", "chinelo", "bota", "sapatilha",
+    "havaianas", "papete", "scarpin", "mocassim", "rasteirinha",
+  ],
   "Vestuário": [
     "camiseta", "camisa", "calca", "bermuda", "vestido", "saia",
     "blusa", "jaqueta", "casaco", "meia ", "cueca", "calcinha", "sutia",
+    "moleton", "moletom", "polo ", "regata", "shorts", "pijama",
+    "agasalho", "macacao", "macacão",
   ],
-  "Acessórios": ["cinto", "carteira", "boné", "bone "],
-  "Joias e Bijuterias": ["anel", "colar", "brinco", "pulseira", "relogio"],
-  "Esporte e Lazer": ["bola", "bicicleta", "halter", "chuteira", "luva de boxe"],
-  Livraria: ["livro", "revista", "gibi", "biblia"],
-  Games: ["jogo de", "xbox", "playstation", "nintendo", "controle ps", "controle xbox"],
-  "Decoração": ["quadro decorativo", "vaso decorativo", "almofada"],
-  Festas: ["balao", "vela de aniversario", "fantasia"],
+  "Acessórios": [
+    "cinto", "carteira", "boné", "bone ", "chapéu", "chapeu",
+    "oculos de sol", "luvas", "cachecol", "echarpe", "bolsa feminina",
+    "mochila feminina",
+  ],
+  "Joias e Bijuterias": [
+    "anel", "colar", "brinco", "pulseira", "relogio", "tornozeleira",
+    "piercing", "corrente de prata", "corrente de ouro",
+  ],
+  "Esporte e Lazer": [
+    "bola", "bola de futebol", "bola de basquete", "bola de volei",
+    "bicicleta", "halter", "chuteira", "luva de boxe", "kimono",
+    "raquete", "patins", "skate", "corda de pular", "tapete de yoga",
+  ],
+  Livraria: ["livro", "revista", "gibi", "biblia", "ebook", "e-book"],
+  Games: [
+    "jogo de", "xbox", "playstation", "nintendo", "controle ps",
+    "controle xbox", "joystick", "ps5", "ps4", "switch", "console",
+  ],
+  "Decoração": [
+    "quadro decorativo", "vaso decorativo", "almofada", "cortina",
+    "persiana", "tapete", "luminaria", "abajur",
+  ],
+  Festas: [
+    "balao", "vela de aniversario", "fantasia", "decoracao de festa",
+    "topo de bolo", "papel crepom", "lembrancinha",
+  ],
 
+  // ── Operacional ────────────────────────────────────────────────────────
   Embalagens: [
     "caixa de pizza", "caixa para", "embalagem", "saco para pao",
-    "papelao", "fita adesiva", "papel kraft",
+    "papelao", "fita adesiva", "papel kraft", "marmita de aluminio",
+    "embalagem para delivery", "potinho para molho", "saco de papel",
+    "filme stretch",
   ],
-  Tabacaria: ["cigarro", "charuto", "isqueiro", "fumo", "papel de seda", "seda "],
-  Recargas: ["recarga", "cartao presente", "gift card"],
+  Tabacaria: [
+    "cigarro", "charuto", "isqueiro", "fumo", "papel de seda", "seda ",
+    "narguile", "essencia para narguile", "carvao para narguile",
+    "tabaco",
+  ],
+  Recargas: [
+    "recarga", "cartao presente", "gift card", "recarga de celular",
+    "cartao google play", "cartao xbox", "cartao playstation",
+  ],
+  "Serviços": [
+    "servico de", "instalacao", "manutencao", "consultoria",
+    "taxa de entrega", "frete", "mao de obra",
+  ],
 };
 
 function normalizeForCategory(s: string): string {
