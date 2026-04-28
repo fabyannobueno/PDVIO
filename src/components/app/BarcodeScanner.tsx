@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
-import { NotFoundException } from "@zxing/library";
+import {
+  BarcodeFormat,
+  DecodeHintType,
+  NotFoundException,
+} from "@zxing/library";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, ScanLine, Camera, AlertCircle } from "lucide-react";
+import { Loader2, ScanLine, Camera, AlertCircle, Zap, ZapOff } from "lucide-react";
 
 interface ProductLookupResult {
   name?: string;
@@ -52,13 +56,80 @@ interface BarcodeScannerProps {
   onResult: (result: ProductLookupResult) => void;
 }
 
+// Restrict to the formats that actually appear on retail products.
+// The default "MultiFormatReader" tries every format on every frame,
+// which makes scanning very slow. Limiting to ~8 formats makes decoding
+// dramatically faster.
+const SUPPORTED_FORMATS: BarcodeFormat[] = [
+  BarcodeFormat.EAN_13,
+  BarcodeFormat.EAN_8,
+  BarcodeFormat.UPC_A,
+  BarcodeFormat.UPC_E,
+  BarcodeFormat.CODE_128,
+  BarcodeFormat.CODE_39,
+  BarcodeFormat.ITF,
+  BarcodeFormat.QR_CODE,
+];
+
+function buildHints() {
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, SUPPORTED_FORMATS);
+  hints.set(DecodeHintType.TRY_HARDER, true);
+  return hints;
+}
+
+// Try to coerce the camera into the best mode for barcode reading:
+// continuous autofocus + macro focus distance + image-stabilization-off,
+// guarded by capability checks so it silently no-ops on devices that
+// don't support each constraint.
+async function tuneCameraForBarcodes(track: MediaStreamTrack) {
+  const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & {
+    focusMode?: string[];
+    focusDistance?: { min: number; max: number; step: number };
+    exposureMode?: string[];
+    whiteBalanceMode?: string[];
+  };
+
+  const advanced: MediaTrackConstraintSet[] = [];
+
+  if (Array.isArray(caps.focusMode)) {
+    if (caps.focusMode.includes("continuous")) {
+      advanced.push({ focusMode: "continuous" } as MediaTrackConstraintSet);
+    } else if (caps.focusMode.includes("single-shot")) {
+      advanced.push({ focusMode: "single-shot" } as MediaTrackConstraintSet);
+    }
+  }
+
+  if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes("continuous")) {
+    advanced.push({ exposureMode: "continuous" } as MediaTrackConstraintSet);
+  }
+
+  if (
+    Array.isArray(caps.whiteBalanceMode) &&
+    caps.whiteBalanceMode.includes("continuous")
+  ) {
+    advanced.push({ whiteBalanceMode: "continuous" } as MediaTrackConstraintSet);
+  }
+
+  if (advanced.length > 0) {
+    try {
+      await track.applyConstraints({ advanced });
+    } catch {
+      // ignore — best-effort tuning
+    }
+  }
+}
+
 export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const [status, setStatus] = useState<"starting" | "scanning" | "looking-up" | "error">("starting");
   const [errorMsg, setErrorMsg] = useState("");
   const [scannedCode, setScannedCode] = useState("");
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const detectedRef = useRef(false);
 
   function stopAll() {
@@ -69,6 +140,49 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
+    }
+    trackRef.current = null;
+    setTorchSupported(false);
+    setTorchOn(false);
+  }
+
+  async function toggleTorch() {
+    const track = trackRef.current;
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: next } as MediaTrackConstraintSet],
+      });
+      setTorchOn(next);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Tap-to-focus: re-applies single-shot focus on the chosen point when the
+  // camera supports it. Helps when ZXing can't decode because the barcode
+  // is right under the lens and continuous AF didn't catch up yet.
+  async function refocus() {
+    const track = trackRef.current;
+    if (!track) return;
+    const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & {
+      focusMode?: string[];
+    };
+    if (!Array.isArray(caps.focusMode)) return;
+    try {
+      if (caps.focusMode.includes("single-shot")) {
+        await track.applyConstraints({
+          advanced: [{ focusMode: "single-shot" } as MediaTrackConstraintSet],
+        });
+      }
+      if (caps.focusMode.includes("continuous")) {
+        await track.applyConstraints({
+          advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
+        });
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -84,9 +198,16 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
 
     (async () => {
       try {
-        // Request rear camera — "environment" is a preference, not strict
+        // Ask for the rear camera at the highest practical resolution.
+        // Higher resolution = ZXing can decode the barcode from further
+        // away and with more tolerance for motion blur.
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30 },
+          },
           audio: false,
         });
 
@@ -96,8 +217,21 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
         }
 
         streamRef.current = stream;
+        const [track] = stream.getVideoTracks();
+        trackRef.current = track ?? null;
 
-        // Attach stream to video element
+        // Tune autofocus / exposure / white balance — fixes the "blurry
+        // when close to the product" issue on phones that ship with the
+        // camera in fixed-focus mode by default.
+        if (track) {
+          await tuneCameraForBarcodes(track);
+          const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & {
+            torch?: boolean;
+          };
+          if (caps.torch) setTorchSupported(true);
+        }
+
+        // Attach stream to the video element.
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
@@ -105,10 +239,11 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
 
         setStatus("scanning");
 
-        const reader = new BrowserMultiFormatReader();
+        // Faster scan loop: 100ms between attempts (default is 500ms),
+        // restricted to retail-product barcode formats.
+        const reader = new BrowserMultiFormatReader(buildHints(), 100);
         readerRef.current = reader;
 
-        // Decode from the live stream
         reader.decodeFromStream(stream, videoRef.current!, async (result, err) => {
           if (detectedRef.current || stopped) return;
           if (result) {
@@ -116,6 +251,8 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
             const code = result.getText();
             setScannedCode(code);
             setStatus("looking-up");
+            // Vibrate on successful scan if the device supports it.
+            try { navigator.vibrate?.(80); } catch {}
             const info = await lookupBarcode(code);
             if (!stopped) {
               onResult(info ?? { barcode: code });
@@ -168,6 +305,9 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
           <div
             className="relative overflow-hidden rounded-xl border-2 border-border bg-black"
             style={{ aspectRatio: "4/3" }}
+            onClick={() => {
+              if (status === "scanning") refocus();
+            }}
           >
             <video
               ref={videoRef}
@@ -191,9 +331,23 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
                 </div>
                 <div className="absolute bottom-3 left-0 right-0 flex justify-center">
                   <span className="rounded-full bg-black/60 px-3 py-1 text-xs text-white backdrop-blur-sm">
-                    Aponte para o código de barras
+                    Mantenha 10–20 cm de distância · toque na imagem para focar
                   </span>
                 </div>
+
+                {torchSupported && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTorch();
+                    }}
+                    className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80"
+                    aria-label={torchOn ? "Desligar lanterna" : "Ligar lanterna"}
+                  >
+                    {torchOn ? <ZapOff className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+                  </button>
+                )}
               </>
             )}
 
