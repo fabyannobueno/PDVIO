@@ -234,6 +234,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
   const [form, setForm] = useState<PromotionForm>(EMPTY_PROMO_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [categoryComboOpen, setCategoryComboOpen] = useState(false);
+  const [productComboOpen, setProductComboOpen] = useState(false);
 
   const promotionsQuery = useQuery({
     queryKey: ["promotions", companyId],
@@ -624,21 +625,74 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
               <>
                 <div className="space-y-1.5">
                   <Label>Produto</Label>
-                  <Select
-                    value={form.product_id || undefined}
-                    onValueChange={(v) => setForm({ ...form, product_id: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um produto…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={productComboOpen} onOpenChange={setProductComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={productComboOpen}
+                        className={cn(
+                          "w-full justify-between font-normal",
+                          !form.product_id && "text-muted-foreground",
+                        )}
+                      >
+                        <span className="truncate">
+                          {products.find((p) => p.id === form.product_id)?.name ||
+                            "Selecione um produto…"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[--radix-popover-trigger-width] min-w-[260px] p-0"
+                      align="start"
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                    >
+                      <Command
+                        filter={(value, search) => {
+                          const s = search
+                            .toLowerCase()
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "");
+                          const vNorm = value
+                            .toLowerCase()
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "");
+                          return vNorm.includes(s) ? 1 : 0;
+                        }}
+                      >
+                        <CommandInput placeholder="Buscar produto..." />
+                        <CommandList
+                          className="max-h-64 overflow-y-auto overscroll-contain"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
+                          <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {products.map((p) => (
+                              <CommandItem
+                                key={p.id}
+                                value={p.name}
+                                onSelect={() => {
+                                  setForm((f) => ({ ...f, product_id: p.id }));
+                                  setProductComboOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    form.product_id === p.id ? "opacity-100" : "opacity-0",
+                                  )}
+                                />
+                                {p.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
