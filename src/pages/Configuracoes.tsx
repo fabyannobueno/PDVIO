@@ -759,7 +759,7 @@ export default function Configuracoes() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 p-6 md:p-8 animate-fade-in">
+    <div className="space-y-6 p-6 md:p-8 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
         <p className="text-sm text-muted-foreground mt-1">Gerencie sua empresa, perfil e equipe.</p>
