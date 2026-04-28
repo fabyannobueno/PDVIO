@@ -159,9 +159,9 @@ const EMPTY_FORM: ProductForm = {
   category: "",
   cost_price: "0,00",
   sale_price: "0,00",
-  stock_quantity: "0",
+  stock_quantity: "",
   stock_unit: "un",
-  min_stock: "0",
+  min_stock: "",
   is_active: true,
   is_promotion: false,
   is_prepared: false,
@@ -307,14 +307,15 @@ function StockInput({
     } else if (e.key === "Backspace") {
       e.preventDefault();
       if (hasSelection) {
-        onChange("0,000");
+        onChange("");
       } else {
         const digits = parseInt(value.replace(/\D/g, "") || "0", 10);
-        onChange(formatStock3(Math.floor(digits / 10)));
+        const next = Math.floor(digits / 10);
+        onChange(next === 0 ? "" : formatStock3(next));
       }
     } else if (e.key === "Delete") {
       e.preventDefault();
-      onChange("0,000");
+      onChange("");
     }
   };
 
@@ -323,6 +324,7 @@ function StockInput({
       <Input
         {...props}
         value={value}
+        placeholder="0"
         inputMode="numeric"
         className="flex-1 font-mono tabular-nums"
         onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
@@ -333,7 +335,8 @@ function StockInput({
   return (
     <Input
       {...props}
-      value={value || "0,000"}
+      value={value}
+      placeholder="0,000"
       onKeyDown={handleDecimalKeyDown}
       onChange={() => {}}
       inputMode="numeric"
@@ -1694,8 +1697,8 @@ export default function Produtos() {
                     setForm((f) => ({
                       ...f,
                       stock_unit: v,
-                      stock_quantity: INTEGER_UNITS.includes(v) ? "0" : "0,000",
-                      min_stock: INTEGER_UNITS.includes(v) ? "0" : "0,000",
+                      stock_quantity: "",
+                      min_stock: "",
                     }))
                   }
                 >
