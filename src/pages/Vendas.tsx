@@ -53,7 +53,14 @@ import {
   XCircle,
   Undo2,
   Ban,
+  Printer,
 } from "lucide-react";
+import {
+  printReceipt,
+  getSettings as getPrinterSettings,
+  formatSaleNumber,
+  type Receipt as PrinterReceipt,
+} from "@/lib/printer";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -128,10 +135,14 @@ const PAGE_SIZE = 15;
 
 type Sale = {
   id: string;
+  numeric_id?: number | string | null;
   total: number;
   subtotal: number;
   discount_amount: number;
   payment_method: string;
+  payment_amount?: number | null;
+  change_amount?: number | null;
+  notes?: string | null;
   status: string;
   created_at: string;
   customer_id: string | null;
@@ -391,6 +402,82 @@ function SaleRow({ sale, refundedAmount = 0 }: { sale: Sale; refundedAmount?: nu
     },
   });
 
+  const [reprinting, setReprinting] = useState(false);
+
+  async function handleReprint() {
+    setReprinting(true);
+    try {
+      // Garante que temos os itens carregados (caso o usuário clique sem abrir).
+      let saleItems = items as SaleItem[];
+      if (!saleItems || saleItems.length === 0) {
+        const { data, error } = await supabase
+          .from("sale_items")
+          .select(
+            "id, product_name, quantity, unit_price, discount_amount, subtotal, addons, notes, products(stock_unit)",
+          )
+          .eq("sale_id", sale.id);
+        if (error) throw error;
+        saleItems = (data ?? []) as SaleItem[];
+      }
+
+      // Para vendas mistas, o detalhamento da divisão fica em `notes`
+      // gravado como "[Misto] Dinheiro 10,00 + PIX 5,00".
+      const isMixed = sale.payment_method === "mixed";
+      const mixedDescription = (sale.notes ?? "").replace(/^\[Misto\]\s*/i, "").trim();
+      const paymentLabel = isMixed
+        ? mixedDescription
+          ? `Misto — ${mixedDescription}`
+          : "Misto"
+        : cfg.label;
+
+      const cashReceived =
+        sale.payment_method === "cash" && sale.payment_amount != null
+          ? Number(sale.payment_amount)
+          : undefined;
+      const change =
+        sale.payment_method === "cash" && sale.change_amount != null
+          ? Number(sale.change_amount)
+          : undefined;
+
+      const receipt: PrinterReceipt = {
+        title: "CUPOM NÃO FISCAL — 2ª VIA",
+        items: saleItems.map((i) => ({
+          name: i.product_name,
+          qty: Number(i.quantity),
+          price: Number(i.unit_price),
+          unit: i.products?.stock_unit ?? undefined,
+        })),
+        subtotal: Number(sale.subtotal),
+        discount: Number(sale.discount_amount) > 0 ? Number(sale.discount_amount) : undefined,
+        total: Number(sale.total),
+        payment: paymentLabel,
+        cashReceived: cashReceived && cashReceived > 0 ? cashReceived : undefined,
+        change: change && change > 0 ? change : undefined,
+        date: new Date(sale.created_at),
+        companyName: activeCompany?.name ?? undefined,
+        companyDocument: activeCompany?.document ?? undefined,
+        companyPhone: activeCompany?.phone ?? undefined,
+        companyAddress: activeCompany?.address ?? undefined,
+        saleNumber: formatSaleNumber(sale.numeric_id ?? null, sale.id),
+      };
+
+      await printReceipt(receipt, getPrinterSettings());
+      logAudit({
+        companyId: activeCompany!.id,
+        action: "sale.reprinted",
+        entityType: "sale",
+        entityId: sale.id,
+        description: `Reimpressão de cupom (${fmtBRL(Number(sale.total))})`,
+        metadata: { sale_id: sale.id, total: Number(sale.total) },
+      });
+      toast.success("Cupom enviado para impressão");
+    } catch (e: any) {
+      toast.error(`Falha ao reimprimir: ${e?.message ?? "erro desconhecido"}`);
+    } finally {
+      setReprinting(false);
+    }
+  }
+
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
@@ -613,24 +700,35 @@ function SaleRow({ sale, refundedAmount = 0 }: { sale: Sale; refundedAmount?: nu
           )}
 
           {/* Actions */}
-          {!isCancelled && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {maxRefundable > 0 && sale.payment_method !== "crediario" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 h-8 text-xs"
-                  onClick={() => {
-                    setRefundType("full");
-                    setRefundAmount(maskMoneyFromDigits(String(Math.round(maxRefundable * 100))));
-                    setReason("");
-                    setRefundDialog(true);
-                  }}
-                  data-testid={`button-refund-${sale.id}`}
-                >
-                  <Undo2 className="h-3.5 w-3.5" /> Devolver
-                </Button>
-              )}
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 h-8 text-xs"
+              onClick={handleReprint}
+              disabled={reprinting}
+              data-testid={`button-reprint-${sale.id}`}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              {reprinting ? "Imprimindo..." : "Reimprimir cupom"}
+            </Button>
+            {!isCancelled && maxRefundable > 0 && sale.payment_method !== "crediario" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 h-8 text-xs"
+                onClick={() => {
+                  setRefundType("full");
+                  setRefundAmount(maskMoneyFromDigits(String(Math.round(maxRefundable * 100))));
+                  setReason("");
+                  setRefundDialog(true);
+                }}
+                data-testid={`button-refund-${sale.id}`}
+              >
+                <Undo2 className="h-3.5 w-3.5" /> Devolver
+              </Button>
+            )}
+            {!isCancelled && (
               <Button
                 size="sm"
                 variant="outline"
@@ -640,8 +738,8 @@ function SaleRow({ sale, refundedAmount = 0 }: { sale: Sale; refundedAmount?: nu
               >
                 <XCircle className="h-3.5 w-3.5" /> Cancelar venda
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </CollapsibleContent>
 
@@ -866,7 +964,7 @@ export default function Vendas() {
       let query = supabase
         .from("sales")
         .select(
-          "id, total, subtotal, discount_amount, payment_method, status, created_at, customer_id, customers(name), cancelled_at, cancellation_reason"
+          "id, numeric_id, total, subtotal, discount_amount, payment_method, payment_amount, change_amount, notes, status, created_at, customer_id, customers(name), cancelled_at, cancellation_reason"
         )
         .eq("company_id", activeCompany!.id)
         .order("created_at", { ascending: false });
