@@ -143,6 +143,11 @@ export default function SuporteTicket() {
   const isOwnerOrManager =
     activeCompany?.role === "owner" || activeCompany?.role === "manager";
 
+  // Esta página é o canal do CLIENTE (empresa) com o suporte do PDVIO.
+  // Mesmo donos/gerentes da empresa são clientes aqui — quem responde como
+  // "atendente" é a equipe do PDVIO, por outra interface. Por isso, qualquer
+  // resposta enviada daqui é sempre tratada como mensagem do usuário.
+
   // -------- Ticket --------
   const ticketQuery = useQuery<SupportTicket | null>({
     queryKey: ["/suporte/ticket-by-seq", activeCompany?.id, seqNum],
@@ -400,21 +405,6 @@ export default function SuporteTicket() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
-  // -------- Atendente assume / resolve --------
-  const sendAgent = useMutation({
-    mutationFn: async () => {
-      if (!ticket || !user) throw new Error("Sem chamado ativo");
-      const text = reply.trim();
-      if (!text) throw new Error("Mensagem vazia");
-      await insertMessage({ author_type: "agent", body: text });
-      setReply("");
-      const patch: Partial<SupportTicket> = { status: "human_assigned", assigned_to: user.id };
-      if (!ticket.first_response_at) (patch as any).first_response_at = new Date().toISOString();
-      await updateTicket(patch);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro"),
-  });
-
   const setStatus = useMutation({
     mutationFn: async (status: string) => {
       if (!ticket) return;
@@ -577,12 +567,8 @@ export default function SuporteTicket() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (reply.trim() && !sendUser.isPending && !sendAgent.isPending) {
-                        if (isOwnerOrManager && (isWaitingHuman || isWithAgent)) {
-                          sendAgent.mutate();
-                        } else {
-                          sendUser.mutate();
-                        }
+                      if (reply.trim() && !sendUser.isPending) {
+                        sendUser.mutate();
                       }
                     }
                   }}
@@ -598,19 +584,13 @@ export default function SuporteTicket() {
                   data-testid="textarea-chat"
                 />
                 <Button
-                  onClick={() => {
-                    if (isOwnerOrManager && (isWaitingHuman || isWithAgent)) {
-                      sendAgent.mutate();
-                    } else {
-                      sendUser.mutate();
-                    }
-                  }}
-                  disabled={!reply.trim() || sendUser.isPending || sendAgent.isPending || botThinking}
+                  onClick={() => sendUser.mutate()}
+                  disabled={!reply.trim() || sendUser.isPending || botThinking}
                   size="icon"
                   className="h-11 w-11 shrink-0"
                   data-testid="button-send"
                 >
-                  {sendUser.isPending || sendAgent.isPending ? (
+                  {sendUser.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Send className="h-4 w-4" />
