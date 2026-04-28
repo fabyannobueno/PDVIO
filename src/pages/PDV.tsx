@@ -588,7 +588,7 @@ export default function PDV() {
 
   function addToCart(
     product: Product,
-    opts?: { addons?: ItemAddon[]; notes?: string; qty?: number },
+    opts?: { addons?: ItemAddon[]; notes?: string; qty?: number; mergeExisting?: boolean },
   ): boolean {
     const basePrice =
       product.is_promotion && product.promotion_price != null
@@ -629,6 +629,20 @@ export default function PDV() {
     ];
 
     setCart((prev) => {
+      // Merge into existing non-customized line (used by barcode scans —
+      // ler com o beep deve somar a quantidade ao invés de criar nova linha).
+      if (!hasCustomization && opts?.mergeExisting) {
+        const existing = prev.find(
+          (i) => i.productId === product.id && i.addons.length === 0 && !i.notes,
+        );
+        if (existing) {
+          return prev.map((i) =>
+            i.lineId === existing.lineId
+              ? { ...i, quantity: i.quantity + qty }
+              : i,
+          );
+        }
+      }
       // Decimal/weighed items: skip duplicate add (qty editor handles existing line)
       if (!hasCustomization && isDecimal) {
         const existing = prev.find(
@@ -656,8 +670,9 @@ export default function PDV() {
       ];
     });
 
-    // For decimal units (without customization), immediately open the qty editor
-    if (isDecimal && !hasCustomization) {
+    // For decimal units (without customization), immediately open the qty editor.
+    // Quando vem de scan (mergeExisting/qty já definido), não abrimos o editor.
+    if (isDecimal && !hasCustomization && !opts?.mergeExisting && (opts?.qty ?? 0) === 0) {
       const existing = cart.find(
         (i) => i.productId === product.id && i.addons.length === 0 && !i.notes,
       );
@@ -835,7 +850,7 @@ export default function PDV() {
         toast.error("Etiqueta com valor zerado.");
         return;
       }
-      const ok = addToCart(found, { qty });
+      const ok = addToCart(found, { qty, mergeExisting: true });
       if (ok) {
         toast.success(
           `${found.name} — ${qty.toLocaleString("pt-BR", { minimumFractionDigits: 3 })} kg (etiqueta ${weighInfo.priceInReais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`,
@@ -852,11 +867,27 @@ export default function PDV() {
       toast.error(`Produto não encontrado: ${barcode}`);
       return;
     }
-    const ok = handleAddProduct(found);
-    if (ok && !found.is_prepared) {
+    // Para itens preparados (cozinha) seguimos o fluxo normal (modal).
+    if (found.is_prepared) {
+      handleAddProduct(found);
+      return;
+    }
+    // Stock guard inline antes de mesclar
+    const avail = availableStock(found.id, Number(found.stock_quantity ?? 0));
+    if (avail <= 0) {
+      const reservedOther = reservedByOthers.get(found.id) ?? 0;
+      toast.error(
+        reservedOther > 0
+          ? `${found.name}: estoque reservado por outro caixa/comanda.`
+          : `${found.name} sem estoque`,
+      );
+      return;
+    }
+    const ok = addToCart(found, { qty: 1, mergeExisting: true });
+    if (ok) {
       toast.success(`${found.name} adicionado ao carrinho`);
     }
-  }, [products, handleAddProduct]);
+  }, [products, handleAddProduct, availableStock, reservedByOthers]);
 
   // USB barcode reader: collects rapid keystrokes and fires on Enter
   const usbBufferRef = useRef("");

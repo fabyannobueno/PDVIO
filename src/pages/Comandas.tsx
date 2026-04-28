@@ -733,9 +733,34 @@ export default function Comandas() {
       setTimeout(() => qtyInputRef.current?.focus(), 50);
       return;
     }
+    // Beep do leitor: se já existe um item igual (mesmo produto, sem
+    // adicionais e sem observação), apenas incrementa a quantidade dessa linha.
+    const existing = comandaItems.find(
+      (i) =>
+        i.product_id === product.id &&
+        (!i.notes || i.notes.trim() === "") &&
+        (!Array.isArray(i.addons) || i.addons.length === 0),
+    );
+    if (existing) {
+      const newQty = Number(existing.quantity) + 1;
+      const newSub = Math.floor(Number(existing.unit_price) * newQty * 100) / 100;
+      supabase
+        .from("comanda_items")
+        .update({ quantity: newQty, subtotal: newSub })
+        .eq("id", existing.id)
+        .then(({ error }) => {
+          if (error) {
+            toast.error(error.message ?? "Erro ao incrementar item");
+            return;
+          }
+          queryClient.invalidateQueries({ queryKey: ["/comanda-items", detailComanda.id] });
+          toast.success(`${product.name} +1`);
+        });
+      return;
+    }
     addItemMutation.mutate({ product, qty: 1 });
     toast.success(`${product.name} adicionado`);
-  }, [detailComanda, products, addItemMutation]);
+  }, [detailComanda, products, comandaItems, addItemMutation, queryClient]);
 
   // USB barcode reader: collects rapid keystrokes and fires on Enter / Ctrl+J
   const usbBufferRef = useRef("");
