@@ -52,8 +52,6 @@ export default function TermosDeUso() {
               <li>Relatórios gerenciais, dashboards e logs de auditoria;</li>
               <li>Permissões por cargo (Dono, Gerente, Caixa, Garçom, Cozinha) e troca rápida de operador por PIN ou cartão;</li>
               <li>Impressão de cupons em impressoras térmicas via Web USB, Web Serial e Web Bluetooth (ESC/POS);</li>
-              <li>Conexão com balanças (integração com balanças comerciais para leitura automática de peso);</li>
-              <li>Emissão de etiquetas de produto com preço e código de barras para precificação e identificação no PDV;</li>
               <li>Suporte ao cliente com chat assistido por inteligência artificial e atendimento humano;</li>
               <li>Aplicativo instalável (PWA) com ícone na tela inicial em dispositivos móveis e desktop.</li>
             </ul>
