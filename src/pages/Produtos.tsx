@@ -782,6 +782,23 @@ async function tryUPCDatabase(barcode: string): Promise<LookupResult> {
   }
 }
 
+// Resolves the BEST category for a barcode-lookup hit.
+// External APIs (Cosmos / OpenFoodFacts / UPC) return arbitrary category
+// strings like "Molhos Picantes" or "en:dairy-products" that are NOT in our
+// dropdown. So we always prefer guessing from the product name first, then
+// only accept the API category if it happens to match one of ours, otherwise
+// drop it (returns "" so the form keeps whatever the user already had).
+function resolveLookupCategory(name: string, description: string, apiCategory: string): string {
+  const fromName = guessCategory(`${name} ${description}`);
+  if (fromName) return fromName;
+  const cleaned = (apiCategory || "").trim();
+  if (cleaned && PREDEFINED_CATEGORIES.includes(cleaned)) return cleaned;
+  // Try guessing from the API category text itself (e.g. "Molhos Picantes" → Molhos & Condimentos)
+  const fromApi = guessCategory(cleaned);
+  if (fromApi) return fromApi;
+  return "";
+}
+
 async function lookupBarcode(barcode: string): Promise<LookupResult> {
   const code = barcode.trim();
   if (!code) return null;
@@ -1205,12 +1222,17 @@ export default function Produtos() {
   }
 
   function handleScanResult(result: { barcode: string; name?: string; description?: string; category?: string }) {
+    const resolvedCategory = resolveLookupCategory(
+      result.name || "",
+      result.description || "",
+      result.category || ""
+    );
     setForm((f) => ({
       ...f,
       barcode: result.barcode,
       ...(result.name ? { name: result.name } : {}),
       ...(result.description ? { description: result.description } : {}),
-      ...(result.category ? { category: result.category } : {}),
+      ...(resolvedCategory ? { category: resolvedCategory } : {}),
     }));
     if (result.name) {
       toast.success(`Produto encontrado: ${result.name}`);
@@ -1339,11 +1361,16 @@ export default function Produtos() {
     try {
       const info = await lookupBarcode(barcode.trim());
       if (info) {
+        const resolvedCategory = resolveLookupCategory(
+          info.name || "",
+          info.description || "",
+          info.category || ""
+        );
         setForm((f) => ({
           ...f,
           ...(info.name ? { name: info.name } : {}),
           ...(info.description ? { description: info.description } : {}),
-          ...(info.category ? { category: info.category } : {}),
+          ...(resolvedCategory ? { category: resolvedCategory } : {}),
         }));
         toast.success(info.name ? `Produto encontrado: ${info.name}` : "Código reconhecido. Verifique os campos.");
       } else {
