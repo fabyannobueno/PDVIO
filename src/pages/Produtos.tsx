@@ -74,16 +74,21 @@ const PREDEFINED_CATEGORIES = [
   // Mercado / supermercado
   "Mercearia",
   "Hortifruti",
+  "Frutas",
+  "Legumes",
+  "Verduras",
   "Açougue",
   "Peixaria",
   "Padaria",
   "Confeitaria",
+  "Frios",
   "Frios e Laticínios",
   "Congelados",
   "Bebidas",
   "Bebidas Alcoólicas",
   "Doces e Sobremesas",
   "Biscoitos e Snacks",
+  "Salgadinhos & Snacks",
   "Matinais",
 
   // Lanchonete / restaurante
@@ -459,8 +464,12 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "pacoca", "cocada", "marshmallow", "petit gateau",
   ],
   "Biscoitos e Snacks": [
-    "biscoito", "bolacha", "salgadinho", "chips", "doritos", "ruffles",
-    "fandangos", "cheetos", "pipoca", "cracker", "wafer", "cookie",
+    "biscoito", "bolacha", "cracker", "wafer", "cookie", "torrada",
+  ],
+  "Salgadinhos & Snacks": [
+    "salgadinho", "chips", "doritos", "ruffles", "fandangos", "cheetos",
+    "pipoca", "torcida", "fofura", "elma chips", "pringles", "tortilhas",
+    "amendoim",
   ],
   Matinais: [
     "cereal", "granola", "sucrilhos", "aveia", "nescau", "toddy",
@@ -473,14 +482,24 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   ],
   Confeitaria: ["torta ", "cupcake", "macaron", "eclair"],
 
-  Hortifruti: [
+  Hortifruti: ["hortifruti", "ovo ", "ovos"],
+  Frutas: [
     "banana", "maca ", " maca", "laranja", "abacaxi", "uva", "melancia",
     "melao", "mamao", "manga", "abacate", "limao", "morango", "pera",
-    "pessego", "kiwi", "tangerina", "mexerica", "ameixa",
-    "tomate", "alface", "cebola", "cenoura", "batata ", "batata-",
-    "mandioca", "abobora", "pepino", "pimentao", "brocolis", "couve",
-    "beterraba", "repolho", "espinafre", "salsa", "cebolinha",
-    "alho", "gengibre", "ovo ", "ovos", " hortifruti",
+    "pessego", "kiwi", "tangerina", "mexerica", "ameixa", "goiaba",
+    "maracuja", "caqui", "figo", "pitaya", "framboesa", "mirtilo",
+    "amora", "coco verde", "fruta",
+  ],
+  Legumes: [
+    "tomate", "cenoura", "batata ", "batata-", "batata doce",
+    "mandioca", "abobora", "abobrinha", "pepino", "pimentao", "beterraba",
+    "chuchu", "berinjela", "quiabo", "vagem", "milho verde", "ervilha",
+    "alho", "gengibre",
+  ],
+  Verduras: [
+    "alface", "couve", "espinafre", "salsa", "cebolinha", "rucula",
+    "agriao", "almeirao", "acelga", "repolho", "brocolis", "couve flor",
+    "couve-flor", "verdura", "folha verde", "cheiro verde",
   ],
   "Açougue": [
     "carne", "contra file", "picanha", "alcatra", "filet mignon",
@@ -498,8 +517,11 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "queijo", "mussarela", "muzzarela", "parmesao", "cheddar",
     "gorgonzola", "brie", "ricota", "requeijao", "manteiga", "margarina",
     "iogurte", "leite", "creme de leite", "leite condensado", "nata",
-    "presunto", "peito de peru", "mortadela", "salame", "copa", "blanquet",
-    "bacon",
+  ],
+  Frios: [
+    "presunto", "peito de peru", "mortadela", "salame", "copa lombo",
+    "blanquet", "bacon", "apresuntado", "salsicha tipo hot",
+    "frios fatiados",
   ],
   Congelados: [
     "congelado", "polpa de fruta", "lasanha congelada", "pizza congelada",
