@@ -386,7 +386,7 @@ export default function Suporte() {
   }, []);
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6 md:p-8 animate-fade-in">
+    <div className="space-y-6 p-4 sm:p-6 md:p-8 animate-fade-in">
       <div>
         <div className="flex items-center gap-2">
           <LifeBuoy className="h-5 w-5 text-primary" />
