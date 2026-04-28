@@ -191,7 +191,7 @@ export default function Balanca() {
     : 0;
   // Para produtos cadastrados em "g", o sale_price é por grama — convertemos.
   const pricePerKg = selected?.stock_unit === "g" ? pricePerKgRaw * 1000 : pricePerKgRaw;
-  const totalPrice = Math.round(pricePerKg * weightKg * 100) / 100;
+  const totalPrice = Math.floor(pricePerKg * weightKg * 100) / 100;
 
   const productCode = selected ? productScaleCode(selected.numeric_id) : null;
 
