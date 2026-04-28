@@ -71,261 +71,82 @@ import { searchNcm, formatNcm, type BrasilApiNcm } from "@/lib/brasilApiNcm";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const PREDEFINED_CATEGORIES = [
-  // Restaurante / lanchonete
+  // Mercado / supermercado
+  "Mercearia",
+  "Hortifruti",
+  "Açougue",
+  "Peixaria",
+  "Padaria",
+  "Confeitaria",
+  "Frios e Laticínios",
+  "Congelados",
+  "Bebidas",
+  "Bebidas Alcoólicas",
+  "Doces e Sobremesas",
+  "Biscoitos e Snacks",
+  "Matinais",
+
+  // Lanchonete / restaurante
   "Lanches",
-  "Hambúrgueres",
-  "Hot Dogs",
-  "Sanduíches",
-  "Pizzas",
-  "Esfihas",
-  "Massas",
+  "Pizzaria",
   "Pratos",
-  "Pratos Executivos",
   "Marmitas",
   "Porções",
-  "Tira-gostos",
   "Saladas",
-  "Sopas e Caldos",
-  "Petiscos",
+  "Sopas",
   "Salgados",
-  "Salgados Assados",
-  "Salgados Fritos",
-  "Pastéis",
-  "Açaí",
-  "Sorvetes",
-  "Picolés",
-  "Sobremesas",
-  "Doces",
-  "Bolos e Tortas",
-  "Crepes e Tapiocas",
-  "Combos",
-  "Promoções",
-  "Café da Manhã",
-  "Almoço",
-  "Jantar",
-  "Comida Japonesa",
-  "Comida Árabe",
-  "Comida Mexicana",
-  "Comida Italiana",
-  "Comida Chinesa",
-  "Vegetariano",
-  "Vegano",
-  "Sem Glúten",
-  "Sem Lactose",
-  "Fitness / Saudável",
-  "Infantil",
+  "Sorveteria",
+  "Açaí e Sucos",
+  "Cafeteria",
+  "Combos e Promoções",
 
-  // Bebidas
-  "Bebidas",
-  "Bebidas Quentes",
-  "Bebidas Geladas",
-  "Refrigerantes",
-  "Sucos",
-  "Sucos Naturais",
-  "Águas",
-  "Água com Gás",
-  "Energéticos",
-  "Isotônicos",
-  "Chás",
-  "Cafés",
-  "Capuccinos",
-  "Achocolatados",
-  "Leites",
-  "Vitaminas",
-  "Smoothies",
-  "Milk-shakes",
-  "Bebidas Alcoólicas",
-  "Cervejas",
-  "Cerveja Artesanal",
-  "Chopps",
-  "Vinhos",
-  "Espumantes",
-  "Destilados",
-  "Cachaças",
-  "Whiskies",
-  "Vodkas",
-  "Gins",
-  "Licores",
-  "Drinks / Coquetéis",
-  "Caipirinhas",
-
-  // Mercado / mercearia
-  "Mercearia",
-  "Cereais",
-  "Grãos",
-  "Arroz",
-  "Feijão",
-  "Farinhas",
-  "Açúcar e Adoçantes",
-  "Sal e Temperos",
-  "Condimentos",
-  "Molhos",
-  "Azeites e Óleos",
-  "Vinagres",
-  "Massas Secas",
-  "Enlatados",
-  "Conservas",
-  "Biscoitos e Bolachas",
-  "Snacks",
-  "Salgadinhos",
-  "Chocolates",
-  "Balas e Chicletes",
-  "Sobremesas Prontas",
-  "Geleias e Doces de Compota",
-  "Cereais Matinais",
-  "Granolas",
-  "Sucos em Pó",
-  "Sopas Instantâneas",
-  "Temperos Prontos",
-
-  // Hortifruti
-  "Hortifruti",
-  "Frutas",
-  "Verduras",
-  "Legumes",
-  "Folhas",
-  "Tubérculos",
-  "Ervas e Especiarias",
-  "Ovos",
-
-  // Padaria / confeitaria
-  "Padaria",
-  "Pães",
-  "Pães Especiais",
-  "Bolos",
-  "Tortas",
-  "Confeitaria",
-  "Doces Finos",
-  "Brigadeiros",
-  "Trufas",
-  "Cookies",
-  "Recheios e Coberturas",
-
-  // Açougue / peixaria
-  "Carnes",
-  "Carne Bovina",
-  "Carne Suína",
-  "Aves",
-  "Linguiças e Embutidos",
-  "Peixes",
-  "Frutos do Mar",
-  "Defumados",
-
-  // Frios e laticínios
-  "Frios e Laticínios",
-  "Queijos",
-  "Iogurtes",
-  "Manteigas e Margarinas",
-  "Requeijões",
-  "Cremes",
-  "Leites Especiais",
-
-  // Congelados
-  "Congelados",
-  "Congelados Prontos",
-  "Sorvetes e Açaí",
-  "Polpas de Fruta",
-  "Vegetais Congelados",
-  "Carnes Congeladas",
-
-  // Limpeza
+  // Limpeza e higiene
   "Limpeza",
-  "Limpeza Geral",
-  "Detergentes",
-  "Desinfetantes",
-  "Água Sanitária",
-  "Sabões",
-  "Amaciantes",
-  "Lava-louças",
-  "Limpa-vidros",
-  "Multiuso",
-  "Inseticidas",
-  "Descartáveis",
-  "Sacos de Lixo",
-  "Papel Toalha e Guardanapos",
-  "Papel Higiênico",
-
-  // Higiene e beleza
-  "Higiene",
   "Higiene Pessoal",
-  "Sabonetes",
-  "Shampoos e Condicionadores",
-  "Cremes e Hidratantes",
-  "Desodorantes",
-  "Cuidados com Cabelo",
-  "Cuidados com a Pele",
-  "Cuidados Bucais",
+  "Perfumaria",
+  "Cosméticos",
   "Cuidados com Bebê",
-  "Fraldas",
-  "Absorventes",
-  "Maquiagem",
-  "Perfumes",
-  "Barbearia",
+  "Descartáveis",
 
-  // Farmácia
+  // Farmácia / saúde
   "Farmácia",
-  "Medicamentos",
-  "Vitaminas e Suplementos",
-  "Primeiros Socorros",
-  "Cuidados Médicos",
+  "Suplementos",
+  "Saúde e Bem-estar",
 
   // Pet
   "Pet Shop",
-  "Ração",
-  "Petiscos para Pets",
-  "Acessórios Pet",
-  "Higiene Pet",
 
-  // Outros departamentos
+  // Loja / departamentos
   "Bebê e Infantil",
   "Brinquedos",
   "Papelaria",
-  "Material Escolar",
-  "Material de Escritório",
   "Eletrônicos",
   "Eletrodomésticos",
-  "Acessórios para Celular",
   "Informática",
+  "Telefonia e Acessórios",
   "Cama, Mesa e Banho",
   "Utilidades Domésticas",
-  "Cozinha",
   "Ferramentas",
-  "Construção",
-  "Tintas",
+  "Material de Construção",
   "Elétrica e Hidráulica",
+  "Tintas e Acessórios",
   "Jardinagem",
   "Automotivo",
-  "Lubrificantes",
   "Calçados",
-  "Roupas",
+  "Vestuário",
   "Acessórios",
-  "Bolsas",
   "Joias e Bijuterias",
-  "Relógios",
   "Esporte e Lazer",
-  "Camping",
-  "Livros",
-  "CDs e DVDs",
+  "Livraria",
   "Games",
   "Decoração",
   "Presentes",
-  "Festa e Decoração",
+  "Festas",
 
-  // Embalagens / operacional
+  // Operacional
   "Embalagens",
-  "Sacolas",
-  "Embalagens Delivery",
-  "Copos e Talheres Descartáveis",
-  "Marmitas e Recipientes",
-  "Filme PVC e Alumínio",
-
-  // Recargas / serviços
-  "Recargas",
-  "Cartões Pré-pagos",
   "Tabacaria",
-  "Cigarros",
-  "Isqueiros",
-
+  "Recargas",
   "Serviços",
   "Outros",
 ];
@@ -1707,20 +1528,27 @@ export default function Produtos() {
                   <PopoverContent
                     className="w-[--radix-popover-trigger-width] min-w-[260px] p-0"
                     align="start"
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
                   >
                     <Command
                       filter={(value, search) => {
-                        const v = value.toLowerCase();
                         const s = search
                           .toLowerCase()
                           .normalize("NFD")
                           .replace(/[\u0300-\u036f]/g, "");
-                        const vNorm = v.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        const vNorm = value
+                          .toLowerCase()
+                          .normalize("NFD")
+                          .replace(/[\u0300-\u036f]/g, "");
                         return vNorm.includes(s) ? 1 : 0;
                       }}
                     >
                       <CommandInput placeholder="Buscar categoria..." />
-                      <CommandList className="max-h-64">
+                      <CommandList
+                        className="max-h-64 overflow-y-auto overscroll-contain"
+                        onWheel={(e) => e.stopPropagation()}
+                      >
                         <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
                         <CommandGroup>
                           <CommandItem
