@@ -961,8 +961,8 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
     const expired = list.filter(
       (c) =>
         c.is_active &&
-        c.ends_at &&
-        new Date(c.ends_at).getTime() < now.getTime() &&
+        ((c.ends_at && new Date(c.ends_at).getTime() < now.getTime()) ||
+          (c.max_uses != null && c.uses_count >= c.max_uses)) &&
         !checkedCouponIdsRef.current.has(c.id),
     );
     if (expired.length === 0) return;
@@ -976,12 +976,28 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
         .eq("company_id", companyId);
       if (error) return;
       queryClient.invalidateQueries({ queryKey: ["coupons", companyId] });
-      const codes = expired.map((c) => c.code).join(", ");
-      toast.info(
-        expired.length === 1
-          ? `Cupom encerrado: ${codes}`
-          : `${expired.length} cupons encerrados automaticamente`,
+      const exhausted = expired.filter(
+        (c) => c.max_uses != null && c.uses_count >= c.max_uses,
       );
+      const byDate = expired.filter(
+        (c) => c.ends_at && new Date(c.ends_at).getTime() < now.getTime(),
+      );
+      if (exhausted.length > 0) {
+        const codes = exhausted.map((c) => c.code).join(", ");
+        toast.info(
+          exhausted.length === 1
+            ? `Cupom esgotado: ${codes}`
+            : `${exhausted.length} cupons esgotados automaticamente`,
+        );
+      }
+      if (byDate.length > 0) {
+        const codes = byDate.map((c) => c.code).join(", ");
+        toast.info(
+          byDate.length === 1
+            ? `Cupom encerrado: ${codes}`
+            : `${byDate.length} cupons encerrados automaticamente`,
+        );
+      }
     })();
   }, [couponsQuery.data, companyId, queryClient]);
 
