@@ -1,5 +1,5 @@
 import { scrollAppToTop } from "@/lib/scrollToTop";
-import { fmtPct } from "@/lib/utils";
+import { fmtPct, cn } from "@/lib/utils";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +60,7 @@ import {
   ScanBarcode,
   X,
   ChevronsUpDown,
+  Check,
   Receipt,
 } from "lucide-react";
 import { BarcodeScanner } from "@/components/app/BarcodeScanner";
@@ -70,23 +71,262 @@ import { searchNcm, formatNcm, type BrasilApiNcm } from "@/lib/brasilApiNcm";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const PREDEFINED_CATEGORIES = [
+  // Restaurante / lanchonete
   "Lanches",
-  "Bebidas",
-  "Sobremesas",
-  "Pratos",
+  "Hambúrgueres",
+  "Hot Dogs",
+  "Sanduíches",
   "Pizzas",
+  "Esfihas",
+  "Massas",
+  "Pratos",
+  "Pratos Executivos",
+  "Marmitas",
+  "Porções",
+  "Tira-gostos",
+  "Saladas",
+  "Sopas e Caldos",
+  "Petiscos",
   "Salgados",
+  "Salgados Assados",
+  "Salgados Fritos",
+  "Pastéis",
+  "Açaí",
+  "Sorvetes",
+  "Picolés",
+  "Sobremesas",
   "Doces",
-  "Hortifruti",
-  "Carnes",
-  "Frios e Laticínios",
-  "Padaria",
-  "Limpeza",
-  "Higiene",
+  "Bolos e Tortas",
+  "Crepes e Tapiocas",
+  "Combos",
+  "Promoções",
+  "Café da Manhã",
+  "Almoço",
+  "Jantar",
+  "Comida Japonesa",
+  "Comida Árabe",
+  "Comida Mexicana",
+  "Comida Italiana",
+  "Comida Chinesa",
+  "Vegetariano",
+  "Vegano",
+  "Sem Glúten",
+  "Sem Lactose",
+  "Fitness / Saudável",
+  "Infantil",
+
+  // Bebidas
+  "Bebidas",
+  "Bebidas Quentes",
+  "Bebidas Geladas",
+  "Refrigerantes",
+  "Sucos",
+  "Sucos Naturais",
+  "Águas",
+  "Água com Gás",
+  "Energéticos",
+  "Isotônicos",
+  "Chás",
+  "Cafés",
+  "Capuccinos",
+  "Achocolatados",
+  "Leites",
+  "Vitaminas",
+  "Smoothies",
+  "Milk-shakes",
   "Bebidas Alcoólicas",
-  "Congelados",
+  "Cervejas",
+  "Cerveja Artesanal",
+  "Chopps",
+  "Vinhos",
+  "Espumantes",
+  "Destilados",
+  "Cachaças",
+  "Whiskies",
+  "Vodkas",
+  "Gins",
+  "Licores",
+  "Drinks / Coquetéis",
+  "Caipirinhas",
+
+  // Mercado / mercearia
   "Mercearia",
+  "Cereais",
+  "Grãos",
+  "Arroz",
+  "Feijão",
+  "Farinhas",
+  "Açúcar e Adoçantes",
+  "Sal e Temperos",
+  "Condimentos",
+  "Molhos",
+  "Azeites e Óleos",
+  "Vinagres",
+  "Massas Secas",
+  "Enlatados",
+  "Conservas",
+  "Biscoitos e Bolachas",
+  "Snacks",
+  "Salgadinhos",
+  "Chocolates",
+  "Balas e Chicletes",
+  "Sobremesas Prontas",
+  "Geleias e Doces de Compota",
+  "Cereais Matinais",
+  "Granolas",
+  "Sucos em Pó",
+  "Sopas Instantâneas",
+  "Temperos Prontos",
+
+  // Hortifruti
+  "Hortifruti",
+  "Frutas",
+  "Verduras",
+  "Legumes",
+  "Folhas",
+  "Tubérculos",
+  "Ervas e Especiarias",
+  "Ovos",
+
+  // Padaria / confeitaria
+  "Padaria",
+  "Pães",
+  "Pães Especiais",
+  "Bolos",
+  "Tortas",
+  "Confeitaria",
+  "Doces Finos",
+  "Brigadeiros",
+  "Trufas",
+  "Cookies",
+  "Recheios e Coberturas",
+
+  // Açougue / peixaria
+  "Carnes",
+  "Carne Bovina",
+  "Carne Suína",
+  "Aves",
+  "Linguiças e Embutidos",
+  "Peixes",
+  "Frutos do Mar",
+  "Defumados",
+
+  // Frios e laticínios
+  "Frios e Laticínios",
+  "Queijos",
+  "Iogurtes",
+  "Manteigas e Margarinas",
+  "Requeijões",
+  "Cremes",
+  "Leites Especiais",
+
+  // Congelados
+  "Congelados",
+  "Congelados Prontos",
+  "Sorvetes e Açaí",
+  "Polpas de Fruta",
+  "Vegetais Congelados",
+  "Carnes Congeladas",
+
+  // Limpeza
+  "Limpeza",
+  "Limpeza Geral",
+  "Detergentes",
+  "Desinfetantes",
+  "Água Sanitária",
+  "Sabões",
+  "Amaciantes",
+  "Lava-louças",
+  "Limpa-vidros",
+  "Multiuso",
+  "Inseticidas",
+  "Descartáveis",
+  "Sacos de Lixo",
+  "Papel Toalha e Guardanapos",
+  "Papel Higiênico",
+
+  // Higiene e beleza
+  "Higiene",
+  "Higiene Pessoal",
+  "Sabonetes",
+  "Shampoos e Condicionadores",
+  "Cremes e Hidratantes",
+  "Desodorantes",
+  "Cuidados com Cabelo",
+  "Cuidados com a Pele",
+  "Cuidados Bucais",
+  "Cuidados com Bebê",
+  "Fraldas",
+  "Absorventes",
+  "Maquiagem",
+  "Perfumes",
+  "Barbearia",
+
+  // Farmácia
+  "Farmácia",
+  "Medicamentos",
+  "Vitaminas e Suplementos",
+  "Primeiros Socorros",
+  "Cuidados Médicos",
+
+  // Pet
+  "Pet Shop",
+  "Ração",
+  "Petiscos para Pets",
+  "Acessórios Pet",
+  "Higiene Pet",
+
+  // Outros departamentos
+  "Bebê e Infantil",
+  "Brinquedos",
+  "Papelaria",
+  "Material Escolar",
+  "Material de Escritório",
+  "Eletrônicos",
+  "Eletrodomésticos",
+  "Acessórios para Celular",
+  "Informática",
+  "Cama, Mesa e Banho",
+  "Utilidades Domésticas",
+  "Cozinha",
+  "Ferramentas",
+  "Construção",
+  "Tintas",
+  "Elétrica e Hidráulica",
+  "Jardinagem",
+  "Automotivo",
+  "Lubrificantes",
+  "Calçados",
+  "Roupas",
+  "Acessórios",
+  "Bolsas",
+  "Joias e Bijuterias",
+  "Relógios",
+  "Esporte e Lazer",
+  "Camping",
+  "Livros",
+  "CDs e DVDs",
+  "Games",
+  "Decoração",
+  "Presentes",
+  "Festa e Decoração",
+
+  // Embalagens / operacional
   "Embalagens",
+  "Sacolas",
+  "Embalagens Delivery",
+  "Copos e Talheres Descartáveis",
+  "Marmitas e Recipientes",
+  "Filme PVC e Alumínio",
+
+  // Recargas / serviços
+  "Recargas",
+  "Cartões Pré-pagos",
+  "Tabacaria",
+  "Cigarros",
+  "Isqueiros",
+
+  "Serviços",
   "Outros",
 ];
 
@@ -498,6 +738,7 @@ export default function Produtos() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [searchScannerOpen, setSearchScannerOpen] = useState(false);
   const [barcodeLoading, setBarcodeLoading] = useState(false);
+  const [categoryComboOpen, setCategoryComboOpen] = useState(false);
   const [ncmPopoverOpen, setNcmPopoverOpen] = useState(false);
   const [ncmQuery, setNcmQuery] = useState("");
   const [ncmResults, setNcmResults] = useState<BrasilApiNcm[]>([]);
@@ -1444,22 +1685,82 @@ export default function Produtos() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Categoria</Label>
-                <Select
-                  value={form.category || "__none__"}
-                  onValueChange={(v) =>
-                    setForm((f) => ({ ...f, category: v === "__none__" ? "" : v }))
-                  }
-                >
-                  <SelectTrigger data-testid="select-product-category">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— Sem categoria —</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={categoryComboOpen}
+                      data-testid="select-product-category"
+                      className={cn(
+                        "w-full justify-between font-normal",
+                        !form.category && "text-muted-foreground",
+                      )}
+                    >
+                      <span className="truncate">
+                        {form.category || "— Sem categoria —"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[--radix-popover-trigger-width] min-w-[260px] p-0"
+                    align="start"
+                  >
+                    <Command
+                      filter={(value, search) => {
+                        const v = value.toLowerCase();
+                        const s = search
+                          .toLowerCase()
+                          .normalize("NFD")
+                          .replace(/[\u0300-\u036f]/g, "");
+                        const vNorm = v.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        return vNorm.includes(s) ? 1 : 0;
+                      }}
+                    >
+                      <CommandInput placeholder="Buscar categoria..." />
+                      <CommandList className="max-h-64">
+                        <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="— Sem categoria —"
+                            onSelect={() => {
+                              setForm((f) => ({ ...f, category: "" }));
+                              setCategoryComboOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !form.category ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            — Sem categoria —
+                          </CommandItem>
+                          {categories.map((c) => (
+                            <CommandItem
+                              key={c}
+                              value={c}
+                              onSelect={() => {
+                                setForm((f) => ({ ...f, category: c }));
+                                setCategoryComboOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  form.category === c ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              {c}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="prod-sku">SKU</Label>
