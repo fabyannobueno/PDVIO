@@ -243,17 +243,6 @@ export default function Balanca() {
         </div>
       </div>
 
-      {/* Migration banner */}
-      <Card className="border-warning/40 bg-warning/5">
-        <CardContent className="p-3 text-xs text-muted-foreground">
-          Para salvar a configuração da balança no banco, rode no Supabase a migração{" "}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono">
-            supabase/migrations/20260503_companies_scale_settings.sql
-          </code>
-          . Sem ela a configuração funciona normalmente, mas só é lembrada neste navegador.
-        </CardContent>
-      </Card>
-
       {/* ── Connection card ──────────────────────────────────────────────── */}
       <Card className="border-border/60">
         <CardHeader>
