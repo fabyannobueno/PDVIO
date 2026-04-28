@@ -11,6 +11,8 @@ export interface Company {
   business_type: string;
   document: string | null;
   logo_url: string | null;
+  phone: string | null;
+  address: string | null;
   role: CompanyRole;
 }
 
@@ -54,7 +56,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
     const { data, error } = await supabase
       .from("company_members")
-      .select("role, companies:company_id (id, name, business_type, document, logo_url)")
+      .select("role, companies:company_id (id, name, business_type, document, logo_url, phone, address)")
       .eq("user_id", user.id);
 
     if (error || !data) {
@@ -71,6 +73,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         business_type: row.companies.business_type,
         document: row.companies.document,
         logo_url: row.companies.logo_url,
+        phone: row.companies.phone ?? null,
+        address: row.companies.address ?? null,
         role: row.role as CompanyRole,
       }));
 

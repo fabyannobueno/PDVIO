@@ -52,6 +52,54 @@ export interface Receipt {
   cashReceived?: number;
   change?: number;
   date?: Date;
+  /** Razão social ou nome fantasia da empresa. */
+  companyName?: string;
+  /** CPF (11 dígitos) ou CNPJ (14 dígitos), apenas dígitos ou já formatado. */
+  companyDocument?: string;
+  /** Telefone da loja, qualquer formato. */
+  companyPhone?: string;
+  /** Endereço completo da loja. */
+  companyAddress?: string;
+  /** Identificador curto da venda (ex.: "012345"). */
+  saleNumber?: string;
+}
+
+// ─── Helpers públicos ───────────────────────────────────────────────────────
+
+/**
+ * Gera um identificador curto (6 dígitos) determinístico a partir do UUID
+ * da venda. O mesmo UUID sempre gera o mesmo número, e a colisão é improvável
+ * dentro de uma loja (espaço de 1.000.000 valores).
+ */
+export function shortSaleNumber(uuid: string | null | undefined): string {
+  if (!uuid) return "000000";
+  const cleaned = uuid.replace(/[^a-f0-9]/gi, "");
+  // Usa os últimos 8 hex chars para evitar overflow no parseInt e dar boa
+  // distribuição mesmo se os primeiros forem fixos.
+  const slice = cleaned.slice(-8) || "0";
+  const n = parseInt(slice, 16);
+  if (!isFinite(n) || isNaN(n)) return "000000";
+  return String(n % 1000000).padStart(6, "0");
+}
+
+/** Formata CPF/CNPJ e devolve label apropriado ("CPF" ou "CNPJ"). */
+export function formatDocument(doc: string | null | undefined): { label: string; value: string } | null {
+  if (!doc) return null;
+  const digits = doc.replace(/\D/g, "");
+  if (digits.length === 11) {
+    return {
+      label: "CPF",
+      value: digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"),
+    };
+  }
+  if (digits.length === 14) {
+    return {
+      label: "CNPJ",
+      value: digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3.$4-$5"),
+    };
+  }
+  // Formato desconhecido — devolve como veio, assumindo CNPJ por padrão.
+  return { label: digits.length > 11 ? "CNPJ" : "CPF", value: doc };
 }
 
 const STORAGE_KEY = "pdvio:printer:settings";
@@ -330,12 +378,46 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
     for (const ln of s.header.split("\n")) {
       chunks.push(line(ln, { align: "center", bold: true }));
     }
+  }
+
+  // ── Bloco de identificação da loja ──────────────────────────────────────
+  if (receipt.companyName) {
+    chunks.push(line(receipt.companyName, { align: "center", bold: true }));
+  }
+  const docInfo = formatDocument(receipt.companyDocument);
+  if (docInfo) {
+    chunks.push(line(`${docInfo.label}: ${docInfo.value}`, { align: "center" }));
+  }
+  if (receipt.companyPhone && receipt.companyPhone.trim().length > 0) {
+    chunks.push(line(`TEL: ${receipt.companyPhone.trim()}`, { align: "center" }));
+  }
+  if (receipt.companyAddress && receipt.companyAddress.trim().length > 0) {
+    // Quebra endereços longos em múltiplas linhas para caber no cupom.
+    const addr = receipt.companyAddress.trim();
+    const words = addr.split(/\s+/);
+    const lines: string[] = [];
+    let current = "";
+    for (const w of words) {
+      if ((current + " " + w).trim().length > cols) {
+        if (current) lines.push(current);
+        current = w;
+      } else {
+        current = current ? `${current} ${w}` : w;
+      }
+    }
+    if (current) lines.push(current);
+    for (const l of lines) chunks.push(line(l, { align: "center" }));
+  }
+  if (receipt.companyName || docInfo || receipt.companyPhone || receipt.companyAddress) {
     chunks.push(bytes(0x0a));
   }
 
   if (receipt.title) chunks.push(line(receipt.title, { align: "center", bold: true, double: true }));
   const date = receipt.date ?? new Date();
   chunks.push(line(date.toLocaleString("pt-BR"), { align: "center" }));
+  if (receipt.saleNumber) {
+    chunks.push(line(`ID DA VENDA: ${receipt.saleNumber}`, { align: "center", bold: true }));
+  }
   chunks.push(divider(cols));
 
   for (const it of receipt.items) {
@@ -592,8 +674,16 @@ body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.25
 </style></head><body>
 ${s.printLogo ? `<div class="center"><img src="${logoUrl}" alt="" style="max-width:60%;max-height:80px;object-fit:contain;filter:grayscale(1) contrast(1.5);"/></div>` : ""}
 ${s.header ? `<div class="center bold">${escapeHtml(s.header).replace(/\n/g, "<br>")}</div>` : ""}
-${receipt.title ? `<div class="center bold big">${escapeHtml(receipt.title)}</div>` : ""}
+${receipt.companyName ? `<div class="center bold">${escapeHtml(receipt.companyName)}</div>` : ""}
+${(() => {
+  const d = formatDocument(receipt.companyDocument);
+  return d ? `<div class="center">${d.label}: ${escapeHtml(d.value)}</div>` : "";
+})()}
+${receipt.companyPhone && receipt.companyPhone.trim() ? `<div class="center">TEL: ${escapeHtml(receipt.companyPhone.trim())}</div>` : ""}
+${receipt.companyAddress && receipt.companyAddress.trim() ? `<div class="center">${escapeHtml(receipt.companyAddress.trim())}</div>` : ""}
+${receipt.title ? `<div class="center bold big" style="margin-top:6px">${escapeHtml(receipt.title)}</div>` : ""}
 <div class="center">${date.toLocaleString("pt-BR")}</div>
+${receipt.saleNumber ? `<div class="center bold">ID DA VENDA: ${escapeHtml(receipt.saleNumber)}</div>` : ""}
 <div class="divider"></div>
 ${itemsHtml}
 <div class="divider"></div>

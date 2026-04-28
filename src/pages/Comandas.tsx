@@ -70,7 +70,7 @@ import {
   splitsTotal,
   describeSplits,
 } from "@/components/app/MixedPaymentEditor";
-import { printReceipt, getSettings as getPrinterSettings, type Receipt } from "@/lib/printer";
+import { printReceipt, getSettings as getPrinterSettings, shortSaleNumber, type Receipt } from "@/lib/printer";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { PixConfirmDialog } from "@/components/app/PixConfirmDialog";
 import type { PixKeyType } from "@/lib/pixPayload";
@@ -1023,8 +1023,9 @@ export default function Comandas() {
         }
         queryClient.invalidateQueries({ queryKey: ["/api/products-active", cid] });
       }
+      return saleData?.id ?? null;
     },
-    onSuccess: async () => {
+    onSuccess: async (saleId) => {
       queryClient.invalidateQueries({ queryKey: ["/comandas", cid] });
       queryClient.invalidateQueries({ queryKey: ["/comanda-items", detailComanda?.id] });
       toast.success("Comanda fechada e venda registrada!");
@@ -1047,6 +1048,11 @@ export default function Comandas() {
           cashReceived: selectedPayment === "cash" && cashReceivedAmtComanda > 0 ? cashReceivedAmtComanda : undefined,
           change: selectedPayment === "cash" && cashReceivedAmtComanda > 0 ? changeComanda : undefined,
           date: new Date(),
+          companyName: activeCompany?.name ?? undefined,
+          companyDocument: activeCompany?.document ?? undefined,
+          companyPhone: activeCompany?.phone ?? undefined,
+          companyAddress: activeCompany?.address ?? undefined,
+          saleNumber: saleId ? shortSaleNumber(saleId) : undefined,
         };
         const printerSettings = getPrinterSettings();
         if (printerSettings.autoPrintOnFinalize) {

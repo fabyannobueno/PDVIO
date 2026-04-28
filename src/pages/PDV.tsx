@@ -46,7 +46,7 @@ import {
   splitsTotal,
   describeSplits,
 } from "@/components/app/MixedPaymentEditor";
-import { printReceipt, getSettings as getPrinterSettings, type Receipt } from "@/lib/printer";
+import { printReceipt, getSettings as getPrinterSettings, shortSaleNumber, type Receipt } from "@/lib/printer";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { PixConfirmDialog } from "@/components/app/PixConfirmDialog";
 import type { PixKeyType } from "@/lib/pixPayload";
@@ -1281,6 +1281,11 @@ export default function PDV() {
         cashReceived: paymentMethod === "cash" && cashReceivedAmt > 0 ? cashReceivedAmt : undefined,
         change: paymentMethod === "cash" && cashReceivedAmt > 0 ? change : undefined,
         date: new Date(),
+        companyName: activeCompany?.name ?? undefined,
+        companyDocument: activeCompany?.document ?? undefined,
+        companyPhone: activeCompany?.phone ?? undefined,
+        companyAddress: activeCompany?.address ?? undefined,
+        saleNumber: shortSaleNumber(sale.id),
       };
       const printerSettings = getPrinterSettings();
       if (printerSettings.autoPrintOnFinalize) {
