@@ -45,7 +45,7 @@ function fmtBRL(value: number) {
 
 function fmtPct(value: number) {
   if (!isFinite(value)) return "—";
-  return `${value.toFixed(1)}%`;
+  return `${value.toFixed(1).replace(".", ",")}%`;
 }
 
 function isoDate(d: Date) {
@@ -283,7 +283,7 @@ function VarBadge({ current, previous, invert = false }: { current: number; prev
   return (
     <span className={`inline-flex items-center gap-0.5 text-xs ${color}`}>
       <Icon className="h-3 w-3" />
-      {v.pct === null ? "—" : `${Math.abs(v.pct).toFixed(1)}%`}
+      {v.pct === null ? "—" : `${Math.abs(v.pct).toFixed(1).replace(".", ",")}%`}
     </span>
   );
 }
