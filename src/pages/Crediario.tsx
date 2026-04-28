@@ -922,14 +922,7 @@ function CadernetaDialog({
             {customer.credit_limit != null && (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {usagePct != null
-                  ? `${fmtPct(
-                      usagePct >= 100
-                        ? 100
-                        : usagePct > 0 && usagePct < 1
-                          ? Math.max(1, Math.ceil(usagePct))
-                          : Math.floor(usagePct),
-                      0,
-                    )} usado · `
+                  ? `${fmtPct(Math.floor(usagePct * 100) / 100, 2)} usado · `
                   : ""}
                 Disponível {fmtBRL(Math.max(0, Number(customer.credit_limit) - summary.balance))}
               </p>
