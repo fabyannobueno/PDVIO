@@ -137,7 +137,9 @@ export function formatAddress(addr: string | null | undefined): string {
       const cityState = [cidade, estado].filter(Boolean).join(" - ");
       if (cityState) parts.push(cityState);
       if (cep) parts.push(`CEP ${cep}`);
-      return parts.join(" • ");
+      // Usa " - " como separador (ASCII puro) para funcionar em qualquer
+      // impressora térmica sem suporte a caracteres Unicode.
+      return parts.join(" - ");
     } catch {
       return trimmed;
     }
@@ -271,7 +273,10 @@ function encodeText(text: string): Uint8Array {
     .replace(/[\u00A0\u202F\u2007]/g, " ") // NBSP / narrow NBSP / figure space
     .replace(/[\u2010-\u2015]/g, "-")    // unicode dashes
     .replace(/[\u2018\u2019\u201B]/g, "'") // curly single quotes
-    .replace(/[\u201C\u201D\u201F]/g, '"'); // curly double quotes
+    .replace(/[\u201C\u201D\u201F]/g, '"') // curly double quotes
+    .replace(/\u00AA/g, "a")             // ª (ordinal feminino)
+    .replace(/\u00BA/g, "o")             // º (ordinal masculino)
+    .replace(/[\u2022\u00B7\u2027\u25E6]/g, "-"); // bullets diversos → "-"
 
   const out = new Uint8Array(normalized.length);
   for (let i = 0; i < normalized.length; i++) {

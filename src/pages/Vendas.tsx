@@ -440,7 +440,7 @@ function SaleRow({ sale, refundedAmount = 0 }: { sale: Sale; refundedAmount?: nu
           : undefined;
 
       const receipt: PrinterReceipt = {
-        title: "CUPOM NÃO FISCAL — 2ª VIA",
+        title: "CUPOM NAO FISCAL - 2a VIA",
         items: saleItems.map((i) => ({
           name: i.product_name,
           qty: Number(i.quantity),
