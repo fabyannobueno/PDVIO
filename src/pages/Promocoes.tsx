@@ -9,6 +9,7 @@ import { isPromotionActive, isCouponActive } from "@/lib/promotions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput, formatMoneyInput, parseMoney } from "@/components/ui/money-input";
+import { PercentInput, formatPercentInput, parsePercent } from "@/components/ui/percent-input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -259,7 +260,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
       category: p.category ?? "",
       product_id: p.product_id ?? "",
       discount_percent:
-        p.discount_percent != null ? String(p.discount_percent).replace(".", ",") : "",
+        p.discount_percent != null ? formatPercentInput(p.discount_percent) : "",
       buy_qty: p.buy_qty != null ? String(p.buy_qty) : "3",
       pay_qty: p.pay_qty != null ? String(p.pay_qty) : "2",
       starts_at: fmtDateTimeLocal(p.starts_at),
@@ -552,17 +553,10 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="promo-pct">Desconto (%)</Label>
-                  <Input
+                  <PercentInput
                     id="promo-pct"
-                    inputMode="decimal"
                     value={form.discount_percent}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        discount_percent: e.target.value.replace(/[^0-9.,]/g, ""),
-                      })
-                    }
-                    placeholder="Ex.: 15"
+                    onChange={(v) => setForm({ ...form, discount_percent: v })}
                   />
                 </div>
               </div>
@@ -768,7 +762,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
     setForm({
       code: c.code,
       kind: c.kind,
-      value: c.kind === "fixed" ? formatMoneyInput(c.value) : String(c.value).replace(".", ","),
+      value: c.kind === "fixed" ? formatMoneyInput(c.value) : formatPercentInput(c.value),
       min_purchase: c.min_purchase ? formatMoneyInput(c.min_purchase) : "",
       max_uses: c.max_uses != null ? String(c.max_uses) : "",
       starts_at: fmtDateTimeLocal(c.starts_at),
@@ -1035,17 +1029,10 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
                   {form.kind === "percent" ? "Valor (%)" : "Valor (R$)"}
                 </Label>
                 {form.kind === "percent" ? (
-                  <Input
+                  <PercentInput
                     id="cup-value"
-                    inputMode="decimal"
                     value={form.value}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        value: e.target.value.replace(/[^0-9.,]/g, ""),
-                      })
-                    }
-                    placeholder="Ex.: 10"
+                    onChange={(v) => setForm({ ...form, value: v })}
                   />
                 ) : (
                   <MoneyInput
