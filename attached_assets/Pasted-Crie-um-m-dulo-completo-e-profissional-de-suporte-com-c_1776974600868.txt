@@ -1,0 +1,211 @@
+Crie um módulo completo e profissional de suporte com chamados para o sistema PDVIO.
+
+IMPORTANTE:
+- O banco de dados JÁ EXISTE.
+- Já existe migration em: `supabase/migrations/20260425_support.sql`
+- Use essa migration como base da estrutura já criada.
+- Não recrie desnecessariamente tabelas que já existirem.
+- Antes de criar novas tabelas, tipos ou relações, verifique e reaproveite o que já está definido nessa migration.
+
+OBJETIVO:
+Desenvolver um sistema de suporte com abertura de chamados e conversa em formato de chat dentro do ticket, com atendimento híbrido:
+1. atendimento automático inicial pelo bot "PDV.IA"
+2. escalonamento para atendente humano quando necessário
+
+FLUXO PRINCIPAL:
+1. O usuário abre um ticket por formulário
+2. O formulário deve conter:
+   - `subject`
+   - `category`
+3. Após criar o chamado, o sistema deve gerar um ID sequencial legível
+4. O usuário deve ser redirecionado automaticamente para:
+   `/suporte/ticket/{idSequencial}`
+5. Nessa página deve existir o chat completo do ticket
+6. O bot "PDV.IA" deve responder primeiro em tickets simples
+7. Quando o problema for complexo, sensível, inconclusivo ou exigir ação humana, o bot deve encaminhar o ticket para um atendente humano
+
+REQUISITOS FUNCIONAIS:
+- Criar tela/form de abertura de chamado
+- Criar página de ticket com chat em tempo real
+- Criar lógica de criação de ID sequencial do ticket
+- Criar integração do ticket com mensagens
+- Suportar mensagens do usuário, mensagens do bot e mensagens do atendente
+- Suportar status do ticket, como por exemplo:
+  - `open`
+  - `bot_handling`
+  - `waiting_human`
+  - `human_assigned`
+  - `resolved`
+  - `closed`
+- Criar fluxo de atribuição para atendente humano
+- Criar distinção clara entre mensagem do bot e mensagem humana
+- Criar histórico completo de mensagens do ticket
+- Garantir que o ticket continue na mesma URL amigável com ID sequencial
+
+PDV.IA BOT:
+O bot "PDV.IA" deve:
+- responder dúvidas simples e repetitivas
+- responder de forma objetiva, profissional e curta
+- atuar somente no contexto do suporte do sistema PDVIO
+- não inventar respostas
+- não prometer ações que não pode executar
+- não encerrar tickets sem critério
+- quando não souber, não tiver confiança suficiente, ou identificar caso mais complexo, deve transferir para atendimento humano
+
+CASOS EM QUE O BOT DEVE TRANSFERIR PARA HUMANO:
+- erros técnicos mais complexos
+- problemas financeiros
+- falhas de impressão persistentes
+- bugs não reconhecidos
+- problemas de acesso que exijam verificação manual
+- reclamações, insatisfação ou tom sensível do cliente
+- solicitações administrativas
+- casos que exijam análise humana
+- quando a confiança da resposta for baixa
+- quando o usuário pedir explicitamente atendimento humano
+
+REGRAS DO BOT:
+- responder apenas sobre PDVIO e suporte do sistema
+- manter linguagem profissional, clara e objetiva
+- priorizar respostas curtas
+- sugerir passos simples quando apropriado
+- escalar para humano quando necessário
+- registrar no ticket quando houve handoff
+- nunca dizer que resolveu algo se não houve confirmação
+- nunca ocultar a transferência para humano
+
+INTEGRAÇÃO COM OPENROUTER:
+Usar a OpenRouter API para gerar respostas do bot PDV.IA.
+A chave da API já está no env:
+`VITE_OPENROUTER_API_KEY`
+
+Implementar a integração usando esse valor de ambiente.
+Usar arquitetura limpa para o serviço da IA.
+Criar um serviço separado, por exemplo:
+- `src/services/openrouter.ts`
+ou equivalente
+
+Requisitos da integração:
+- usar a chave `VITE_OPENROUTER_API_KEY`
+- usar endpoint compatível com chat/completions da OpenRouter
+- estruturar mensagens com `system`, `user` e, quando necessário, histórico do ticket
+- limitar contexto para evitar excesso de tokens
+- tratar erros da API
+- registrar fallback quando a IA falhar
+- se a IA falhar, o ticket deve ser automaticamente marcado para humano, nunca ficar sem resposta
+
+IMPORTANTE SOBRE A RESPOSTA DA IA:
+A resposta do PDV.IA deve ser baseada em um prompt de sistema forte, deixando claro:
+- ele é o assistente de suporte do PDVIO
+- deve responder somente sobre o produto
+- deve resolver apenas casos simples
+- deve transferir casos complexos
+- deve ser claro, breve e útil
+- deve evitar respostas longas
+- deve pedir esclarecimento apenas quando realmente necessário
+- deve respeitar o contexto da categoria e do histórico do ticket
+
+ESTRUTURA DO CHAMADO:
+O sistema deve suportar pelo menos:
+- ticket ID interno
+- ticket sequencial legível
+- subject
+- category
+- status
+- created_by
+- assigned_to
+- created_at
+- updated_at
+- first_response_at
+- resolved_at
+
+ESTRUTURA DAS MENSAGENS:
+Cada mensagem deve ter:
+- id
+- ticket_id
+- sender_type (`customer`, `bot`, `agent`, `system`)
+- sender_id opcional
+- body
+- created_at
+- metadata opcional
+- flags opcionais, por exemplo:
+  - `is_ai`
+  - `handoff_to_human`
+  - `confidence_score`
+
+TELA DE TICKET:
+Na rota `/suporte/ticket/{idSequencial}`, criar:
+- cabeçalho com número do ticket
+- subject
+- category
+- status atual
+- indicação se está com bot ou humano
+- timeline/chat de mensagens
+- campo para enviar nova mensagem
+- feedback visual quando o ticket estiver aguardando humano
+- atualização em tempo real, se possível
+- interface profissional e moderna
+
+EXPERIÊNCIA DO USUÁRIO:
+- após abrir o ticket, redirecionar imediatamente para a página do chamado
+- o chat deve começar automaticamente com uma saudação do PDV.IA quando apropriado
+- se o bot conseguir ajudar, continuar no mesmo chat
+- se precisar de humano, manter tudo no mesmo ticket e mesma conversa
+- não criar outro ticket separado para handoff
+
+LÓGICA DE HANDOFF:
+Quando o bot detectar necessidade de transferência:
+- adicionar mensagem do sistema no ticket informando encaminhamento
+- alterar status para `waiting_human` ou equivalente
+- opcionalmente atribuir para fila de agentes
+- permitir que o atendente humano continue exatamente da mesma conversa
+- o atendente deve ver o histórico completo, incluindo respostas do bot
+
+PROMPT DE SISTEMA DO PDV.IA:
+Crie e use um prompt de sistema robusto semelhante a este comportamento:
+
+"Você é o PDV.IA, assistente oficial de suporte do sistema PDVIO.
+Sua função é ajudar com dúvidas simples, operacionais e recorrentes sobre o sistema.
+Responda de forma objetiva, profissional, curta e clara.
+Atue apenas dentro do contexto do PDVIO.
+Se a dúvida exigir análise técnica profunda, ação administrativa, verificação manual, tratamento sensível ou você não tiver confiança suficiente, não invente. Informe de forma educada que o caso será encaminhado para um atendente humano.
+Nunca afirme que algo foi resolvido sem confirmação.
+Nunca dê respostas longas desnecessárias.
+Priorize utilidade, clareza e encaminhamento correto."
+
+IMPLEMENTAÇÃO TÉCNICA:
+- usar a migration já existente em `supabase/migrations/20260425_support.sql`
+- aproveitar tabelas existentes
+- complementar apenas o necessário
+- criar código limpo e bem estruturado
+- separar:
+  - páginas
+  - componentes
+  - serviços
+  - hooks
+  - integrações
+- criar tipagem forte
+- criar tratamento de erro
+- criar loading states
+- criar empty states
+- criar mensagens de erro amigáveis
+
+ENTREGÁVEIS:
+Quero a implementação com:
+1. formulário de criação de ticket
+2. geração do ticket sequencial
+3. redirecionamento para `/suporte/ticket/{idSequencial}`
+4. página do ticket com chat
+5. integração com OpenRouter
+6. serviço do bot PDV.IA
+7. lógica de escalonamento para humano
+8. uso da migration existente
+9. código organizado e pronto para evolução
+
+IMPORTANTE:
+- não quero apenas layout
+- quero fluxo funcional
+- quero lógica real de tickets e mensagens
+- quero comportamento real do bot
+- quero handoff real para humano
+- quero estrutura pronta para produção

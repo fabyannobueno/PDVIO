@@ -1,0 +1,92 @@
+// Função para gerar QR Code PIX para pagamentos
+export function generatePixPayload(pixKey: string, description2: string, merchantName: string, merchantCity: string, txid: string, amount: number) {
+    const ID_PAYLOAD_FORMAT_INDICATOR = "00";
+    const ID_MERCHANT_ACCOUNT_INFORMATION = "26";
+    const ID_MERCHANT_ACCOUNT_INFORMATION_GUI = "00";
+    const ID_MERCHANT_ACCOUNT_INFORMATION_KEY = "01";
+    const ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION = "02";
+    const ID_MERCHANT_CATEGORY_CODE = "52";
+    const ID_TRANSACTION_CURRENCY = "53";
+    const ID_TRANSACTION_AMOUNT = "54";
+    const ID_COUNTRY_CODE = "58";
+    const ID_MERCHANT_NAME = "59";
+    const ID_MERCHANT_CITY = "60";
+    const ID_ADDITIONAL_DATA_FIELD_TEMPLATE = "62";
+    const ID_ADDITIONAL_DATA_FIELD_TEMPLATE_TXID = "05";
+    const ID_CRC16 = "63";
+
+    function getValue(id: string, value: string) {
+        const size = String(value.length).padStart(2, "0");
+        return id + size + value;
+    }
+
+    function getMechantAccountInfo() {
+        const gui = getValue(ID_MERCHANT_ACCOUNT_INFORMATION_GUI, "br.gov.bcb.pix");
+        const key = getValue(ID_MERCHANT_ACCOUNT_INFORMATION_KEY, pixKey);
+        const description = getValue(ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION, description2);
+        return getValue(ID_MERCHANT_ACCOUNT_INFORMATION, gui + key + description);
+    }
+
+    function getAdditionalDataFieldTemplate() {
+        const txidValue = getValue(ID_ADDITIONAL_DATA_FIELD_TEMPLATE_TXID, txid);
+        return getValue(ID_ADDITIONAL_DATA_FIELD_TEMPLATE, txidValue);
+    }
+
+    function crc16(data: string): string {
+        const polynomial = 0x1021;
+        let crc = 0xFFFF;
+        
+        for (let i = 0; i < data.length; i++) {
+            crc ^= (data.charCodeAt(i) << 8);
+            
+            for (let j = 0; j < 8; j++) {
+                if (crc & 0x8000) {
+                    crc = (crc << 1) ^ polynomial;
+                } else {
+                    crc = crc << 1;
+                }
+                crc &= 0xFFFF;
+            }
+        }
+        
+        return crc.toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    // Gera o payload Pix
+    const payload =
+        getValue(ID_PAYLOAD_FORMAT_INDICATOR, "01") +
+        getMechantAccountInfo() +
+        getValue(ID_MERCHANT_CATEGORY_CODE, "0000") +
+        getValue(ID_TRANSACTION_CURRENCY, "986") +
+        getValue(ID_TRANSACTION_AMOUNT, amount.toFixed(2)) +
+        getValue(ID_COUNTRY_CODE, "BR") +
+        getValue(ID_MERCHANT_NAME, merchantName) +
+        getValue(ID_MERCHANT_CITY, merchantCity) +
+        getAdditionalDataFieldTemplate();
+
+    // Adiciona placeholder para CRC
+    const payloadWithCrcPlaceholder = payload + ID_CRC16 + "04";
+    
+    // Calcula CRC real
+    const crcValue = crc16(payloadWithCrcPlaceholder);
+    
+    return payload + ID_CRC16 + "04" + crcValue;
+}
+
+// Função para gerar um TXID único para transações PIX
+export function generateTxId(length = 20) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+}
+
+// Configurações padrão do estabelecimento
+export const pixSettings = {
+    pixKey: '',  // Chave PIX
+    merchantName: '',    // Nome do estabelecimento
+    merchantCity: ''   // Cidade do estabelecimento
+};

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en" style="background:hsl(222 28% 7%);color-scheme:dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = stored === 'dark' || (stored !== 'light' && (stored === 'system' || !stored ? prefersDark : false));
+          if (stored == null) isDark = true;
+          window.__APP_SPLASH_DARK__ = isDark;
+          var root = document.documentElement;
+          root.style.background = isDark ? 'hsl(222 28% 7%)' : 'hsl(0 0% 100%)';
+          root.style.colorScheme = isDark ? 'dark' : 'light';
+          if (!isDark) root.classList.add('is-light');
+        } catch (e) {
+          window.__APP_SPLASH_DARK__ = true;
+          document.documentElement.style.background = 'hsl(222 28% 7%)';
+        }
+      })();
+    </script>
+    <style>html { background: hsl(222 28% 7%); } html.is-light { background: hsl(0 0% 100%); } body { background: transparent; margin: 0; }</style>
+    <title>PDVIO — Sistema de ponto de venda para o seu negócio</title>
+    <meta name="description" content="PDV moderno com frente de caixa, comandas, estoque inteligente e gestão multi-loja em tempo real." />
+    <meta name="author" content="PDVIO" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <link rel="icon" href="/favicon.ico?v=7" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=7" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=7" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=7" />
+    <link rel="shortcut icon" href="/favicon.ico?v=7" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <link rel="mask-icon" href="/favicon.png?v=7" color="#7c3aed" />
+    <link rel="manifest" href="/manifest.json?v=7" />
+    <meta name="theme-color" content="#7c3aed" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PDVIO" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <meta property="og:title" content="PDVIO — Sistema de ponto de venda" />
+    <meta property="og:description" content="PDV moderno com frente de caixa, comandas, estoque inteligente e gestão multi-loja em tempo real." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.jpg" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="PDVIO — Sistema de ponto de venda" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PDVIO — Sistema de ponto de venda" />
+    <meta name="twitter:description" content="PDV moderno com frente de caixa, comandas, estoque inteligente e gestão multi-loja em tempo real." />
+    <meta name="twitter:image" content="/og-image.jpg" />
+
+    <style>
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        transition: opacity 320ms ease;
+      }
+      #app-splash.is-dark { background: #0a0a0a; }
+      #app-splash.is-hiding { opacity: 0; pointer-events: none; }
+      #app-splash img {
+        width: min(220px, 50vw);
+        height: auto;
+        animation: app-splash-pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes app-splash-pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.65; transform: scale(0.96); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #app-splash img { animation: none; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app-splash" aria-hidden="true">
+      <img id="app-splash-logo" alt="" />
+    </div>
+    <script>
+      (function () {
+        var splash = document.getElementById('app-splash');
+        var img = document.getElementById('app-splash-logo');
+        var dark = window.__APP_SPLASH_DARK__;
+        if (dark) splash.classList.add('is-dark');
+        img.src = dark ? '/logo-dark.webp' : '/logo-light.webp';
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
