@@ -842,7 +842,9 @@ export default function PDV() {
         toast.error("Etiqueta com valor zerado.");
         return;
       }
-      const ok = addToCart(found, { qty, mergeExisting: true });
+      // Cada etiqueta de pesagem representa uma pesagem única (200g, 350g…)
+      // — sempre cria uma nova linha no carrinho, nunca mescla.
+      const ok = addToCart(found, { qty, mergeExisting: false });
       if (ok) {
         toast.success(
           `${found.name} — ${qty.toLocaleString("pt-BR", { minimumFractionDigits: 3 })} kg (etiqueta ${weighInfo.priceInReais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`,
@@ -875,7 +877,10 @@ export default function PDV() {
       );
       return;
     }
-    const ok = addToCart(found, { qty: 1, mergeExisting: true });
+    // Produtos por kg/g nunca mesclam (cada pesagem é única). Demais
+    // produtos (unidades) somam na mesma linha quando o leitor "beepa" de novo.
+    const isDecimal = !INTEGER_UNITS.includes(found.stock_unit);
+    const ok = addToCart(found, { qty: 1, mergeExisting: !isDecimal });
     if (ok) {
       toast.success(`${found.name} adicionado ao carrinho`);
     }
