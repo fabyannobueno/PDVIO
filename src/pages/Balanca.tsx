@@ -139,6 +139,8 @@ export default function Balanca() {
 
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
@@ -148,6 +150,12 @@ export default function Balanca() {
         (p.barcode ?? "").toLowerCase().includes(q),
     );
   }, [products, search]);
+  // Reseta para a 1ª página sempre que a busca muda.
+  useEffect(() => { setPage(0); }, [search]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageStart = safePage * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
 
   const selected = useMemo(
     () => products.find((p) => p.id === selectedId) ?? null,
@@ -400,7 +408,7 @@ export default function Balanca() {
                   </p>
                 ) : (
                   <ul className="divide-y">
-                    {filtered.slice(0, 50).map((p) => {
+                    {pageItems.map((p) => {
                       const price = p.is_promotion && p.promotion_price != null ? p.promotion_price : p.sale_price;
                       const display = p.stock_unit === "g" ? price * 1000 : price;
                       return (
@@ -424,6 +432,52 @@ export default function Balanca() {
                   </ul>
                 )}
               </div>
+              {filtered.length > 0 && (
+                <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+                  <span data-testid="text-balanca-count">
+                    {filtered.length === 1
+                      ? "1 produto"
+                      : `${filtered.length.toLocaleString("pt-BR")} produtos`}
+                    {totalPages > 1 && (
+                      <>
+                        {" · "}
+                        <span className="font-medium text-foreground">
+                          {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filtered.length)}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2"
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        disabled={safePage === 0}
+                        data-testid="button-balanca-prev-page"
+                      >
+                        Anterior
+                      </Button>
+                      <span className="px-1 tabular-nums">
+                        {safePage + 1}/{totalPages}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2"
+                        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                        disabled={safePage >= totalPages - 1}
+                        data-testid="button-balanca-next-page"
+                      >
+                        Próximo
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Live weight display */}
