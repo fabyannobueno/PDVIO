@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DRE from "@/components/financeiro/DRE";
 import {
   Select,
   SelectContent,
@@ -286,23 +288,32 @@ export default function Financeiro() {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-6 md:p-8 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
-          <p className="text-sm text-muted-foreground mt-1">Receitas e movimentações da empresa.</p>
-        </div>
-        <Select value={period} onValueChange={(v) => handlePeriodChange(v as Period)}>
-          <SelectTrigger className="w-40" data-testid="select-period">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Hoje</SelectItem>
-            <SelectItem value="week">Esta semana</SelectItem>
-            <SelectItem value="month">Este mês</SelectItem>
-            <SelectItem value="year">Este ano</SelectItem>
-          </SelectContent>
-        </Select>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
+        <p className="text-sm text-muted-foreground mt-1">Receitas, movimentações e resultado da empresa.</p>
       </div>
+
+      <Tabs defaultValue="resumo" className="space-y-6">
+        <TabsList className="grid w-full max-w-sm grid-cols-2">
+          <TabsTrigger value="resumo" data-testid="tab-resumo">Resumo</TabsTrigger>
+          <TabsTrigger value="dre" data-testid="tab-dre">DRE</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="resumo" className="space-y-6 mt-0">
+          {/* Period selector for Resumo */}
+          <div className="flex justify-end">
+            <Select value={period} onValueChange={(v) => handlePeriodChange(v as Period)}>
+              <SelectTrigger className="w-40" data-testid="select-period">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="week">Esta semana</SelectItem>
+                <SelectItem value="month">Este mês</SelectItem>
+                <SelectItem value="year">Este ano</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -643,6 +654,12 @@ export default function Financeiro() {
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="dre" className="mt-0">
+          <DRE />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
