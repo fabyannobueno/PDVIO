@@ -32,6 +32,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/Logo";
+import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermission";
 import type { Permission } from "@/lib/permissions";
 import { scrollAppToTop } from "@/lib/scrollToTop";
@@ -103,7 +104,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex h-14 items-center px-2">
+        <div className={cn("flex h-14 items-center", collapsed ? "px-0 justify-center" : "px-2")}>
           <Logo showText={!collapsed} />
         </div>
       </SidebarHeader>
