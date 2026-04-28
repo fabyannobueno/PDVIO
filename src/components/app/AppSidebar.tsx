@@ -87,7 +87,10 @@ export function AppSidebar() {
     <SidebarMenuItem key={item.url}>
       <SidebarMenuButton
         asChild
-        className={isActive(item.url) ? "bg-sidebar-accent font-medium text-sidebar-primary" : ""}
+        className={cn(
+          isActive(item.url) ? "bg-sidebar-accent font-medium text-sidebar-primary" : "",
+          collapsed && "justify-center",
+        )}
       >
         <NavLink to={item.url} end={item.url === "/"} onClick={handleNavClick}>
           <item.icon className="h-4 w-4" />
