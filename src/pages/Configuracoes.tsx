@@ -622,7 +622,9 @@ export default function Configuracoes() {
   const [printerDirty, setPrinterDirty] = useState(false);
   const [printerConnected, setPrinterConnected] = useState(() => isPrinterConnected(getPrinterSettings().mode));
 
-  // Auto-fill receipt header from company data (name, doc, phone)
+  // Auto-fill receipt header from company data (name, doc, phone).
+  // Depende também de `printer.header` para que, quando o cabeçalho carregar
+  // do banco em formato antigo (sem ":"), a normalização rode e atualize.
   useEffect(() => {
     const lines: string[] = [];
     if (companyName.trim()) lines.push(companyName.trim());
@@ -641,7 +643,7 @@ export default function Configuracoes() {
       });
       setPrinterDirty(true);
     }
-  }, [companyName, document, phone]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [companyName, document, phone, printer.header]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pull latest printer settings from DB whenever the active company changes
   useEffect(() => {
