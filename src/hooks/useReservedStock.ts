@@ -96,7 +96,7 @@ export function useReservedStock(opts: Options): {
       qc.invalidateQueries({ queryKey: ["/api/comanda_items_open", companyId] });
     }, 8000);
 
-    // Periodically purge reservations older than 60 minutes that were never
+    // Periodically purge reservations older than 30 minutes that were never
     // converted to a sale. Runs once on mount and then every minute while the
     // hook is active. Safe to call concurrently from multiple clients.
     const runCleanup = () => {
