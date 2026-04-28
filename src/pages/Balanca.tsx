@@ -629,9 +629,9 @@ export default function Balanca() {
                       <Barcode
                         value={barcode}
                         format="EAN13"
-                        height={50}
-                        width={1.8}
-                        fontSize={14}
+                        height={60}
+                        width={2.2}
+                        fontSize={15}
                         margin={0}
                       />
                     ) : (
