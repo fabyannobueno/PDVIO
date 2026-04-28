@@ -1,5 +1,5 @@
 import { scrollAppToTop } from "@/lib/scrollToTop";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -264,6 +264,39 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
         (p.category ?? "").toLocaleLowerCase("pt-BR").includes(q),
     );
   }, [promotionsQuery.data, search]);
+
+  // ── Auto-desativar promoções vencidas ────────────────────────────────────────
+  const checkedPromoIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const list = promotionsQuery.data ?? [];
+    if (!list.length || !companyId) return;
+    const now = new Date();
+    const expired = list.filter(
+      (p) =>
+        p.is_active &&
+        p.ends_at &&
+        new Date(p.ends_at).getTime() < now.getTime() &&
+        !checkedPromoIdsRef.current.has(p.id),
+    );
+    if (expired.length === 0) return;
+    expired.forEach((p) => checkedPromoIdsRef.current.add(p.id));
+
+    (async () => {
+      const { error } = await (supabase as any)
+        .from("promotions")
+        .update({ is_active: false })
+        .in("id", expired.map((p) => p.id))
+        .eq("company_id", companyId);
+      if (error) return;
+      queryClient.invalidateQueries({ queryKey: ["promotions", companyId] });
+      const names = expired.map((p) => p.name).join(", ");
+      toast.info(
+        expired.length === 1
+          ? `Promoção encerrada: ${names}`
+          : `${expired.length} promoções encerradas automaticamente`,
+      );
+    })();
+  }, [promotionsQuery.data, companyId, queryClient]);
 
   const PAGE_SIZE = 10;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -918,6 +951,39 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
     if (!q) return list;
     return list.filter((c) => c.code.toLocaleLowerCase("pt-BR").includes(q));
   }, [couponsQuery.data, search]);
+
+  // ── Auto-desativar cupons vencidos ────────────────────────────────────────────
+  const checkedCouponIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const list = couponsQuery.data ?? [];
+    if (!list.length || !companyId) return;
+    const now = new Date();
+    const expired = list.filter(
+      (c) =>
+        c.is_active &&
+        c.ends_at &&
+        new Date(c.ends_at).getTime() < now.getTime() &&
+        !checkedCouponIdsRef.current.has(c.id),
+    );
+    if (expired.length === 0) return;
+    expired.forEach((c) => checkedCouponIdsRef.current.add(c.id));
+
+    (async () => {
+      const { error } = await (supabase as any)
+        .from("coupons")
+        .update({ is_active: false })
+        .in("id", expired.map((c) => c.id))
+        .eq("company_id", companyId);
+      if (error) return;
+      queryClient.invalidateQueries({ queryKey: ["coupons", companyId] });
+      const codes = expired.map((c) => c.code).join(", ");
+      toast.info(
+        expired.length === 1
+          ? `Cupom encerrado: ${codes}`
+          : `${expired.length} cupons encerrados automaticamente`,
+      );
+    })();
+  }, [couponsQuery.data, companyId, queryClient]);
 
   const PAGE_SIZE = 10;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
