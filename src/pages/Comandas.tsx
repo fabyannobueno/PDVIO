@@ -70,7 +70,7 @@ import {
   splitsTotal,
   describeSplits,
 } from "@/components/app/MixedPaymentEditor";
-import { printReceipt, getSettings as getPrinterSettings, shortSaleNumber, type Receipt } from "@/lib/printer";
+import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber, type Receipt } from "@/lib/printer";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { PixConfirmDialog } from "@/components/app/PixConfirmDialog";
 import type { PixKeyType } from "@/lib/pixPayload";
@@ -940,7 +940,7 @@ export default function Comandas() {
           status: "completed",
           ...(openSession?.id ? { cash_session_id: openSession.id } : {}),
         } as any)
-        .select("id")
+        .select("id, numeric_id")
         .single();
       if (saleErr) throw saleErr;
       if (saleData && comandaItems.length > 0) {
@@ -1023,9 +1023,11 @@ export default function Comandas() {
         }
         queryClient.invalidateQueries({ queryKey: ["/api/products-active", cid] });
       }
-      return saleData?.id ?? null;
+      return saleData
+        ? { id: saleData.id as string, numericId: (saleData as any).numeric_id ?? null }
+        : null;
     },
-    onSuccess: async (saleId) => {
+    onSuccess: async (saleResult) => {
       queryClient.invalidateQueries({ queryKey: ["/comandas", cid] });
       queryClient.invalidateQueries({ queryKey: ["/comanda-items", detailComanda?.id] });
       toast.success("Comanda fechada e venda registrada!");
@@ -1052,7 +1054,7 @@ export default function Comandas() {
           companyDocument: activeCompany?.document ?? undefined,
           companyPhone: activeCompany?.phone ?? undefined,
           companyAddress: activeCompany?.address ?? undefined,
-          saleNumber: saleId ? shortSaleNumber(saleId) : undefined,
+          saleNumber: saleResult ? formatSaleNumber(saleResult.numericId, saleResult.id) : undefined,
         };
         const printerSettings = getPrinterSettings();
         if (printerSettings.autoPrintOnFinalize) {

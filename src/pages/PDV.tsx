@@ -46,7 +46,7 @@ import {
   splitsTotal,
   describeSplits,
 } from "@/components/app/MixedPaymentEditor";
-import { printReceipt, getSettings as getPrinterSettings, shortSaleNumber, type Receipt } from "@/lib/printer";
+import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber, type Receipt } from "@/lib/printer";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { PixConfirmDialog } from "@/components/app/PixConfirmDialog";
 import type { PixKeyType } from "@/lib/pixPayload";
@@ -1144,7 +1144,7 @@ export default function PDV() {
           ...(mixedNote ? { notes: mixedNote } : {}),
           ...(openSession?.id ? { cash_session_id: openSession.id } : {}),
         } as any)
-        .select("id")
+        .select("id, numeric_id")
         .single();
 
       if (saleErr) throw saleErr;
@@ -1285,7 +1285,7 @@ export default function PDV() {
         companyDocument: activeCompany?.document ?? undefined,
         companyPhone: activeCompany?.phone ?? undefined,
         companyAddress: activeCompany?.address ?? undefined,
-        saleNumber: shortSaleNumber(sale.id),
+        saleNumber: formatSaleNumber((sale as any)?.numeric_id, sale.id),
       };
       const printerSettings = getPrinterSettings();
       if (printerSettings.autoPrintOnFinalize) {

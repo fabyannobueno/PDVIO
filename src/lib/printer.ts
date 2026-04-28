@@ -68,8 +68,8 @@ export interface Receipt {
 
 /**
  * Gera um identificador curto (6 dígitos) determinístico a partir do UUID
- * da venda. O mesmo UUID sempre gera o mesmo número, e a colisão é improvável
- * dentro de uma loja (espaço de 1.000.000 valores).
+ * da venda. Usado como fallback quando ainda não existe `numeric_id` no
+ * registro (ex.: dados antigos antes da migração).
  */
 export function shortSaleNumber(uuid: string | null | undefined): string {
   if (!uuid) return "000000";
@@ -80,6 +80,69 @@ export function shortSaleNumber(uuid: string | null | undefined): string {
   const n = parseInt(slice, 16);
   if (!isFinite(n) || isNaN(n)) return "000000";
   return String(n % 1000000).padStart(6, "0");
+}
+
+/**
+ * Formata o `numeric_id` (BIGSERIAL único, vindo do banco) como um número
+ * de venda de 6 dígitos para o cupom. Se ultrapassar 999999, mostra todos
+ * os dígitos sem cortar — assim a unicidade é sempre preservada.
+ */
+export function formatSaleNumber(
+  numericId: number | string | null | undefined,
+  fallbackUuid?: string | null,
+): string {
+  if (numericId !== null && numericId !== undefined && numericId !== "") {
+    const n = typeof numericId === "number" ? numericId : Number(numericId);
+    if (Number.isFinite(n) && n > 0) {
+      const s = String(Math.trunc(n));
+      return s.length >= 6 ? s : s.padStart(6, "0");
+    }
+  }
+  return shortSaleNumber(fallbackUuid ?? null);
+}
+
+/**
+ * Formata o endereço da loja para impressão.
+ * Aceita string simples ou um JSON com as chaves
+ * { cep, logradouro, numero, complemento, bairro, cidade, estado }
+ * (formato salvo pelo cadastro da empresa).
+ * Retorna string vazia quando nada útil estiver disponível.
+ */
+export function formatAddress(addr: string | null | undefined): string {
+  if (!addr) return "";
+  const trimmed = String(addr).trim();
+  if (!trimmed) return "";
+
+  // Tenta interpretar como JSON. Se falhar, devolve a string crua.
+  if (trimmed.startsWith("{")) {
+    try {
+      const o: Record<string, unknown> = JSON.parse(trimmed);
+      const get = (k: string) => {
+        const v = o[k];
+        return typeof v === "string" ? v.trim() : "";
+      };
+      const logradouro = get("logradouro") || get("rua") || get("street");
+      const numero = get("numero") || get("number");
+      const complemento = get("complemento") || get("complement");
+      const bairro = get("bairro") || get("neighborhood");
+      const cidade = get("cidade") || get("city");
+      const estado = get("estado") || get("uf") || get("state");
+      const cep = get("cep") || get("zip") || get("postal_code");
+
+      const parts: string[] = [];
+      const street = [logradouro, numero].filter(Boolean).join(", ");
+      if (street) parts.push(street);
+      if (complemento) parts.push(complemento);
+      if (bairro) parts.push(bairro);
+      const cityState = [cidade, estado].filter(Boolean).join(" - ");
+      if (cityState) parts.push(cityState);
+      if (cep) parts.push(`CEP ${cep}`);
+      return parts.join(" • ");
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
 }
 
 /** Formata CPF/CNPJ e devolve label apropriado ("CPF" ou "CNPJ"). */
@@ -374,27 +437,31 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
     }
   }
 
-  if (s.header.trim()) {
+  // ── Bloco de identificação da loja ──────────────────────────────────────
+  // Quando temos os dados estruturados da empresa, usamos somente esse bloco
+  // e ignoramos o `s.header` para evitar duplicar nome/CPF/TEL no cupom.
+  const docInfo = formatDocument(receipt.companyDocument);
+  const addressFmt = formatAddress(receipt.companyAddress);
+  const hasCompanyBlock = !!(receipt.companyName || docInfo || receipt.companyPhone?.trim() || addressFmt);
+
+  if (s.header.trim() && !hasCompanyBlock) {
     for (const ln of s.header.split("\n")) {
       chunks.push(line(ln, { align: "center", bold: true }));
     }
   }
 
-  // ── Bloco de identificação da loja ──────────────────────────────────────
   if (receipt.companyName) {
     chunks.push(line(receipt.companyName, { align: "center", bold: true }));
   }
-  const docInfo = formatDocument(receipt.companyDocument);
   if (docInfo) {
     chunks.push(line(`${docInfo.label}: ${docInfo.value}`, { align: "center" }));
   }
   if (receipt.companyPhone && receipt.companyPhone.trim().length > 0) {
     chunks.push(line(`TEL: ${receipt.companyPhone.trim()}`, { align: "center" }));
   }
-  if (receipt.companyAddress && receipt.companyAddress.trim().length > 0) {
+  if (addressFmt) {
     // Quebra endereços longos em múltiplas linhas para caber no cupom.
-    const addr = receipt.companyAddress.trim();
-    const words = addr.split(/\s+/);
+    const words = addressFmt.split(/\s+/);
     const lines: string[] = [];
     let current = "";
     for (const w of words) {
@@ -408,7 +475,7 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
     if (current) lines.push(current);
     for (const l of lines) chunks.push(line(l, { align: "center" }));
   }
-  if (receipt.companyName || docInfo || receipt.companyPhone || receipt.companyAddress) {
+  if (hasCompanyBlock) {
     chunks.push(bytes(0x0a));
   }
 
@@ -673,14 +740,24 @@ body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.25
 @media print { body { width: ${widthMm}mm; } }
 </style></head><body>
 ${s.printLogo ? `<div class="center"><img src="${logoUrl}" alt="" style="max-width:60%;max-height:80px;object-fit:contain;filter:grayscale(1) contrast(1.5);"/></div>` : ""}
-${s.header ? `<div class="center bold">${escapeHtml(s.header).replace(/\n/g, "<br>")}</div>` : ""}
-${receipt.companyName ? `<div class="center bold">${escapeHtml(receipt.companyName)}</div>` : ""}
 ${(() => {
   const d = formatDocument(receipt.companyDocument);
-  return d ? `<div class="center">${d.label}: ${escapeHtml(d.value)}</div>` : "";
+  const addressFmt = formatAddress(receipt.companyAddress);
+  const hasCompanyBlock = !!(receipt.companyName || d || receipt.companyPhone?.trim() || addressFmt);
+  const headerHtml =
+    s.header && !hasCompanyBlock
+      ? `<div class="center bold">${escapeHtml(s.header).replace(/\n/g, "<br>")}</div>`
+      : "";
+  return [
+    headerHtml,
+    receipt.companyName ? `<div class="center bold">${escapeHtml(receipt.companyName)}</div>` : "",
+    d ? `<div class="center">${d.label}: ${escapeHtml(d.value)}</div>` : "",
+    receipt.companyPhone && receipt.companyPhone.trim()
+      ? `<div class="center">TEL: ${escapeHtml(receipt.companyPhone.trim())}</div>`
+      : "",
+    addressFmt ? `<div class="center">${escapeHtml(addressFmt)}</div>` : "",
+  ].join("");
 })()}
-${receipt.companyPhone && receipt.companyPhone.trim() ? `<div class="center">TEL: ${escapeHtml(receipt.companyPhone.trim())}</div>` : ""}
-${receipt.companyAddress && receipt.companyAddress.trim() ? `<div class="center">${escapeHtml(receipt.companyAddress.trim())}</div>` : ""}
 ${receipt.title ? `<div class="center bold big" style="margin-top:6px">${escapeHtml(receipt.title)}</div>` : ""}
 <div class="center">${date.toLocaleString("pt-BR")}</div>
 ${receipt.saleNumber ? `<div class="center bold">ID DA VENDA: ${escapeHtml(receipt.saleNumber)}</div>` : ""}
