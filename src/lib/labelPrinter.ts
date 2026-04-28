@@ -23,8 +23,18 @@ export interface WeighLabelData {
   expiresAt?: string;
 }
 
-const BRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const BRL = (v: number) => {
+  // Limpa ruído de ponto flutuante e mostra até 3 casas decimais quando
+  // necessário (ex.: 0,200 kg × R$ 49,99 = R$ 9,998). Nunca arredonda para
+  // cima na 2ª casa.
+  const cleaned = Math.round(v * 1000) / 1000;
+  return cleaned.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
+  });
+};
 
 const KG = (v: number) =>
   `${v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;

@@ -48,8 +48,17 @@ interface WeighProduct {
   barcode: string | null;
 }
 
-const fmtBRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtBRL = (v: number) => {
+  // Mostra até 3 casas decimais quando necessário (ex.: 0,200 kg × R$ 49,99
+  // = R$ 9,998). Nunca arredonda para cima na 2ª casa.
+  const cleaned = Math.round(v * 1000) / 1000;
+  return cleaned.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
+  });
+};
 const fmtKg = (v: number) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
@@ -191,7 +200,10 @@ export default function Balanca() {
     : 0;
   // Para produtos cadastrados em "g", o sale_price é por grama — convertemos.
   const pricePerKg = selected?.stock_unit === "g" ? pricePerKgRaw * 1000 : pricePerKgRaw;
-  const totalPrice = Math.floor(pricePerKg * weightKg * 100) / 100;
+  // Mantém até 3 casas decimais (precisão real do cálculo). O barcode
+  // EAN-13 abaixo trunca para 2 casas (limite físico do formato), nunca
+  // arredondando para cima — nunca cobra a mais.
+  const totalPrice = Math.round(pricePerKg * weightKg * 1000) / 1000;
 
   const productCode = selected ? productScaleCode(selected.numeric_id) : null;
 

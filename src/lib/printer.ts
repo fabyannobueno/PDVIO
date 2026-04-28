@@ -316,7 +316,16 @@ function divider(width: number) {
 }
 
 function money(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  // Limpa o ruído de ponto flutuante e exibe até 3 casas decimais quando
+  // necessário (ex.: 0,200 kg × R$ 49,99 = R$ 9,998). Nunca arredonda para
+  // cima na 2ª casa: 9,998 nunca vira "R$ 10,00".
+  const cleaned = Math.round(v * 1000) / 1000;
+  return cleaned.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
+  });
 }
 
 function qty(n: number) {

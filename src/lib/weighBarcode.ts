@@ -53,7 +53,10 @@ export function productScaleCode(numericId: number | string | null | undefined):
  */
 export function buildPriceLabelBarcode(productCode: string, priceInReais: number): string {
   const code = String(productCode).replace(/\D/g, "").padStart(6, "0").slice(-6);
-  const priceCents = Math.round(priceInReais * 100);
+  // Trunca (não arredonda) para centavos: o formato EAN-13 com preço só
+  // suporta 2 casas decimais. Usar Math.floor garante que nunca cobramos
+  // a mais quando o cálculo dá 9,998 — o barcode codifica R$ 9,99.
+  const priceCents = Math.floor(Math.round(priceInReais * 100000) / 1000);
   if (priceCents < 0 || priceCents > 99999) {
     throw new Error("Preço fora do limite do formato (máx. R$ 999,99 por etiqueta)");
   }
