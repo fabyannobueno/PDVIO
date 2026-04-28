@@ -398,7 +398,7 @@ export default function DRE() {
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Período</Label>
             <Select value={periodKey} onValueChange={(v) => setPeriodKey(v as PeriodKey)}>
-              <SelectTrigger className="w-48" data-testid="select-dre-period">
+              <SelectTrigger className="w-full sm:w-48" data-testid="select-dre-period">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -411,28 +411,28 @@ export default function DRE() {
             </Select>
           </div>
           {periodKey === "custom" && (
-            <>
-              <div className="space-y-1.5">
+            <div className="flex gap-3">
+              <div className="space-y-1.5 flex-1 sm:flex-initial">
                 <Label className="text-xs text-muted-foreground">De</Label>
                 <Input
                   type="date"
                   value={customStart}
                   onChange={(e) => setCustomStart(e.target.value)}
-                  className="w-40"
+                  className="w-full sm:w-40"
                   data-testid="input-dre-start"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 flex-1 sm:flex-initial">
                 <Label className="text-xs text-muted-foreground">Até</Label>
                 <Input
                   type="date"
                   value={customEnd}
                   onChange={(e) => setCustomEnd(e.target.value)}
-                  className="w-40"
+                  className="w-full sm:w-40"
                   data-testid="input-dre-end"
                 />
               </div>
-            </>
+            </div>
           )}
           <div className="flex items-center gap-2 pb-1.5">
             <Switch
@@ -442,7 +442,8 @@ export default function DRE() {
               data-testid="switch-dre-compare"
             />
             <Label htmlFor="dre-compare" className="text-sm cursor-pointer">
-              Comparar com período anterior
+              <span className="hidden sm:inline">Comparar com período anterior</span>
+              <span className="sm:hidden">Comparar com anterior</span>
             </Label>
           </div>
         </div>
@@ -450,6 +451,7 @@ export default function DRE() {
           variant="outline"
           onClick={exportPDF}
           disabled={!cur}
+          className="w-full sm:w-auto"
           data-testid="button-dre-pdf"
         >
           <Download className="h-4 w-4 mr-2" />
@@ -459,27 +461,31 @@ export default function DRE() {
 
       {/* Period header */}
       <Card className="border-border/60">
-        <CardHeader className="pb-3">
-          <div className="flex items-baseline justify-between flex-wrap gap-2">
-            <div>
-              <CardTitle className="text-base">DRE — {range.label}</CardTitle>
+        <CardHeader className="pb-3 px-4 sm:px-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:flex-wrap">
+            <div className="min-w-0">
+              <CardTitle className="text-base truncate">DRE — {range.label}</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {range.start.toLocaleDateString("pt-BR")} a {range.end.toLocaleDateString("pt-BR")}
                 {compare && (
-                  <span className="ml-2">
-                    · Comparando com {prevRng.start.toLocaleDateString("pt-BR")} a {prevRng.end.toLocaleDateString("pt-BR")}
+                  <span className="block sm:inline sm:ml-2">
+                    <span className="hidden sm:inline">· </span>
+                    Comparando com {prevRng.start.toLocaleDateString("pt-BR")} a {prevRng.end.toLocaleDateString("pt-BR")}
                   </span>
                 )}
               </p>
             </div>
             {cur && (
-              <Badge variant={cur.netResult >= 0 ? "secondary" : "destructive"} className="text-sm font-mono">
+              <Badge
+                variant={cur.netResult >= 0 ? "secondary" : "destructive"}
+                className="text-sm font-mono self-start sm:self-auto"
+              >
                 Resultado: {fmtBRL(cur.netResult)}
               </Badge>
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           {isLoading ? (
             <div className="space-y-2">
               {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
@@ -489,255 +495,197 @@ export default function DRE() {
               Sem dados para o período.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[55%]">Conta</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    {compare && <TableHead className="text-right w-32">Anterior</TableHead>}
-                    {compare && <TableHead className="text-right w-24">Variação</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {/* Receita Bruta */}
-                  <TableRow className="bg-muted/30">
-                    <TableCell className="font-semibold">(+) Receita bruta de vendas</TableCell>
-                    <TableCell className="text-right font-mono font-semibold" data-testid="dre-gross-revenue">
-                      {fmtBRL(cur.grossRevenue)}
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? fmtBRL(prev.grossRevenue) : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.grossRevenue} previous={prev.grossRevenue} /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
+            (() => {
+              type Variant = "section" | "subsection" | "child" | "highlight" | "result";
+              type Row = {
+                key: string;
+                label: string;
+                shortLabel?: string;
+                value: number;
+                previous: number | null;
+                variant: Variant;
+                negative?: boolean;
+                invert?: boolean;
+                showAsParens?: boolean;
+                color?: string;
+                hint?: string;
+              };
+              const rows: Row[] = [
+                { key: "gross", label: "(+) Receita bruta de vendas", shortLabel: "Receita bruta", value: cur.grossRevenue, previous: prev?.grossRevenue ?? null, variant: "section" },
+                { key: "ded-disc", label: "Descontos concedidos", value: current.discounts, previous: previous?.discounts ?? null, variant: "child", showAsParens: true, color: "text-amber-500", invert: true },
+                { key: "ded-canc", label: "Cancelamentos", value: current.cancellations, previous: previous?.cancellations ?? null, variant: "child", showAsParens: true, color: "text-destructive", invert: true },
+                { key: "ded-ref", label: "Devoluções", value: current.refunds, previous: previous?.refunds ?? null, variant: "child", showAsParens: true, color: "text-amber-500", invert: true },
+                { key: "ded-tot", label: "(−) Total de deduções", shortLabel: "Total deduções", value: cur.totalDeductions, previous: prev?.totalDeductions ?? null, variant: "subsection", showAsParens: true, color: "text-destructive", invert: true },
+                { key: "net", label: "(=) Receita líquida", shortLabel: "Receita líquida", value: cur.netRevenue, previous: prev?.netRevenue ?? null, variant: "highlight" },
+                { key: "cogs", label: "(−) Custo das mercadorias vendidas (CMV)", shortLabel: "CMV", value: cur.cogs, previous: prev?.cogs ?? null, variant: "section", showAsParens: true, color: "text-destructive", invert: true },
+                { key: "gross-profit", label: "(=) Lucro bruto", shortLabel: "Lucro bruto", value: cur.grossProfit, previous: prev?.grossProfit ?? null, variant: "highlight", hint: `margem ${fmtPct(cur.grossMargin)}` },
+                { key: "exp", label: "(−) Despesas operacionais", shortLabel: "Despesas operacionais", value: cur.expensesTotal, previous: prev?.expensesTotal ?? null, variant: "subsection", showAsParens: true, color: "text-destructive", invert: true },
+                ...expenseRows.map<Row>((r) => ({
+                  key: `exp-${r.category}`,
+                  label: r.category,
+                  value: r.amount,
+                  previous: r.previous > 0 ? r.previous : null,
+                  variant: "child",
+                  showAsParens: true,
+                  invert: true,
+                })),
+                { key: "other", label: "(+) Outras receitas (recebimentos)", shortLabel: "Outras receitas", value: cur.otherIncome, previous: prev?.otherIncome ?? null, variant: "section", color: "text-emerald-600" },
+                { key: "result", label: "(=) Resultado líquido do período", shortLabel: "Resultado líquido", value: cur.netResult, previous: prev?.netResult ?? null, variant: "result", hint: `margem ${fmtPct(cur.netMargin)}` },
+              ];
 
-                  {/* Deduções */}
-                  <TableRow>
-                    <TableCell className="pl-8 text-muted-foreground text-sm">Descontos concedidos</TableCell>
-                    <TableCell className="text-right font-mono text-amber-500">
-                      ({fmtBRL(current.discounts)})
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {previous ? `(${fmtBRL(previous.discounts)})` : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {previous ? <VarBadge current={current.discounts} previous={previous.discounts} invert /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="pl-8 text-muted-foreground text-sm">Cancelamentos</TableCell>
-                    <TableCell className="text-right font-mono text-destructive">
-                      ({fmtBRL(current.cancellations)})
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {previous ? `(${fmtBRL(previous.cancellations)})` : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {previous ? <VarBadge current={current.cancellations} previous={previous.cancellations} invert /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="pl-8 text-muted-foreground text-sm">Devoluções</TableCell>
-                    <TableCell className="text-right font-mono text-amber-500">
-                      ({fmtBRL(current.refunds)})
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {previous ? `(${fmtBRL(previous.refunds)})` : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {previous ? <VarBadge current={current.refunds} previous={previous.refunds} invert /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                  <TableRow className="bg-muted/30">
-                    <TableCell className="font-medium">(−) Total de deduções</TableCell>
-                    <TableCell className="text-right font-mono font-medium text-destructive">
-                      ({fmtBRL(cur.totalDeductions)})
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? `(${fmtBRL(prev.totalDeductions)})` : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.totalDeductions} previous={prev.totalDeductions} invert /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
+              const variantRowClass = (v: Variant) => {
+                if (v === "section" || v === "subsection") return "bg-muted/30";
+                if (v === "highlight") return "bg-primary/10 border-y-2 border-primary/30";
+                if (v === "result") return cur.netResult >= 0
+                  ? "bg-emerald-500/10 border-y-2 border-emerald-500/40"
+                  : "bg-destructive/10 border-y-2 border-destructive/40";
+                return "";
+              };
+              const variantLabelClass = (v: Variant) => {
+                if (v === "section") return "font-semibold";
+                if (v === "subsection") return "font-medium";
+                if (v === "highlight" || v === "result") return "font-bold";
+                return "pl-8 text-muted-foreground text-sm";
+              };
+              const variantValueClass = (v: Variant) => {
+                if (v === "section") return "font-mono font-semibold";
+                if (v === "subsection") return "font-mono font-medium";
+                if (v === "highlight" || v === "result") return "font-mono font-bold";
+                return "font-mono text-sm";
+              };
+              const formatVal = (r: Row) => {
+                const txt = fmtBRL(r.value);
+                return r.showAsParens ? `(${txt})` : txt;
+              };
+              const formatPrev = (r: Row) => {
+                if (r.previous === null) return "—";
+                const txt = fmtBRL(r.previous);
+                return r.showAsParens ? `(${txt})` : txt;
+              };
+              const testIdFor = (key: string) => {
+                if (key === "gross") return "dre-gross-revenue";
+                if (key === "net") return "dre-net-revenue";
+                if (key === "cogs") return "dre-cogs";
+                if (key === "gross-profit") return "dre-gross-profit";
+                if (key === "result") return "dre-net-result";
+                return undefined;
+              };
 
-                  {/* Receita Líquida */}
-                  <TableRow className="bg-primary/10 border-y-2 border-primary/30">
-                    <TableCell className="font-bold">(=) Receita líquida</TableCell>
-                    <TableCell className="text-right font-mono font-bold" data-testid="dre-net-revenue">
-                      {fmtBRL(cur.netRevenue)}
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? fmtBRL(prev.netRevenue) : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.netRevenue} previous={prev.netRevenue} /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-
-                  {/* CMV */}
-                  <TableRow>
-                    <TableCell>(−) Custo das mercadorias vendidas (CMV)</TableCell>
-                    <TableCell className="text-right font-mono text-destructive" data-testid="dre-cogs">
-                      ({fmtBRL(cur.cogs)})
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? `(${fmtBRL(prev.cogs)})` : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.cogs} previous={prev.cogs} invert /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-
-                  {/* Lucro Bruto */}
-                  <TableRow className="bg-primary/10 border-y-2 border-primary/30">
-                    <TableCell className="font-bold">
-                      (=) Lucro bruto
-                      <span className="ml-2 text-xs text-muted-foreground font-normal">
-                        margem {fmtPct(cur.grossMargin)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-bold" data-testid="dre-gross-profit">
-                      {fmtBRL(cur.grossProfit)}
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? fmtBRL(prev.grossProfit) : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.grossProfit} previous={prev.grossProfit} /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-
-                  {/* Despesas operacionais */}
-                  <TableRow>
-                    <TableCell className="font-medium">(−) Despesas operacionais</TableCell>
-                    <TableCell className="text-right font-mono font-medium text-destructive">
-                      ({fmtBRL(cur.expensesTotal)})
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? `(${fmtBRL(prev.expensesTotal)})` : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.expensesTotal} previous={prev.expensesTotal} invert /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                  {expenseRows.length === 0 && (
-                    <TableRow>
-                      <TableCell className="pl-8 text-xs text-muted-foreground italic" colSpan={compare ? 4 : 2}>
+              return (
+                <>
+                  {/* Mobile: card list */}
+                  <div className="sm:hidden flex flex-col -mx-2">
+                    {rows.map((r) => {
+                      const isResult = r.variant === "result";
+                      const valColor =
+                        isResult
+                          ? cur.netResult >= 0 ? "text-emerald-600" : "text-destructive"
+                          : r.color ?? "";
+                      return (
+                        <div
+                          key={r.key}
+                          className={`px-3 py-2.5 rounded-md ${variantRowClass(r.variant)} ${
+                            r.variant === "child" ? "" : "my-0.5"
+                          }`}
+                        >
+                          <div className="flex items-baseline justify-between gap-3">
+                            <div className={`min-w-0 flex-1 ${variantLabelClass(r.variant)} ${r.variant === "child" ? "" : "text-sm"}`}>
+                              {r.shortLabel ?? r.label}
+                              {r.hint && (
+                                <span className="block text-[10px] font-normal text-muted-foreground mt-0.5">
+                                  {r.hint}
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              className={`text-right whitespace-nowrap ${variantValueClass(r.variant)} ${valColor}`}
+                              data-testid={testIdFor(r.key)}
+                            >
+                              {formatVal(r)}
+                            </div>
+                          </div>
+                          {compare && (
+                            <div className="mt-1 flex items-center justify-end gap-2 text-[10px] text-muted-foreground font-mono">
+                              <span>ant: {formatPrev(r)}</span>
+                              {r.previous !== null && (
+                                <VarBadge current={r.value} previous={r.previous} invert={r.invert} />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {expenseRows.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground italic">
                         Nenhuma despesa paga registrada no período em "Contas a pagar".
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {expenseRows.map((r) => (
-                    <TableRow key={r.category}>
-                      <TableCell className="pl-8 text-muted-foreground text-sm">{r.category}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        ({fmtBRL(r.amount)})
-                      </TableCell>
-                      {compare && (
-                        <TableCell className="text-right font-mono text-muted-foreground text-sm">
-                          {r.previous > 0 ? `(${fmtBRL(r.previous)})` : "—"}
-                        </TableCell>
-                      )}
-                      {compare && (
-                        <TableCell className="text-right">
-                          {r.previous > 0 ? <VarBadge current={r.amount} previous={r.previous} invert /> : "—"}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Outras receitas */}
-                  <TableRow>
-                    <TableCell>(+) Outras receitas (recebimentos)</TableCell>
-                    <TableCell className="text-right font-mono text-emerald-600">
-                      {fmtBRL(cur.otherIncome)}
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? fmtBRL(prev.otherIncome) : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.otherIncome} previous={prev.otherIncome} /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-
-                  {/* Resultado */}
-                  <TableRow
-                    className={
-                      cur.netResult >= 0
-                        ? "bg-emerald-500/10 border-y-2 border-emerald-500/40"
-                        : "bg-destructive/10 border-y-2 border-destructive/40"
-                    }
-                  >
-                    <TableCell className="font-bold">
-                      (=) Resultado líquido do período
-                      <span className="ml-2 text-xs text-muted-foreground font-normal">
-                        margem {fmtPct(cur.netMargin)}
-                      </span>
-                    </TableCell>
-                    <TableCell
-                      className={`text-right font-mono font-bold ${cur.netResult >= 0 ? "text-emerald-600" : "text-destructive"}`}
-                      data-testid="dre-net-result"
-                    >
-                      {fmtBRL(cur.netResult)}
-                    </TableCell>
-                    {compare && (
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {prev ? fmtBRL(prev.netResult) : "—"}
-                      </TableCell>
-                    )}
-                    {compare && (
-                      <TableCell className="text-right">
-                        {prev ? <VarBadge current={cur.netResult} previous={prev.netResult} /> : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
+                  {/* Desktop: table */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[55%]">Conta</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          {compare && <TableHead className="text-right w-32">Anterior</TableHead>}
+                          {compare && <TableHead className="text-right w-24">Variação</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rows.map((r, idx) => {
+                          const isResult = r.variant === "result";
+                          const valColor =
+                            isResult
+                              ? cur.netResult >= 0 ? "text-emerald-600" : "text-destructive"
+                              : r.color ?? "";
+                          return (
+                            <TableRow key={r.key} className={variantRowClass(r.variant)}>
+                              <TableCell className={variantLabelClass(r.variant)}>
+                                {r.label}
+                                {r.hint && (
+                                  <span className="ml-2 text-xs text-muted-foreground font-normal">
+                                    {r.hint}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell
+                                className={`text-right ${variantValueClass(r.variant)} ${valColor}`}
+                                data-testid={testIdFor(r.key)}
+                              >
+                                {formatVal(r)}
+                              </TableCell>
+                              {compare && (
+                                <TableCell className="text-right font-mono text-muted-foreground">
+                                  {formatPrev(r)}
+                                </TableCell>
+                              )}
+                              {compare && (
+                                <TableCell className="text-right">
+                                  {r.previous !== null ? (
+                                    <VarBadge current={r.value} previous={r.previous} invert={r.invert} />
+                                  ) : (
+                                    "—"
+                                  )}
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                        {expenseRows.length === 0 && (
+                          <TableRow>
+                            <TableCell className="pl-8 text-xs text-muted-foreground italic" colSpan={compare ? 4 : 2}>
+                              Nenhuma despesa paga registrada no período em "Contas a pagar".
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              );
+            })()
           )}
         </CardContent>
       </Card>
@@ -746,7 +694,7 @@ export default function DRE() {
       {cur && current && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-border/60">
-            <CardContent className="p-5">
+            <CardContent className="p-4 sm:p-5">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Receita líquida
               </p>
@@ -757,7 +705,7 @@ export default function DRE() {
             </CardContent>
           </Card>
           <Card className="border-border/60">
-            <CardContent className="p-5">
+            <CardContent className="p-4 sm:p-5">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Lucro bruto
               </p>
@@ -766,7 +714,7 @@ export default function DRE() {
             </CardContent>
           </Card>
           <Card className="border-border/60">
-            <CardContent className="p-5">
+            <CardContent className="p-4 sm:p-5">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Despesas operacionais
               </p>
@@ -775,7 +723,7 @@ export default function DRE() {
             </CardContent>
           </Card>
           <Card className={`border-border/60 ${cur.netResult >= 0 ? "" : "border-destructive/40"}`}>
-            <CardContent className="p-5">
+            <CardContent className="p-4 sm:p-5">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Resultado líquido
               </p>
