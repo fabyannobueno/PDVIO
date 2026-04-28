@@ -643,15 +643,9 @@ export default function PDV() {
           );
         }
       }
-      // Decimal/weighed items: skip duplicate add (qty editor handles existing line)
-      if (!hasCustomization && isDecimal) {
-        const existing = prev.find(
-          (i) => i.productId === product.id && i.addons.length === 0 && !i.notes,
-        );
-        if (existing) return prev;
-      }
-      // All other adds — including the same product clicked twice — become
-      // separate line items so each registro fica individualizado.
+      // Cada add — inclusive do mesmo produto por kg/g — gera uma linha
+      // separada. Pesagens diferentes (200g, 350g, 500g…) precisam ficar
+      // individualizadas no carrinho e no cupom.
       return [
         ...prev,
         {
@@ -672,12 +666,10 @@ export default function PDV() {
 
     // For decimal units (without customization), immediately open the qty editor.
     // Quando vem de scan (mergeExisting/qty já definido), não abrimos o editor.
+    // Sempre miramos a NOVA linha — produtos por kg/g não agrupam, cada
+    // adição precisa ser pesada individualmente.
     if (isDecimal && !hasCustomization && !opts?.mergeExisting && (opts?.qty ?? 0) === 0) {
-      const existing = cart.find(
-        (i) => i.productId === product.id && i.addons.length === 0 && !i.notes,
-      );
-      const targetId = existing?.lineId ?? newLineId;
-      setEditingQtyId(targetId);
+      setEditingQtyId(newLineId);
       setEditingQtyVal("0,000");
     }
     return true;
