@@ -18,6 +18,7 @@ import {
   Truck,
   FileText,
   BookOpen,
+  Scale,
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const operational: NavItem[] = [
 const management: NavItem[] = [
   { title: "Produtos", url: "/produtos", icon: Package, perm: "view_produtos" },
   { title: "Estoque", url: "/estoque", icon: Boxes, perm: "view_estoque" },
+  { title: "Balança", url: "/balanca", icon: Scale, perm: "view_balanca" },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, perm: "view_fornecedores" },
   { title: "Clientes", url: "/clientes", icon: Users, perm: "view_clientes" },
   { title: "Crediário", url: "/crediario", icon: BookOpen, perm: "view_crediario" },

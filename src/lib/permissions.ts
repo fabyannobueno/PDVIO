@@ -17,6 +17,7 @@ export type Permission =
   | "view_estoque"
   | "view_fornecedores"
   | "view_contas"
+  | "view_balanca"
   | "manage_company"
   | "manage_staff"
   | "manage_products"
@@ -45,6 +46,7 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_estoque",
     "view_fornecedores",
     "view_contas",
+    "view_balanca",
     "manage_company",
     "manage_staff",
     "manage_products",
@@ -72,6 +74,7 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_estoque",
     "view_fornecedores",
     "view_contas",
+    "view_balanca",
     "manage_staff",
     "manage_products",
     "manage_customers",
@@ -134,6 +137,7 @@ export const PERMISSION_TO_ROUTE: Partial<Record<Permission, string>> = {
   view_estoque: "/estoque",
   view_fornecedores: "/fornecedores",
   view_contas: "/contas",
+  view_balanca: "/balanca",
 };
 
 export function defaultLandingForRole(role: CompanyRole): string {

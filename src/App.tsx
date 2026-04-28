@@ -33,6 +33,7 @@ import Vendas from "./pages/Vendas";
 import Caixa from "./pages/Caixa";
 import Auditoria from "./pages/Auditoria";
 import Estoque from "./pages/Estoque";
+import Balanca from "./pages/Balanca";
 import Fornecedores from "./pages/Fornecedores";
 import Contas from "./pages/Contas";
 import Roadmap from "./pages/Roadmap";
@@ -117,6 +118,7 @@ const App = () => (
                   <Route path="/configuracoes" element={<PermissionGuard permission="view_configuracoes"><Configuracoes /></PermissionGuard>} />
                   <Route path="/auditoria" element={<PermissionGuard permission="view_auditoria"><Auditoria /></PermissionGuard>} />
                   <Route path="/estoque" element={<PermissionGuard permission="view_estoque"><Estoque /></PermissionGuard>} />
+                  <Route path="/balanca" element={<PermissionGuard permission="view_balanca"><Balanca /></PermissionGuard>} />
                   <Route path="/fornecedores" element={<PermissionGuard permission="view_fornecedores"><Fornecedores /></PermissionGuard>} />
                   <Route path="/contas" element={<PermissionGuard permission="view_contas"><Contas /></PermissionGuard>} />
                   <Route path="/roadmap" element={<Roadmap />} />

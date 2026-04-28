@@ -47,6 +47,7 @@ import {
   describeSplits,
 } from "@/components/app/MixedPaymentEditor";
 import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber, type Receipt } from "@/lib/printer";
+import { decodePriceLabelBarcode, productScaleCode } from "@/lib/weighBarcode";
 import { usePaymentSettings } from "@/hooks/usePaymentSettings";
 import { PixConfirmDialog } from "@/components/app/PixConfirmDialog";
 import type { PixKeyType } from "@/lib/pixPayload";
@@ -808,6 +809,42 @@ export default function PDV() {
   }, [availableStock, reservedByOthers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addToCartByBarcode = useCallback((barcode: string) => {
+    // 1) Detecta etiqueta de balança (EAN-13 com prefixo "2"): preço embutido
+    const weighInfo = decodePriceLabelBarcode(barcode);
+    if (weighInfo) {
+      const found = products.find(
+        (p) => p.numeric_id != null && productScaleCode(p.numeric_id) === weighInfo.productCode,
+      );
+      if (!found) {
+        toast.error(`Produto pesável não encontrado para o código ${weighInfo.productCode}`);
+        return;
+      }
+      // Para pesáveis em "g", o sale_price é por grama → converte para kg.
+      const basePrice =
+        found.is_promotion && found.promotion_price != null
+          ? Number(found.promotion_price)
+          : Number(found.sale_price);
+      const pricePerKg = found.stock_unit === "g" ? basePrice * 1000 : basePrice;
+      if (!Number.isFinite(pricePerKg) || pricePerKg <= 0) {
+        toast.error(`Preço inválido para ${found.name}`);
+        return;
+      }
+      // qty (em kg) = total da etiqueta ÷ preço atual por kg.
+      const qty = Math.round((weighInfo.priceInReais / pricePerKg) * 1000) / 1000;
+      if (qty <= 0) {
+        toast.error("Etiqueta com valor zerado.");
+        return;
+      }
+      const ok = addToCart(found, { qty });
+      if (ok) {
+        toast.success(
+          `${found.name} — ${qty.toLocaleString("pt-BR", { minimumFractionDigits: 3 })} kg (etiqueta ${weighInfo.priceInReais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`,
+        );
+      }
+      return;
+    }
+
+    // 2) Busca padrão por barcode/SKU/numeric_id
     const found =
       products.find((p) => p.barcode === barcode || p.sku === barcode) ||
       products.find((p) => String(p.numeric_id) === barcode);
