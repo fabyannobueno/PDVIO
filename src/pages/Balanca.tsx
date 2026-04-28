@@ -463,16 +463,16 @@ export default function Balanca() {
               <Label>Peso para a etiqueta (kg)</Label>
               <div className="flex gap-2">
                 <Input
-                  type="number"
-                  min={0}
-                  step={0.001}
-                  value={weightKg === 0 ? "" : weightKg}
+                  type="text"
+                  inputMode="numeric"
+                  value={fmtKg(weightKg)}
                   onChange={(e) => {
-                    const v = Number(e.target.value);
-                    if (!Number.isFinite(v)) return;
-                    setWeightKg(Math.max(0, Math.round(v * 1000) / 1000));
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    const grams = digits === "" ? 0 : parseInt(digits, 10);
+                    setWeightKg(grams / 1000);
                     setFollowLive(false);
                   }}
+                  onFocus={(e) => e.target.select()}
                   placeholder="0,000"
                   data-testid="input-balanca-weight"
                   className="font-mono text-base"
