@@ -802,7 +802,15 @@ export async function printReceipt(receipt: Receipt, settings = getSettings()): 
   await sendBytes(data, settings.mode);
 }
 
-export async function printTest(settings = getSettings()): Promise<void> {
+export async function printTest(
+  settings = getSettings(),
+  company?: {
+    name?: string | null;
+    document?: string | null;
+    phone?: string | null;
+    address?: string | null;
+  } | null,
+): Promise<void> {
   const sample: Receipt = {
     title: "CUPOM DE TESTE",
     items: [
@@ -815,6 +823,11 @@ export async function printTest(settings = getSettings()): Promise<void> {
     total: 55.9,
     payment: "Cartão de débito",
     date: new Date(),
+    companyName: company?.name ?? undefined,
+    companyDocument: company?.document ?? undefined,
+    companyPhone: company?.phone ?? undefined,
+    companyAddress: company?.address ?? undefined,
+    saleNumber: "000000",
   };
   await printReceipt(sample, settings);
 }

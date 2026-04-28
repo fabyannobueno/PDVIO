@@ -729,7 +729,7 @@ export default function Configuracoes() {
   async function handleTest() {
     setTesting(true);
     try {
-      await printTest(printer);
+      await printTest(printer, activeCompany ?? null);
       toast.success("Cupom de teste enviado");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha na impressão de teste");
