@@ -84,7 +84,7 @@ export function AppSidebar() {
   };
 
   const renderItem = (item: NavItem) => (
-    <SidebarMenuItem key={item.url}>
+    <SidebarMenuItem key={item.url} className={collapsed ? "flex justify-center" : ""}>
       <SidebarMenuButton
         asChild
         className={cn(
