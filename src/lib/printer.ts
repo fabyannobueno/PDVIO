@@ -340,15 +340,13 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
 
   for (const it of receipt.items) {
     const total = money(it.qty * it.price);
-    const isWeighed = !!it.unit && !["un", "cx", "pç", "pc"].includes(it.unit.toLowerCase());
-    if (isWeighed) {
-      chunks.push(line(it.name.slice(0, cols)));
-      const detail = `  ${qty(it.qty)} ${it.unit} x ${money(it.price)}`;
-      chunks.push(line(padCols(detail.slice(0, cols - total.length - 1), total, cols)));
-    } else {
-      const left = `${qty(it.qty)}x ${it.name}`.slice(0, cols - total.length - 1);
-      chunks.push(line(padCols(left, total, cols)));
-    }
+    const unitLabel = it.unit && it.unit.trim().length > 0 ? it.unit : "un";
+    // Header line: product name (with quantity prefix on integer items so the
+    // listing fica legível mesmo quando o cupom rola).
+    chunks.push(line(it.name.slice(0, cols)));
+    // Detail line: quantity unit x unit price, alinhado à direita com o total.
+    const detail = `  ${qty(it.qty)} ${unitLabel} x ${money(it.price)}`;
+    chunks.push(line(padCols(detail.slice(0, cols - total.length - 1), total, cols)));
   }
 
   chunks.push(divider(cols));
@@ -564,12 +562,11 @@ function printViaBrowser(receipt: Receipt, s: PrinterSettings) {
   const itemsHtml = receipt.items
     .map((it) => {
       const total = money(it.qty * it.price);
-      const isWeighed = !!it.unit && !["un", "cx", "pç", "pc"].includes(it.unit.toLowerCase());
-      if (isWeighed) {
-        return `<div class="item"><div class="name">${escapeHtml(it.name)}</div>` +
-          `<div class="row"><span class="left" style="padding-left:8px">${escapeHtml(qty(it.qty))} ${escapeHtml(it.unit!)} x ${escapeHtml(money(it.price))}</span><span class="price">${escapeHtml(total)}</span></div></div>`;
-      }
-      return `<div class="item"><div class="row"><span class="left">${escapeHtml(qty(it.qty))}x ${escapeHtml(it.name)}</span><span class="price">${escapeHtml(total)}</span></div></div>`;
+      const unitLabel = it.unit && it.unit.trim().length > 0 ? it.unit : "un";
+      // Sempre mostrar nome e, na linha de baixo, "qty unit x preço" alinhado
+      // ao total — para que o valor da unidade (un/kg/etc.) apareça no cupom.
+      return `<div class="item"><div class="name">${escapeHtml(it.name)}</div>` +
+        `<div class="row"><span class="left" style="padding-left:8px">${escapeHtml(qty(it.qty))} ${escapeHtml(unitLabel)} x ${escapeHtml(money(it.price))}</span><span class="price">${escapeHtml(total)}</span></div></div>`;
     })
     .join("");
 

@@ -615,42 +615,21 @@ export default function Comandas() {
       const basePrice = productPrice(product);
       const addonTotal = (addons ?? []).reduce((sum, a) => sum + Number(a.price || 0), 0);
       const unitPrice = Math.floor((basePrice + addonTotal) * 100) / 100;
-      const hasCustomization = (addons && addons.length > 0) || (notes && notes.trim().length > 0);
 
-      // Items with addons/notes are always inserted as separate rows so each
-      // customization is tracked individually
-      const existing =
-        hasCustomization || isDecimalUnit(product.stock_unit)
-          ? null
-          : comandaItems.find(
-              (i) =>
-                i.product_id === product.id &&
-                (!i.addons || i.addons.length === 0) &&
-                !i.notes,
-            );
-
-      if (existing) {
-        const newQty = Number(existing.quantity) + qty;
-        const newSub = Math.floor(unitPrice * newQty * 100) / 100;
-        const { error } = await supabase
-          .from("comanda_items")
-          .update({ quantity: newQty, subtotal: newSub })
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const sub = Math.floor(unitPrice * qty * 100) / 100;
-        const { error } = await supabase.from("comanda_items").insert({
-          comanda_id: detailComanda!.id,
-          product_id: product.id,
-          product_name: product.name,
-          quantity: qty,
-          unit_price: unitPrice,
-          subtotal: sub,
-          notes: notes && notes.trim().length > 0 ? notes.trim() : null,
-          addons: addons ?? [],
-        } as never);
-        if (error) throw error;
-      }
+      // Sempre insere como uma nova linha — adicionar o mesmo produto duas vezes
+      // gera dois registros separados, mantendo o histórico individualizado.
+      const sub = Math.floor(unitPrice * qty * 100) / 100;
+      const { error } = await supabase.from("comanda_items").insert({
+        comanda_id: detailComanda!.id,
+        product_id: product.id,
+        product_name: product.name,
+        quantity: qty,
+        unit_price: unitPrice,
+        subtotal: sub,
+        notes: notes && notes.trim().length > 0 ? notes.trim() : null,
+        addons: addons ?? [],
+      } as never);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/comanda-items", detailComanda?.id] });

@@ -628,27 +628,15 @@ export default function PDV() {
     ];
 
     setCart((prev) => {
-      // Items with addons/notes are always inserted as separate lines
-      if (!hasCustomization && !isDecimal) {
-        const idx = prev.findIndex(
-          (i) =>
-            i.productId === product.id &&
-            i.addons.length === 0 &&
-            !i.notes,
-        );
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + (qty || 1) };
-          return updated;
-        }
-      }
+      // Decimal/weighed items: skip duplicate add (qty editor handles existing line)
       if (!hasCustomization && isDecimal) {
-        // For decimal: keep existing behavior (don't dedup, just open qty editor)
         const existing = prev.find(
           (i) => i.productId === product.id && i.addons.length === 0 && !i.notes,
         );
         if (existing) return prev;
       }
+      // All other adds — including the same product clicked twice — become
+      // separate line items so each registro fica individualizado.
       return [
         ...prev,
         {
