@@ -88,34 +88,55 @@ async function tuneCameraForBarcodes(track: MediaStreamTrack) {
     focusDistance?: { min: number; max: number; step: number };
     exposureMode?: string[];
     whiteBalanceMode?: string[];
+    zoom?: { min: number; max: number; step: number };
   };
 
-  const advanced: MediaTrackConstraintSet[] = [];
+  // First pass: continuous AF + AE + AWB. Apply individually so a single
+  // unsupported value doesn't drop the whole tuning batch.
+  const tryApply = async (constraint: MediaTrackConstraintSet) => {
+    try {
+      await track.applyConstraints({ advanced: [constraint] });
+    } catch {
+      // ignore — best-effort tuning
+    }
+  };
 
   if (Array.isArray(caps.focusMode)) {
     if (caps.focusMode.includes("continuous")) {
-      advanced.push({ focusMode: "continuous" } as MediaTrackConstraintSet);
+      await tryApply({ focusMode: "continuous" } as MediaTrackConstraintSet);
     } else if (caps.focusMode.includes("single-shot")) {
-      advanced.push({ focusMode: "single-shot" } as MediaTrackConstraintSet);
+      await tryApply({ focusMode: "single-shot" } as MediaTrackConstraintSet);
     }
   }
 
   if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes("continuous")) {
-    advanced.push({ exposureMode: "continuous" } as MediaTrackConstraintSet);
+    await tryApply({ exposureMode: "continuous" } as MediaTrackConstraintSet);
   }
 
   if (
     Array.isArray(caps.whiteBalanceMode) &&
     caps.whiteBalanceMode.includes("continuous")
   ) {
-    advanced.push({ whiteBalanceMode: "continuous" } as MediaTrackConstraintSet);
+    await tryApply({ whiteBalanceMode: "continuous" } as MediaTrackConstraintSet);
   }
 
-  if (advanced.length > 0) {
-    try {
-      await track.applyConstraints({ advanced });
-    } catch {
-      // ignore — best-effort tuning
+  // Macro mode: if the device exposes `focusDistance`, force the closest
+  // possible focus. This is what fixes the "blurs when the product gets
+  // close to the purple frame" problem on phones whose default focus
+  // distance sits at infinity / 1m+.
+  if (caps.focusDistance && typeof caps.focusDistance.min === "number") {
+    await tryApply({
+      focusMode: "manual",
+      focusDistance: caps.focusDistance.min,
+    } as MediaTrackConstraintSet);
+  }
+
+  // Zoom: if available, give a moderate 2x zoom so the user can scan from
+  // further away and doesn't need to push the product against the lens.
+  if (caps.zoom && typeof caps.zoom.max === "number") {
+    const target = Math.min(2, caps.zoom.max);
+    if (target > caps.zoom.min) {
+      await tryApply({ zoom: target } as MediaTrackConstraintSet);
     }
   }
 }
