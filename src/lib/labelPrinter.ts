@@ -24,15 +24,15 @@ export interface WeighLabelData {
 }
 
 const BRL = (v: number) => {
-  // Limpa ruído de ponto flutuante e mostra até 3 casas decimais quando
-  // necessário (ex.: 0,200 kg × R$ 49,99 = R$ 9,998). Nunca arredonda para
-  // cima na 2ª casa.
-  const cleaned = Math.round(v * 1000) / 1000;
-  return cleaned.toLocaleString("pt-BR", {
+  // Limpa ruído de ponto flutuante e TRUNCA para 2 casas.
+  // Nunca arredonda para cima: 9,998 vira "R$ 9,99" (não "R$ 10,00").
+  const cleaned = Math.round(v * 10000) / 10000;
+  const truncated = Math.trunc(cleaned * 100) / 100;
+  return truncated.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 3,
+    maximumFractionDigits: 2,
   });
 };
 
