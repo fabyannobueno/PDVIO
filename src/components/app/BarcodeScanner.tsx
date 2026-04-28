@@ -78,6 +78,76 @@ function buildHints() {
   return hints;
 }
 
+// =============================================================
+// Singleton camera stream cache
+// =============================================================
+// Mobile browsers (especially iOS Safari) re-show the permission
+// indicator / loading every time `getUserMedia` is called, even on
+// origins that already have permission granted. To avoid that, we
+// cache the MediaStream at module level and reuse it across
+// scanner opens. The stream is only really released after a
+// short inactivity window or when the page is hidden / unloaded.
+let cachedStream: MediaStream | null = null;
+let releaseTimer: number | null = null;
+const RELEASE_AFTER_MS = 2 * 60 * 1000; // 2 minutes
+
+function streamIsAlive(s: MediaStream | null): s is MediaStream {
+  return !!s && s.getVideoTracks().some((t) => t.readyState === "live" && t.enabled);
+}
+
+function cancelRelease() {
+  if (releaseTimer != null) {
+    clearTimeout(releaseTimer);
+    releaseTimer = null;
+  }
+}
+
+function scheduleRelease() {
+  cancelRelease();
+  releaseTimer = window.setTimeout(() => {
+    if (cachedStream) {
+      cachedStream.getTracks().forEach((t) => t.stop());
+      cachedStream = null;
+    }
+  }, RELEASE_AFTER_MS);
+}
+
+function releaseNow() {
+  cancelRelease();
+  if (cachedStream) {
+    cachedStream.getTracks().forEach((t) => t.stop());
+    cachedStream = null;
+  }
+}
+
+// Release the camera if the tab goes to the background or the page
+// is being unloaded — keeping the camera "open" while invisible
+// would just waste battery and freak the user out (LED on the
+// status bar without a visible reason).
+if (typeof window !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") releaseNow();
+  });
+  window.addEventListener("pagehide", releaseNow);
+}
+
+async function acquireCamera(): Promise<MediaStream> {
+  cancelRelease();
+  if (streamIsAlive(cachedStream)) return cachedStream;
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+      frameRate: { ideal: 30 },
+    },
+    audio: false,
+  });
+  cachedStream = stream;
+  return stream;
+}
+
 // Try to coerce the camera into the best mode for barcode reading:
 // continuous autofocus + macro focus distance + image-stabilization-off,
 // guarded by capability checks so it silently no-ops on devices that
@@ -153,18 +223,25 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
   const [torchOn, setTorchOn] = useState(false);
   const detectedRef = useRef(false);
 
+  // "Soft stop": tear down the ZXing decoder and detach the video element
+  // but leave the underlying camera stream alive in the module-level cache
+  // so reopening the scanner doesn't re-prompt for permission. The cache
+  // is released after a couple of minutes of inactivity (or when the tab
+  // is hidden / unloaded) — see the cache helpers above.
   function stopAll() {
     if (readerRef.current) {
       try { readerRef.current.reset(); } catch {}
       readerRef.current = null;
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
     }
+    streamRef.current = null;
     trackRef.current = null;
     setTorchSupported(false);
     setTorchOn(false);
+    scheduleRelease();
   }
 
   async function toggleTorch() {
@@ -219,21 +296,15 @@ export function BarcodeScanner({ open, onClose, onResult }: BarcodeScannerProps)
 
     (async () => {
       try {
-        // Ask for the rear camera at the highest practical resolution.
-        // Higher resolution = ZXing can decode the barcode from further
-        // away and with more tolerance for motion blur.
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            frameRate: { ideal: 30 },
-          },
-          audio: false,
-        });
+        // Reuses an already-granted camera stream when one is cached
+        // (see acquireCamera + cachedStream above). On the very first
+        // open this triggers the browser permission prompt; subsequent
+        // opens within the same page session don't.
+        const stream = await acquireCamera();
 
         if (stopped) {
-          stream.getTracks().forEach((t) => t.stop());
+          // Don't kill the stream — let the cache hold it for the next open.
+          scheduleRelease();
           return;
         }
 
