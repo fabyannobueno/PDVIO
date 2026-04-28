@@ -27,6 +27,7 @@ import Financeiro from "./pages/Financeiro";
 import NotFound from "./pages/NotFound.tsx";
 import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaDePrivacidade from "./pages/PoliticaDePrivacidade";
+import Lgpd from "./pages/Lgpd";
 import Relatorios from "./pages/Relatorios";
 import Vendas from "./pages/Vendas";
 import Caixa from "./pages/Caixa";
@@ -86,6 +87,7 @@ const App = () => (
                 <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/termos-de-uso" element={<TermosDeUso />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+                <Route path="/lgpd" element={<Lgpd />} />
                 <Route
                   path="/onboarding"
                   element={
