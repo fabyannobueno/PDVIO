@@ -31,7 +31,12 @@ import {
   buildPriceLabelBarcode,
   productScaleCode,
 } from "@/lib/weighBarcode";
-import { printWeighLabel } from "@/lib/labelPrinter";
+import {
+  printWeighLabel,
+  WEIGH_LABEL_SIZES,
+  DEFAULT_WEIGH_LABEL_SIZE,
+  type WeighLabelSize,
+} from "@/lib/labelPrinter";
 import { Barcode } from "@/components/Barcode";
 
 // Unidades aceitas para etiquetagem por peso.
@@ -240,6 +245,7 @@ export default function Balanca() {
         barcode,
         companyName: activeCompany?.name ?? undefined,
         printedAt: new Date(),
+        size: settings.labelSize ?? DEFAULT_WEIGH_LABEL_SIZE,
       });
       // Limpa peso para próximo item
       setFollowLive(true);
@@ -587,6 +593,34 @@ export default function Balanca() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Tamanho do papel */}
+            <div className="space-y-2">
+              <Label>Tamanho da etiqueta</Label>
+              <Select
+                value={settings.labelSize ?? DEFAULT_WEIGH_LABEL_SIZE}
+                onValueChange={(v) => updateSettings({ labelSize: v as WeighLabelSize })}
+              >
+                <SelectTrigger data-testid="select-label-size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {WEIGH_LABEL_SIZES.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{s.label}</span>
+                        <span className="text-xs text-muted-foreground">{s.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Selecione o mesmo tamanho do rolo na sua impressora térmica.
+              </p>
+            </div>
+
+            <Separator />
+
             {!selected ? (
               <div className="flex h-48 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
                 Selecione um produto para ver a etiqueta.
@@ -595,30 +629,30 @@ export default function Balanca() {
               <>
                 <div className="rounded-xl border bg-white p-4 text-black shadow-sm">
                   {activeCompany?.name && (
-                    <p className="border-b border-black pb-1 text-center text-xs font-bold uppercase">
+                    <p className="border-b border-black pb-1 text-center text-xs font-bold uppercase tracking-wide">
                       {activeCompany.name}
                     </p>
                   )}
-                  <p className="mt-2 line-clamp-2 text-base font-bold leading-tight">
+                  <p className="mt-2 line-clamp-2 text-base font-extrabold uppercase leading-tight">
                     {selected.name}
                   </p>
                   {productCode && (
                     <p className="text-[11px] text-neutral-500">Cód.: {productCode}</p>
                   )}
 
-                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-y border-black/40 py-1">
-                    <div>
-                      <p className="text-[10px] uppercase text-neutral-500">Peso líq.</p>
-                      <p className="font-mono text-sm font-semibold">{fmtKg(weightKg)} kg</p>
+                  <div className="mt-2 flex items-stretch justify-between gap-3 border-y border-black/40 py-1">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-wide text-neutral-500">PESO LÍQ.</span>
+                      <span className="font-mono text-sm font-semibold">{fmtKg(weightKg)} kg</span>
                     </div>
-                    <div>
-                      <p className="text-[10px] uppercase text-neutral-500">Preço/kg</p>
-                      <p className="font-mono text-sm font-semibold">{fmtBRL(pricePerKg)}</p>
+                    <div className="flex flex-col items-end text-right">
+                      <span className="text-[10px] uppercase tracking-wide text-neutral-500">PREÇO/KG</span>
+                      <span className="font-mono text-sm font-semibold">{fmtBRL(pricePerKg)}</span>
                     </div>
                   </div>
 
                   <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xs font-semibold uppercase">Total</span>
+                    <span className="text-xs font-bold uppercase">TOTAL</span>
                     <span className="font-mono text-2xl font-extrabold tabular-nums">
                       {fmtBRL(totalPrice)}
                     </span>

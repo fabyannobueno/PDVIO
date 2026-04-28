@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { supabase } from "@/integrations/supabase/client";
+import { DEFAULT_WEIGH_LABEL_SIZE, type WeighLabelSize } from "@/lib/labelPrinter";
 
 export type ScaleMode = "serial" | "manual";
 export type ScaleProtocol = "toledo" | "filizola" | "urano" | "generic";
@@ -28,6 +29,8 @@ export interface ScaleSettings {
   parity: "none" | "even" | "odd";
   /** Etiqueta amigável do dispositivo conectado. */
   deviceLabel?: string;
+  /** Tamanho do papel da etiqueta de pesagem. */
+  labelSize?: WeighLabelSize;
 }
 
 export const defaultScaleSettings: ScaleSettings = {
@@ -37,6 +40,7 @@ export const defaultScaleSettings: ScaleSettings = {
   dataBits: 8,
   stopBits: 1,
   parity: "none",
+  labelSize: DEFAULT_WEIGH_LABEL_SIZE,
 };
 
 export const SCALE_PRESETS: Array<{
