@@ -37,6 +37,7 @@ import {
   AlertTriangle,
   Wallet,
   BookOpen,
+  Tag,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BarcodeScanner } from "@/components/app/BarcodeScanner";
@@ -62,6 +63,15 @@ import {
   deleteReservation,
   clearCart as clearCartReservations,
 } from "@/lib/cartReservations";
+import {
+  fetchActivePromotions,
+  applyPromotions,
+  validateCoupon,
+  consumeCoupon,
+  computeCouponDiscount,
+  type Coupon,
+  type CartLineInput,
+} from "@/lib/promotions";
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: "Dinheiro",
@@ -335,6 +345,10 @@ export default function PDV() {
     { method: "pix", amountStr: "" },
   ]);
   const [orderDiscount, setOrderDiscount] = useState("");
+  // Cupom digitado no checkout
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingDiscountVal, setEditingDiscountVal] = useState("");
   const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
@@ -380,6 +394,14 @@ export default function PDV() {
       if (error) throw error;
       return (data ?? []) as Product[];
     },
+  });
+
+  // Promoções automáticas ativas para essa empresa
+  const { data: activePromotions = [] } = useQuery({
+    queryKey: ["/pdv/promotions", activeCompany?.id],
+    enabled: !!activeCompany?.id,
+    queryFn: () => fetchActivePromotions(activeCompany!.id),
+    staleTime: 60_000,
   });
 
   // Realtime: refresh products whenever stock changes (sales from other PDVs,
@@ -516,8 +538,73 @@ export default function PDV() {
   }, [customers, customerSearch]);
 
   const cartSubtotal = cart.reduce((sum, item) => sum + itemSubtotal(item), 0);
-  const orderDiscountAmt = Math.min(parseMoney(orderDiscount), cartSubtotal);
-  const grandTotal = Math.max(0, cartSubtotal - orderDiscountAmt);
+
+  // Promoções automáticas (categoria %, leve N pague M) — calculadas
+  // sobre o carrinho atual. Não alteram as linhas; resultam em um
+  // desconto agregado mostrado no rodapé.
+  const promotionResult = useMemo(() => {
+    if (!cart.length || !activePromotions.length) {
+      return { perLine: [], totalDiscount: 0, applied: [] as Array<{ id: string; name: string; amount: number }> };
+    }
+    const productById = new Map(products.map((p) => [p.id, p] as const));
+    const lines: CartLineInput[] = cart.map((item) => {
+      const p = productById.get(item.productId);
+      return {
+        productId: item.productId,
+        category: p?.category ?? null,
+        basePrice: item.unitPrice - item.itemDiscount,
+        quantity: item.quantity,
+      };
+    });
+    return applyPromotions(lines, activePromotions);
+  }, [cart, products, activePromotions]);
+  const promotionDiscountAmt = Math.min(promotionResult.totalDiscount, cartSubtotal);
+
+  const subtotalAfterPromo = Math.max(0, cartSubtotal - promotionDiscountAmt);
+  const couponDiscountAmt = appliedCoupon
+    ? Math.min(computeCouponDiscount(appliedCoupon, subtotalAfterPromo), subtotalAfterPromo)
+    : 0;
+  const subtotalAfterCoupon = Math.max(0, subtotalAfterPromo - couponDiscountAmt);
+  const orderDiscountAmt = Math.min(parseMoney(orderDiscount), subtotalAfterCoupon);
+  const grandTotal = Math.max(0, subtotalAfterCoupon - orderDiscountAmt);
+
+  // Se a cesta cair abaixo da compra mínima do cupom, removemos automaticamente.
+  useEffect(() => {
+    if (!appliedCoupon) return;
+    if (cart.length === 0 || subtotalAfterPromo < Number(appliedCoupon.min_purchase ?? 0)) {
+      setAppliedCoupon(null);
+      setCouponInput("");
+      if (cart.length > 0) toast.info("Cupom removido: subtotal abaixo do mínimo.");
+    }
+  }, [cart.length, subtotalAfterPromo, appliedCoupon]);
+
+  async function handleApplyCoupon() {
+    if (!activeCompany?.id) return;
+    const code = couponInput.trim();
+    if (!code) return;
+    if (subtotalAfterPromo <= 0) {
+      toast.error("Adicione itens ao carrinho antes de aplicar um cupom.");
+      return;
+    }
+    setCouponLoading(true);
+    try {
+      const res = await validateCoupon(code, subtotalAfterPromo, activeCompany.id);
+      if (!res.ok || !res.coupon) {
+        toast.error(res.error ?? "Cupom inválido.");
+        return;
+      }
+      setAppliedCoupon(res.coupon);
+      setCouponInput(res.coupon.code);
+      toast.success(`Cupom ${res.coupon.code} aplicado.`);
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponInput("");
+  }
   const cashReceivedAmt = parseMoney(cashReceived);
   const change = Math.max(0, cashReceivedAmt - grandTotal);
   const cartQty = cart.reduce((s, i) => s + i.quantity, 0);
@@ -750,6 +837,8 @@ export default function PDV() {
   function clearCart() {
     setCart([]);
     setOrderDiscount("");
+    setAppliedCoupon(null);
+    setCouponInput("");
     setCashReceived("");
     setPaymentMethod("cash");
     setMixedSplits([{ method: "pix", amountStr: "" }]);
@@ -1194,13 +1283,18 @@ export default function PDV() {
       const mixedNote =
         paymentMethod === "mixed" ? `[Misto] ${describeSplits(mixedSplits)}` : "";
 
+      // Desconto agregado salvo em sales.discount_amount engloba TODOS os
+      // descontos aplicados (manual + promoções automáticas + cupom). Os
+      // campos coupon_*/promotion_discount detalham a origem para relatórios.
+      const totalSaleDiscount = orderDiscountAmt + promotionDiscountAmt + couponDiscountAmt;
+
       const { data: sale, error: saleErr } = await supabase
         .from("sales")
         .insert({
           company_id: activeCompany!.id,
           customer_id: selectedCustomer?.id ?? null,
           subtotal: cartSubtotal,
-          discount_amount: orderDiscountAmt,
+          discount_amount: totalSaleDiscount,
           total: grandTotal,
           payment_method: paymentMethod,
           payment_amount: paymentMethod === "cash" ? cashReceivedAmt || grandTotal : grandTotal,
@@ -1208,6 +1302,14 @@ export default function PDV() {
           status: "completed",
           ...(mixedNote ? { notes: mixedNote } : {}),
           ...(openSession?.id ? { cash_session_id: openSession.id } : {}),
+          ...(appliedCoupon
+            ? {
+                coupon_id: appliedCoupon.id,
+                coupon_code: appliedCoupon.code,
+                coupon_discount: couponDiscountAmt,
+              }
+            : {}),
+          ...(promotionDiscountAmt > 0 ? { promotion_discount: promotionDiscountAmt } : {}),
         } as any)
         .select("id, numeric_id")
         .single();
@@ -1298,12 +1400,22 @@ export default function PDV() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/products", activeCompany!.id] });
 
+      // Consume coupon usage (best-effort; failure não invalida a venda)
+      if (appliedCoupon) {
+        try {
+          await consumeCoupon(appliedCoupon);
+        } catch (e) {
+          console.error("Falha ao incrementar uso do cupom:", e);
+        }
+      }
+
       // Audit: log discount applied (order or item-level)
       const totalItemDiscount = cart.reduce(
         (s, i) => s + i.itemDiscount * i.quantity,
         0
       );
-      const totalDiscount = orderDiscountAmt + totalItemDiscount;
+      const totalDiscount =
+        orderDiscountAmt + totalItemDiscount + promotionDiscountAmt + couponDiscountAmt;
       if (totalDiscount > 0) {
         logAudit({
           companyId: activeCompany!.id,
@@ -1314,6 +1426,9 @@ export default function PDV() {
           metadata: {
             order_discount: orderDiscountAmt,
             item_discount: totalItemDiscount,
+            promotion_discount: promotionDiscountAmt,
+            coupon_discount: couponDiscountAmt,
+            coupon_code: appliedCoupon?.code ?? null,
             subtotal: cartSubtotal,
             total: grandTotal,
           },
@@ -1337,7 +1452,7 @@ export default function PDV() {
           };
         }),
         subtotal: cartSubtotal,
-        discount: orderDiscountAmt,
+        discount: orderDiscountAmt + promotionDiscountAmt + couponDiscountAmt,
         total: grandTotal,
         payment:
           paymentMethod === "mixed"
@@ -2042,6 +2157,84 @@ export default function PDV() {
                 <span>Subtotal</span>
                 <span className="font-mono">{fmtBRL(cartSubtotal)}</span>
               </div>
+
+              {/* Promoções automáticas aplicadas */}
+              {promotionDiscountAmt > 0 && (
+                <div
+                  className="flex justify-between text-emerald-700 dark:text-emerald-400"
+                  data-testid="pdv-promotion-discount"
+                  title={promotionResult.applied.map((a) => `${a.name}: -${fmtBRL(a.amount)}`).join("\n")}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    <Tag className="h-3.5 w-3.5" />
+                    Promoções
+                    {promotionResult.applied.length > 0 && (
+                      <span className="text-[11px] font-medium opacity-75">
+                        ({promotionResult.applied.length})
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-mono">-{fmtBRL(promotionDiscountAmt)}</span>
+                </div>
+              )}
+
+              {/* Cupom: input + valor aplicado */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">Cupom</span>
+                {appliedCoupon ? (
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/40 bg-emerald-500/10 font-mono text-emerald-700 dark:text-emerald-400"
+                    >
+                      {appliedCoupon.code}
+                    </Badge>
+                    <span className="font-mono text-emerald-700 dark:text-emerald-400">
+                      -{fmtBRL(couponDiscountAmt)}
+                    </span>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      title="Remover cupom"
+                      aria-label="Remover cupom"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      value={couponInput}
+                      onChange={(e) =>
+                        setCouponInput(
+                          e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""),
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleApplyCoupon();
+                        }
+                      }}
+                      placeholder="Código"
+                      className="h-7 w-24 rounded-lg border border-border bg-muted/30 px-2 py-1 text-right font-mono text-xs"
+                      data-testid="pdv-coupon-input"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      data-testid="pdv-coupon-apply"
+                    >
+                      {couponLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Aplicar"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Desconto</span>
                 <div className="flex items-center gap-1.5">

@@ -154,7 +154,7 @@ const SECTIONS: RoadmapSection[] = [
     title: "Vendas e crescimento",
     icon: Tag,
     items: [
-      { title: "Promoções e cupons", description: "Descontos por produto, por categoria, \"leve 3 pague 2\" e cupons por código.", status: "in_progress" },
+      { title: "Promoções e cupons", description: "Promoções automáticas por categoria (% off) e \"leve N pague M\" por produto, com vigência opcional. Cupons por código (% ou R$) com compra mínima, limite de usos e validade — aplicados direto no PDV. Salvo em sales.coupon_id / promotion_discount para relatórios.", status: "done" },
       { title: "Programa de fidelidade", description: "Pontos por compra, resgate e cashback simples.", status: "in_progress" },
       { title: "Delivery / pedidos online", description: "Cardápio público para o cliente e integração com WhatsApp para receber pedidos.", status: "planned" },
       { title: "Mesa / comanda com QR Code", description: "Cliente escaneia o QR, vê a comanda e faz o pedido pelo celular.", status: "planned" },

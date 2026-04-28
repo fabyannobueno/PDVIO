@@ -37,6 +37,7 @@ import Balanca from "./pages/Balanca";
 import Fornecedores from "./pages/Fornecedores";
 import Contas from "./pages/Contas";
 import Roadmap from "./pages/Roadmap";
+import Promocoes from "./pages/Promocoes";
 import Suporte from "./pages/Suporte";
 import SuporteTicket from "./pages/SuporteTicket";
 import { PermissionGuard } from "@/components/PermissionGuard";
@@ -121,6 +122,7 @@ const App = () => (
                   <Route path="/balanca" element={<PermissionGuard permission="view_balanca"><Balanca /></PermissionGuard>} />
                   <Route path="/fornecedores" element={<PermissionGuard permission="view_fornecedores"><Fornecedores /></PermissionGuard>} />
                   <Route path="/contas" element={<PermissionGuard permission="view_contas"><Contas /></PermissionGuard>} />
+                  <Route path="/promocoes" element={<PermissionGuard permission="view_promocoes"><Promocoes /></PermissionGuard>} />
                   <Route path="/roadmap" element={<Roadmap />} />
                   <Route path="/suporte" element={<Suporte />} />
                   <Route path="/suporte/ticket/:seq" element={<SuporteTicket />} />

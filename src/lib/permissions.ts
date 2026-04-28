@@ -18,6 +18,8 @@ export type Permission =
   | "view_fornecedores"
   | "view_contas"
   | "view_balanca"
+  | "view_promocoes"
+  | "manage_promocoes"
   | "manage_company"
   | "manage_staff"
   | "manage_products"
@@ -47,6 +49,8 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_fornecedores",
     "view_contas",
     "view_balanca",
+    "view_promocoes",
+    "manage_promocoes",
     "manage_company",
     "manage_staff",
     "manage_products",
@@ -75,6 +79,8 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_fornecedores",
     "view_contas",
     "view_balanca",
+    "view_promocoes",
+    "manage_promocoes",
     "manage_staff",
     "manage_products",
     "manage_customers",
@@ -91,6 +97,7 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_clientes",
     "view_crediario",
     "view_vendas",
+    "view_promocoes",
     "manage_customers",
     "apply_discount",
     "open_close_cash",
@@ -138,6 +145,7 @@ export const PERMISSION_TO_ROUTE: Partial<Record<Permission, string>> = {
   view_fornecedores: "/fornecedores",
   view_contas: "/contas",
   view_balanca: "/balanca",
+  view_promocoes: "/promocoes",
 };
 
 export function defaultLandingForRole(role: CompanyRole): string {

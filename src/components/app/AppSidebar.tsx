@@ -19,6 +19,7 @@ import {
   FileText,
   BookOpen,
   Scale,
+  Tag,
 } from "lucide-react";
 import {
   Sidebar,
@@ -56,6 +57,7 @@ const management: NavItem[] = [
   { title: "Clientes", url: "/clientes", icon: Users, perm: "view_clientes" },
   { title: "Crediário", url: "/crediario", icon: BookOpen, perm: "view_crediario" },
   { title: "Vendas", url: "/vendas", icon: ShoppingBag, perm: "view_vendas" },
+  { title: "Promoções", url: "/promocoes", icon: Tag, perm: "view_promocoes" },
   { title: "Financeiro", url: "/financeiro", icon: Landmark, perm: "view_financeiro" },
   { title: "Contas", url: "/contas", icon: FileText, perm: "view_contas" },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, perm: "view_relatorios" },

@@ -45,6 +45,10 @@ Uses Supabase (PostgreSQL) with Row Level Security (RLS). Tables:
 - `stock_movements` — Histórico de movimentações de estoque (entrada, ajuste, contagem, perda); trigger atualiza `products.stock_quantity` automaticamente
 - `accounts` — Contas a pagar e a receber, com parcelamento, status (open/paid/cancelled) e fluxo de caixa projetado
   Migração: `supabase/migrations/20260422_inventory_suppliers_finance.sql`
+- `promotions` — Regras automáticas de desconto (categoria %, leve N pague M) com vigência opcional. Aplicadas no PDV via `src/lib/promotions.ts`
+- `coupons` — Códigos digitados no PDV (% ou R$), com compra mínima, limite de usos e validade. Único por empresa via UNIQUE(company_id, UPPER(code))
+- Colunas extras em `sales`: `coupon_id`, `coupon_code`, `coupon_discount`, `promotion_discount` para rastrear origem de desconto em relatórios
+  Migração: `supabase/migrations/20260428_promotions_coupons.sql` (precisa ser aplicada manualmente via SQL editor do Supabase)
 
 ## User Flow
 
