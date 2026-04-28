@@ -9,13 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   Send,
   Loader2,
   Bot,
-  User as UserIcon,
   Headphones,
   Info,
   CheckCircle2,
@@ -137,11 +146,9 @@ export default function SuporteTicket() {
 
   const [reply, setReply] = useState("");
   const [botThinking, setBotThinking] = useState(false);
+  const [confirmResolveOpen, setConfirmResolveOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const seqNum = Number(seq);
-
-  const isOwnerOrManager =
-    activeCompany?.role === "owner" || activeCompany?.role === "manager";
 
   // Esta página é o canal do CLIENTE (empresa) com o suporte do PDVIO.
   // Mesmo donos/gerentes da empresa são clientes aqui — quem responde como
@@ -626,7 +633,7 @@ export default function SuporteTicket() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setStatus.mutate("resolved")}
+                      onClick={() => setConfirmResolveOpen(true)}
                       disabled={setStatus.isPending}
                       className="h-7 text-xs"
                       data-testid="button-mark-resolved"
@@ -642,23 +649,49 @@ export default function SuporteTicket() {
 
           {isClosed && (
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-              <span>Este chamado está {ticket.status === "resolved" ? "resolvido" : "fechado"}.</span>
-              {isOwnerOrManager && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setStatus.mutate("open")}
-                  disabled={setStatus.isPending}
-                  className="h-7 text-xs"
-                  data-testid="button-reopen"
-                >
-                  Reabrir chamado
-                </Button>
-              )}
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                Este chamado está {ticket.status === "resolved" ? "resolvido" : "fechado"}. Se precisar de algo novo, abra um novo chamado.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/suporte")}
+                className="h-7 text-xs"
+                data-testid="button-back-to-support"
+              >
+                <ArrowLeft className="mr-1.5 h-3 w-3" />
+                Voltar ao Suporte
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de confirmação para marcar como resolvido */}
+      <AlertDialog open={confirmResolveOpen} onOpenChange={setConfirmResolveOpen}>
+        <AlertDialogContent data-testid="dialog-confirm-resolve">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar este chamado como resolvido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ao confirmar, o chamado será encerrado e <strong>não poderá ser reaberto</strong>.
+              Se precisar de algo a mais sobre o assunto, será necessário abrir um novo chamado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-resolve">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmResolveOpen(false);
+                setStatus.mutate("resolved");
+              }}
+              data-testid="button-confirm-resolve"
+            >
+              Sim, marcar como resolvido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
