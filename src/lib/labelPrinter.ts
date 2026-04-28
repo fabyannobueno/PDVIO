@@ -1,14 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Impressão de etiquetas de pesagem (popup HTML + window.print()).
 //
-// Funciona com QUALQUER impressora reconhecida pelo navegador — térmica de
-// etiqueta (Argox, Elgin L42, Bematech LB-1000, Zebra), térmica de cupom
-// (configurada para tamanho 80×40 mm) ou impressora comum em folha A4 com
-// adesivos. O usuário escolhe a impressora e o tamanho do papel no diálogo
-// padrão de impressão do navegador, exatamente como faz para o cupom.
+// Layout: padrão de balança térmica brasileira (Filizola, Toledo, Elgin,
+// Argox e similares). Topo com nome do produto centralizado, duas colunas
+// de informações (EMBALADO EM / VALIDO ATE × TARA / PESO / PREÇO/kg), e na
+// base o código de barras EAN-13 à esquerda com o TOTAL R$ em destaque à
+// direita.
 //
-// Tamanhos suportados (compatíveis com balanças térmicas Toledo, Filizola,
-// Elgin, Argox e similares):
+// Tamanhos suportados:
 //   • 40 × 40 mm — etiqueta compacta de pesagem
 //   • 60 × 40 mm — padrão de varejo, mais usada
 //   • 60 × 80 mm — etiqueta alta, para mais informações
@@ -46,67 +45,60 @@ interface SizeStyle {
   width: number;          // mm
   height: number;         // mm
   padding: string;
-  gap: string;
-  companyFs: string;
-  nameFs: string;
-  codeFs: string;
-  lblFs: string;
-  valFs: string;
+  titleFs: string;
+  infoLblFs: string;
+  infoValFs: string;
   totalLblFs: string;
   totalValFs: string;
   barcodeHeightMm: number;
   barcodeWidth: number;   // bar thickness in JsBarcode units
   barcodeFontPt: number;
+  /** Largura aproximada do bloco do código de barras (mm). */
+  barcodeBlockMm: number;
 }
 
 const SIZE_STYLES: Record<WeighLabelSize, SizeStyle> = {
   "40x40": {
     width: 40,
     height: 40,
-    padding: "1.2mm 1.5mm",
-    gap: "0.6mm",
-    companyFs: "6.5pt",
-    nameFs: "7.5pt",
-    codeFs: "5pt",
-    lblFs: "4.8pt",
-    valFs: "6.8pt",
-    totalLblFs: "6.5pt",
-    totalValFs: "10pt",
-    barcodeHeightMm: 9,
-    barcodeWidth: 1.4,
-    barcodeFontPt: 7,
+    padding: "1mm 1.5mm",
+    titleFs: "7.5pt",
+    infoLblFs: "4.5pt",
+    infoValFs: "5pt",
+    totalLblFs: "5.5pt",
+    totalValFs: "11pt",
+    barcodeHeightMm: 7,
+    barcodeWidth: 1.1,
+    barcodeFontPt: 5,
+    barcodeBlockMm: 22,
   },
   "60x40": {
     width: 60,
     height: 40,
-    padding: "1.6mm 2.2mm",
-    gap: "0.8mm",
-    companyFs: "8pt",
-    nameFs: "10pt",
-    codeFs: "6pt",
-    lblFs: "5.5pt",
-    valFs: "8pt",
-    totalLblFs: "8pt",
-    totalValFs: "13pt",
-    barcodeHeightMm: 11,
-    barcodeWidth: 1.7,
-    barcodeFontPt: 9,
+    padding: "1.4mm 2mm",
+    titleFs: "10pt",
+    infoLblFs: "5.5pt",
+    infoValFs: "6.5pt",
+    totalLblFs: "7pt",
+    totalValFs: "15pt",
+    barcodeHeightMm: 9,
+    barcodeWidth: 1.4,
+    barcodeFontPt: 6,
+    barcodeBlockMm: 32,
   },
   "60x80": {
     width: 60,
     height: 80,
     padding: "2.5mm 3mm",
-    gap: "1.2mm",
-    companyFs: "9pt",
-    nameFs: "12pt",
-    codeFs: "7pt",
-    lblFs: "6.5pt",
-    valFs: "10pt",
+    titleFs: "12pt",
+    infoLblFs: "7pt",
+    infoValFs: "8.5pt",
     totalLblFs: "9pt",
-    totalValFs: "16pt",
-    barcodeHeightMm: 18,
-    barcodeWidth: 2.2,
-    barcodeFontPt: 11,
+    totalValFs: "18pt",
+    barcodeHeightMm: 14,
+    barcodeWidth: 1.9,
+    barcodeFontPt: 8,
+    barcodeBlockMm: 35,
   },
 };
 
@@ -118,28 +110,32 @@ export interface WeighLabelData {
   barcode: string;          // EAN-13 já com check digit
   companyName?: string;
   productCode?: string;     // 6 dígitos exibidos abaixo do nome
-  printedAt?: Date;
-  /** Validade do produto, se aplicável (DD/MM/YYYY). */
+  /** Tara aplicada (kg). Quando 0/undefined, omitida da etiqueta. */
+  tareKg?: number;
+  /** Data de embalagem. Default = data atual. */
+  packagedAt?: Date;
+  /** Validade do produto (DD/MM/YY). Quando vazia, omitida. */
   expiresAt?: string;
   /** Tamanho do papel — afeta CSS @page e fontes. */
   size?: WeighLabelSize;
 }
 
-const BRL = (v: number) => {
+const BRL_NUMBER = (v: number) => {
   // Limpa ruído de ponto flutuante e TRUNCA para 2 casas.
-  // Nunca arredonda para cima: 9,998 vira "R$ 9,99" (não "R$ 10,00").
+  // Nunca arredonda para cima: 9,998 vira "9,99" (não "10,00").
   const cleaned = Math.round(v * 10000) / 10000;
   const truncated = Math.trunc(cleaned * 100) / 100;
   return truncated.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 };
 
-const KG = (v: number) =>
-  `${v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
+const KG_NUMBER = (v: number) =>
+  v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+const fmtDateBR = (d: Date) =>
+  d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 
 function generateBarcodeSvg(value: string, style: SizeStyle): string {
   // Renderiza o código de barras em um SVG offscreen e devolve o markup.
@@ -153,12 +149,12 @@ function generateBarcodeSvg(value: string, style: SizeStyle): string {
       height: heightPx,
       displayValue: true,
       fontSize: Math.round(style.barcodeFontPt * 1.6),
+      textMargin: 0,
       margin: 0,
       background: "#ffffff",
       lineColor: "#000000",
     });
   } catch {
-    // Fallback: tenta CODE128 se o valor não passar na validação EAN.
     try {
       JsBarcode(svg, value, {
         format: "CODE128",
@@ -166,10 +162,10 @@ function generateBarcodeSvg(value: string, style: SizeStyle): string {
         height: heightPx,
         displayValue: true,
         fontSize: Math.round(style.barcodeFontPt * 1.6),
+        textMargin: 0,
         margin: 0,
       });
     } catch {
-      // se ainda falhar, devolve um placeholder
       return `<text x="0" y="20">${value}</text>`;
     }
   }
@@ -179,10 +175,6 @@ function generateBarcodeSvg(value: string, style: SizeStyle): string {
 /**
  * Abre uma janela popup com a etiqueta renderizada e dispara o diálogo de
  * impressão automaticamente. Se o popup for bloqueado, lança um erro.
- *
- * Suporta uma ou várias etiquetas — quando recebe um array, imprime todas no
- * mesmo trabalho. O tamanho do papel pode ser definido por etiqueta; quando
- * o array tem tamanhos diferentes, vence o tamanho da primeira.
  */
 export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void {
   const list = Array.isArray(input) ? input : [input];
@@ -193,29 +185,50 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
 
   const cards = list.map((d) => {
     const barcodeSvg = generateBarcodeSvg(d.barcode, style);
+    const packaged = d.packagedAt ?? new Date();
+    const packagedStr = fmtDateBR(packaged);
+    const expiresStr = d.expiresAt && d.expiresAt.trim() ? d.expiresAt.trim() : "";
+    const tara = typeof d.tareKg === "number" && d.tareKg > 0 ? d.tareKg : 0;
+
+    // Coluna esquerda: datas
+    const leftLines: string[] = [
+      `<div class="row"><span class="lbl">EMBALADO EM:</span><span class="val">${packagedStr}</span></div>`,
+    ];
+    if (expiresStr) {
+      leftLines.push(
+        `<div class="row"><span class="lbl">VALIDO ATE:</span><span class="val">${escapeHtml(expiresStr)}</span></div>`,
+      );
+    }
+
+    // Coluna direita: tara, peso, preço/kg
+    const rightLines: string[] = [];
+    if (tara > 0) {
+      rightLines.push(
+        `<div class="row"><span class="lbl">TARA:</span><span class="val">${KG_NUMBER(tara)} kg (T)</span></div>`,
+      );
+    }
+    rightLines.push(
+      `<div class="row"><span class="lbl">PESO:</span><span class="val">${KG_NUMBER(d.weightKg)} kg</span></div>`,
+    );
+    rightLines.push(
+      `<div class="row"><span class="lbl">PREÇO/kg R$:</span><span class="val">${BRL_NUMBER(d.pricePerKg)}</span></div>`,
+    );
+
     return `
       <article class="label">
-        ${d.companyName ? `<header class="company">${escapeHtml(d.companyName)}</header>` : ""}
-        <div class="product">
-          <div class="name">${escapeHtml(d.productName)}</div>
-          ${d.productCode ? `<div class="code">Cód.: ${escapeHtml(d.productCode)}</div>` : ""}
+        ${d.companyName ? `<div class="company">${escapeHtml(d.companyName)}</div>` : ""}
+        <div class="title">${escapeHtml(d.productName)}</div>
+        <div class="info">
+          <div class="col">${leftLines.join("")}</div>
+          <div class="col right">${rightLines.join("")}</div>
         </div>
-        <div class="grid">
-          <div class="cell">
-            <span class="lbl">PESO LÍQ.</span>
-            <span class="val">${KG(d.weightKg)}</span>
-          </div>
-          <div class="cell right">
-            <span class="lbl">PREÇO/KG</span>
-            <span class="val">${BRL(d.pricePerKg)}</span>
+        <div class="footer">
+          <div class="barcode">${barcodeSvg}</div>
+          <div class="total">
+            <div class="t-lbl">TOTAL R$</div>
+            <div class="t-val">${BRL_NUMBER(d.totalPrice)}</div>
           </div>
         </div>
-        <div class="total">
-          <span class="lbl">TOTAL</span>
-          <span class="val">${BRL(d.totalPrice)}</span>
-        </div>
-        <div class="barcode">${barcodeSvg}</div>
-        ${d.expiresAt ? `<footer class="meta"><span>Validade: ${escapeHtml(d.expiresAt)}</span></footer>` : ""}
       </article>
     `;
   }).join("");
@@ -240,54 +253,100 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     padding: ${style.padding};
     page-break-after: always;
     display: flex; flex-direction: column;
-    gap: ${style.gap};
     overflow: hidden;
   }
   .label:last-child { page-break-after: auto; }
+
   .company {
-    font-size: ${style.companyFs}; font-weight: 700;
+    font-size: ${style.infoLblFs};
+    font-weight: 700;
+    text-transform: uppercase;
     text-align: center;
-    text-transform: uppercase;
-    border-bottom: 0.4mm solid #000;
-    padding-bottom: 0.5mm;
-    line-height: 1.1;
+    line-height: 1.05;
+    color: #000;
   }
-  .product .name {
-    font-size: ${style.nameFs}; font-weight: 800;
+  .title {
+    font-size: ${style.titleFs};
+    font-weight: 800;
     text-transform: uppercase;
-    line-height: 1.1;
+    text-align: center;
+    line-height: 1.05;
+    border-top: 0.4mm solid #000;
+    border-bottom: 0.4mm solid #000;
+    padding: 0.3mm 0;
+    margin-top: 0.3mm;
     word-break: break-word;
   }
-  .product .code {
-    font-size: ${style.codeFs}; color: #666;
-    margin-top: 0.3mm;
-  }
-  .grid {
-    display: flex; justify-content: space-between; align-items: stretch;
-    gap: 2mm;
-    border-top: 0.2mm solid #000;
-    border-bottom: 0.2mm solid #000;
+
+  .info {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5mm;
     padding: 0.6mm 0;
+    border-bottom: 0.2mm solid #000;
+    flex: 0 0 auto;
   }
-  .cell { display: flex; flex-direction: column; }
-  .cell.right { text-align: right; align-items: flex-end; }
-  .cell .lbl { font-size: ${style.lblFs}; text-transform: uppercase; color: #555; letter-spacing: 0.04em; line-height: 1.1; }
-  .cell .val { font-size: ${style.valFs}; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
-  .total {
-    display: flex; align-items: baseline; justify-content: space-between;
+  .info .col { display: flex; flex-direction: column; gap: 0.2mm; min-width: 0; }
+  .info .col.right { text-align: right; align-items: stretch; }
+  .info .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1mm;
+    line-height: 1.1;
+    white-space: nowrap;
   }
-  .total .lbl { font-size: ${style.totalLblFs}; text-transform: uppercase; color: #000; font-weight: 700; }
-  .total .val { font-size: ${style.totalValFs}; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .barcode {
+  .info .lbl {
+    font-size: ${style.infoLblFs};
+    font-weight: 600;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+  .info .val {
+    font-size: ${style.infoValFs};
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer {
     margin-top: auto;
-    display: flex; justify-content: center; align-items: flex-end;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1mm;
+    padding-top: 0.5mm;
+  }
+  .barcode {
+    flex: 1 1 ${style.barcodeBlockMm}mm;
+    min-width: 0;
+    display: flex; align-items: flex-end;
+  }
+  .barcode svg {
     width: 100%;
+    max-width: ${style.barcodeBlockMm}mm;
+    height: ${style.barcodeHeightMm}mm;
+    display: block;
   }
-  .barcode svg { max-width: 100%; height: ${style.barcodeHeightMm}mm; display: block; }
-  .meta {
-    display: flex; justify-content: center;
-    font-size: ${style.lblFs}; color: #555;
+  .total {
+    flex: 0 0 auto;
+    display: flex; flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    text-align: right;
   }
+  .t-lbl {
+    font-size: ${style.totalLblFs};
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .t-val {
+    font-size: ${style.totalValFs};
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
   @media screen {
     body { padding: 12px; background: #f5f5f5; }
     .label {

@@ -173,6 +173,8 @@ export default function Balanca() {
   const [weightKg, setWeightKg] = useState(0);
   const [tare, setTare] = useState(0);     // kg subtraídos da leitura
   const [followLive, setFollowLive] = useState(true);
+  // Validade em dias a partir de hoje. 0/vazio = não imprime "VALIDO ATE".
+  const [validityDays, setValidityDays] = useState<number>(0);
 
   useEffect(() => {
     if (followLive && liveWeight !== null) {
@@ -236,6 +238,17 @@ export default function Balanca() {
     if (weightKg <= 0) return toast.error("Capture o peso na balança.");
     if (!barcode) return toast.error(barcodeError ?? "Não foi possível gerar a etiqueta.");
     try {
+      const packagedAt = new Date();
+      let expiresAt: string | undefined;
+      if (validityDays > 0) {
+        const exp = new Date(packagedAt);
+        exp.setDate(exp.getDate() + Math.trunc(validityDays));
+        expiresAt = exp.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit",
+        });
+      }
       printWeighLabel({
         productName: selected.name,
         productCode: productCode ?? undefined,
@@ -244,7 +257,9 @@ export default function Balanca() {
         totalPrice,
         barcode,
         companyName: activeCompany?.name ?? undefined,
-        printedAt: new Date(),
+        tareKg: tare,
+        packagedAt,
+        expiresAt,
         size: settings.labelSize ?? DEFAULT_WEIGH_LABEL_SIZE,
       });
       // Limpa peso para próximo item
@@ -593,31 +608,53 @@ export default function Balanca() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Tamanho do papel */}
-            <div className="space-y-2">
-              <Label>Tamanho da etiqueta</Label>
-              <Select
-                value={settings.labelSize ?? DEFAULT_WEIGH_LABEL_SIZE}
-                onValueChange={(v) => updateSettings({ labelSize: v as WeighLabelSize })}
-              >
-                <SelectTrigger data-testid="select-label-size">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WEIGH_LABEL_SIZES.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{s.label}</span>
-                        <span className="text-xs text-muted-foreground">{s.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Selecione o mesmo tamanho do rolo na sua impressora térmica.
-              </p>
+            {/* Tamanho do papel + validade */}
+            <div className="grid gap-3 sm:grid-cols-[1fr,auto]">
+              <div className="space-y-2">
+                <Label>Tamanho da etiqueta</Label>
+                <Select
+                  value={settings.labelSize ?? DEFAULT_WEIGH_LABEL_SIZE}
+                  onValueChange={(v) => updateSettings({ labelSize: v as WeighLabelSize })}
+                >
+                  <SelectTrigger data-testid="select-label-size">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WEIGH_LABEL_SIZES.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{s.label}</span>
+                          <span className="text-xs text-muted-foreground">{s.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="validity-days">Validade (dias)</Label>
+                <Input
+                  id="validity-days"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={3650}
+                  step={1}
+                  value={validityDays || ""}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    setValidityDays(Number.isFinite(n) && n >= 0 ? n : 0);
+                  }}
+                  className="w-28"
+                  data-testid="input-validity-days"
+                />
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Use o mesmo tamanho do rolo na impressora térmica. Validade 0 = sem
+              data de validade na etiqueta.
+            </p>
 
             <Separator />
 
@@ -627,54 +664,92 @@ export default function Balanca() {
               </div>
             ) : (
               <>
-                <div className="rounded-xl border bg-white p-4 text-black shadow-sm">
-                  {activeCompany?.name && (
-                    <p className="border-b border-black pb-1 text-center text-xs font-bold uppercase tracking-wide">
-                      {activeCompany.name}
-                    </p>
-                  )}
-                  <p className="mt-2 line-clamp-2 text-base font-extrabold uppercase leading-tight">
-                    {selected.name}
-                  </p>
-                  {productCode && (
-                    <p className="text-[11px] text-neutral-500">Cód.: {productCode}</p>
-                  )}
-
-                  <div className="mt-2 flex items-stretch justify-between gap-3 border-y border-black/40 py-1">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-wide text-neutral-500">PESO LÍQ.</span>
-                      <span className="font-mono text-sm font-semibold">{fmtKg(weightKg)} kg</span>
-                    </div>
-                    <div className="flex flex-col items-end text-right">
-                      <span className="text-[10px] uppercase tracking-wide text-neutral-500">PREÇO/KG</span>
-                      <span className="font-mono text-sm font-semibold">{fmtBRL(pricePerKg)}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xs font-bold uppercase">TOTAL</span>
-                    <span className="font-mono text-2xl font-extrabold tabular-nums">
-                      {fmtBRL(totalPrice)}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 flex w-full justify-center overflow-hidden">
-                    {barcode ? (
-                      <Barcode
-                        value={barcode}
-                        format="EAN13"
-                        height={60}
-                        width={2.2}
-                        fontSize={15}
-                        margin={0}
-                      />
-                    ) : (
-                      <p className="py-4 text-center text-xs text-destructive">
-                        {barcodeError ?? "Capture um peso para gerar o código."}
+                {(() => {
+                  const today = new Date();
+                  const packagedStr = today.toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "2-digit",
+                  });
+                  let expiresStr: string | null = null;
+                  if (validityDays > 0) {
+                    const exp = new Date(today);
+                    exp.setDate(exp.getDate() + Math.trunc(validityDays));
+                    expiresStr = exp.toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "2-digit",
+                    });
+                  }
+                  return (
+                    <div className="rounded-md border-2 border-black bg-white p-2 text-black shadow-sm">
+                      {activeCompany?.name && (
+                        <p className="text-center text-[10px] font-bold uppercase tracking-wide">
+                          {activeCompany.name}
+                        </p>
+                      )}
+                      <p className="mt-0.5 line-clamp-2 border-y border-black py-0.5 text-center text-base font-extrabold uppercase leading-tight">
+                        {selected.name}
                       </p>
-                    )}
-                  </div>
-                </div>
+
+                      <div className="mt-1 flex justify-between gap-2 border-b border-black pb-1 text-[11px]">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex justify-between gap-2">
+                            <span className="font-semibold uppercase">EMBALADO EM:</span>
+                            <span className="font-mono font-bold tabular-nums">{packagedStr}</span>
+                          </div>
+                          {expiresStr && (
+                            <div className="flex justify-between gap-2">
+                              <span className="font-semibold uppercase">VALIDO ATE:</span>
+                              <span className="font-mono font-bold tabular-nums">{expiresStr}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-right">
+                          {tare > 0 && (
+                            <div className="flex justify-end gap-2">
+                              <span className="font-semibold uppercase">TARA:</span>
+                              <span className="font-mono font-bold tabular-nums">{fmtKg(tare)} kg (T)</span>
+                            </div>
+                          )}
+                          <div className="flex justify-end gap-2">
+                            <span className="font-semibold uppercase">PESO:</span>
+                            <span className="font-mono font-bold tabular-nums">{fmtKg(weightKg)} kg</span>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <span className="font-semibold uppercase">PREÇO/kg R$:</span>
+                            <span className="font-mono font-bold tabular-nums">{fmtBRL(pricePerKg)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-1 flex items-end justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-end overflow-hidden">
+                          {barcode ? (
+                            <Barcode
+                              value={barcode}
+                              format="EAN13"
+                              height={50}
+                              width={1.6}
+                              fontSize={12}
+                              margin={0}
+                            />
+                          ) : (
+                            <p className="py-2 text-[10px] text-destructive">
+                              {barcodeError ?? "Capture um peso para gerar o código."}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end leading-none">
+                          <span className="text-[10px] font-bold uppercase">TOTAL R$</span>
+                          <span className="font-mono text-2xl font-extrabold tabular-nums">
+                            {fmtBRL(totalPrice)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground">Como funciona no caixa</p>
