@@ -1418,7 +1418,7 @@ export default function Produtos() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="h-[90vh] max-h-[90vh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-y-auto p-4 sm:h-auto sm:max-h-[95vh] sm:max-w-2xl sm:p-6">
+        <DialogContent className="h-[90vh] max-h-[90vh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain p-4 [touch-action:pan-y] sm:h-auto sm:max-h-[95vh] sm:max-w-2xl sm:p-6">
           <DialogHeader>
             <DialogTitle>{editProduct ? "Editar produto" : "Novo produto"}</DialogTitle>
           </DialogHeader>
