@@ -45,10 +45,10 @@ function generateBarcodeSvg(value: string): string {
   try {
     JsBarcode(svg, value, {
       format: "EAN13",
-      width: 1.7,
-      height: 55,
+      width: 2.6,
+      height: 70,
       displayValue: true,
-      fontSize: 14,
+      fontSize: 16,
       margin: 0,
       background: "#ffffff",
       lineColor: "#000000",
@@ -58,10 +58,10 @@ function generateBarcodeSvg(value: string): string {
     try {
       JsBarcode(svg, value, {
         format: "CODE128",
-        width: 1.7,
-        height: 55,
+        width: 2.6,
+        height: 70,
         displayValue: true,
-        fontSize: 14,
+        fontSize: 16,
         margin: 0,
       });
     } catch {
@@ -174,9 +174,10 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
   .total .val { font-size: 14pt; font-weight: 800; font-variant-numeric: tabular-nums; }
   .barcode {
     margin-top: auto;
-    display: flex; justify-content: center;
+    display: block;
+    width: 100%;
   }
-  .barcode svg { max-width: 100%; height: 14mm; }
+  .barcode svg { width: 100%; height: 18mm; display: block; }
   .meta {
     display: flex; justify-content: space-between;
     font-size: 6.5pt; color: #555;
