@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import pdvioAvatar from "@assets/pdvio_perfil_1776833645647.png";
 import { askPDVIA } from "@/services/openrouter";
+import { SimpleMarkdown } from "@/components/app/SimpleMarkdown";
 
 // ---------- Types ----------
 interface SupportTicket {
@@ -779,7 +780,7 @@ function MessageBubble({ m, customerAvatarUrl, customerName }: { m: SupportMessa
             {formatTime(m.created_at)}
           </span>
         </div>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.body}</p>
+        <SimpleMarkdown text={m.body} className="text-sm leading-relaxed" />
       </div>
       {isCustomer && (
         customerAvatarUrl ? (
