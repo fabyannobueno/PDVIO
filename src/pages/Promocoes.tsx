@@ -60,7 +60,10 @@ import {
   Search,
   ChevronsUpDown,
   Check,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import { scrollAppToTop } from "@/lib/scrollToTop";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -235,6 +238,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [categoryComboOpen, setCategoryComboOpen] = useState(false);
   const [productComboOpen, setProductComboOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   const promotionsQuery = useQuery({
     queryKey: ["promotions", companyId],
@@ -260,6 +264,12 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
         (p.category ?? "").toLocaleLowerCase("pt-BR").includes(q),
     );
   }, [promotionsQuery.data, search]);
+
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const resetPage = () => setPage(1);
 
   function openCreate() {
     setEditing(null);
@@ -379,7 +389,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
             placeholder="Buscar por nome ou categoria…"
             className="pl-9"
           />
@@ -422,7 +432,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((p) => {
+              paginated.map((p) => {
                 const productName = products.find((x) => x.id === p.product_id)?.name;
                 const active = isPromotionActive(p);
                 return (
@@ -499,6 +509,49 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
             )}
           </TableBody>
         </Table>
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex flex-col items-center gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-between">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} promoções
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                disabled={safePage === 1}
+                onClick={() => { setPage((p) => p - 1); scrollAppToTop(); }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-2 text-sm font-medium sm:hidden">
+                {safePage} / {totalPages}
+              </span>
+              <div className="hidden items-center gap-1 sm:flex">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <Button
+                    key={p}
+                    size="icon"
+                    variant={p === safePage ? "default" : "ghost"}
+                    className="h-8 w-8 text-sm"
+                    onClick={() => { setPage(p); scrollAppToTop(); }}
+                  >
+                    {p}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                disabled={safePage === totalPages}
+                onClick={() => { setPage((p) => p + 1); scrollAppToTop(); }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -843,6 +896,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
   const [editing, setEditing] = useState<Coupon | null>(null);
   const [form, setForm] = useState<CouponForm>(EMPTY_COUPON_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const couponsQuery = useQuery({
     queryKey: ["coupons", companyId],
@@ -864,6 +918,12 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
     if (!q) return list;
     return list.filter((c) => c.code.toLocaleLowerCase("pt-BR").includes(q));
   }, [couponsQuery.data, search]);
+
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const resetPage = () => setPage(1);
 
   function openCreate() {
     setEditing(null);
@@ -976,7 +1036,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
             placeholder="Buscar por código…"
             className="pl-9"
           />
@@ -1020,7 +1080,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((c) => {
+              paginated.map((c) => {
                 const active = isCouponActive(c);
                 return (
                   <TableRow key={c.id}>
@@ -1091,6 +1151,49 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
             )}
           </TableBody>
         </Table>
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex flex-col items-center gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-between">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} cupons
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                disabled={safePage === 1}
+                onClick={() => { setPage((p) => p - 1); scrollAppToTop(); }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-2 text-sm font-medium sm:hidden">
+                {safePage} / {totalPages}
+              </span>
+              <div className="hidden items-center gap-1 sm:flex">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <Button
+                    key={p}
+                    size="icon"
+                    variant={p === safePage ? "default" : "ghost"}
+                    className="h-8 w-8 text-sm"
+                    onClick={() => { setPage(p); scrollAppToTop(); }}
+                  >
+                    {p}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                disabled={safePage === totalPages}
+                onClick={() => { setPage((p) => p + 1); scrollAppToTop(); }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
