@@ -951,7 +951,7 @@ export default function Configuracoes() {
                       </div>
 
                       {/* Logradouro + Número */}
-                      <div className="grid grid-cols-[1fr_120px] gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px]">
                         <div className="space-y-2">
                           <Label htmlFor="logradouro">Logradouro</Label>
                           <Input
@@ -977,7 +977,7 @@ export default function Configuracoes() {
                       </div>
 
                       {/* Complemento + Bairro */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="complemento">Complemento</Label>
                           <Input
@@ -1003,7 +1003,7 @@ export default function Configuracoes() {
                       </div>
 
                       {/* Cidade + Estado */}
-                      <div className="grid grid-cols-[1fr_80px] gap-3">
+                      <div className="grid grid-cols-[1fr_80px] gap-3 sm:grid-cols-[1fr_80px]">
                         <div className="space-y-2">
                           <Label htmlFor="cidade">Cidade</Label>
                           <Input
