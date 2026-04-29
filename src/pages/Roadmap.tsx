@@ -291,7 +291,7 @@ export default function Roadmap() {
   }, [allItems, search, activeSection]);
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-5 p-4 sm:p-6 md:p-8 animate-fade-in">
+    <div className="space-y-5 p-4 sm:p-6 md:p-8 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="space-y-1">
