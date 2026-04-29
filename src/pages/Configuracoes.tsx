@@ -804,6 +804,62 @@ export default function Configuracoes() {
     toast.success("Padrões restaurados — clique em Salvar para confirmar");
   }
 
+  // Skeleton de página inteira enquanto os dados iniciais (empresa e perfil)
+  // ainda não chegaram. Após carregar a primeira vez, o conteúdo real aparece
+  // — refetches em segundo plano não exibem o skeleton novamente.
+  const initialLoading = !companyLoaded || !profileLoaded;
+  if (initialLoading) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 md:p-8 animate-fade-in">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        {/* Tabs skeleton */}
+        <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full sm:w-28" />
+          ))}
+        </div>
+
+        {/* Card skeleton */}
+        <div className="rounded-xl border border-border/60 bg-card p-4 sm:p-6 space-y-5">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-40" />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px]">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6 md:p-8 animate-fade-in">
       <div>
