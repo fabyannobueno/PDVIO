@@ -66,6 +66,10 @@ Hook central: `src/hooks/usePlanLimits.ts`. Quando a empresa não tem assinatura
 
 `src/lib/planAccess.ts` define o plano mínimo necessário por rota e `src/components/PlanGuard.tsx` protege as rotas em `App.tsx`. Quem está no Iniciante (ou sem plano) só acessa: dashboard, pdv, caixa, produtos, vendas, relatórios, suporte, roadmap, planos, faturas e configurações. Páginas restritas (clientes, crediário, comandas, kds, financeiro, contas, estoque, balança, fornecedores, promoções, auditoria) mostram cadeado no sidebar e tela de upgrade ao tentar acessar.
 
+### Atualização em tempo real após pagamento PIX
+
+`src/hooks/useBillingRealtime.ts` é montado no `AppLayout` e assina mudanças nas tabelas `subscriptions` e `invoices` via Supabase Realtime, filtrando por `company_id` da empresa ativa. Quando o pagamento PIX é confirmado (pelo polling em `Faturas.tsx`, por outra aba ou por um webhook server-side), o front invalida automaticamente as queries de billing — o sidebar destrava as páginas, o PlanGuard libera o acesso e os badges de uso refletem os novos limites sem precisar de refresh manual. Migration: `supabase/migrations/20260507_billing_realtime.sql` (precisa ser aplicada manualmente no SQL editor do Supabase para habilitar o realtime nessas tabelas).
+
 ## User Flow
 
 1. `/auth` — Sign in or create account
