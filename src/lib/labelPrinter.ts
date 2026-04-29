@@ -52,7 +52,8 @@ interface SizeStyle {
   totalLblFs: string;
   totalValFs: string;
   barcodeHeightMm: number;
-  barcodeWidth: number;   // bar thickness in JsBarcode units
+  /** Largura-alvo do código de barras em mm (área final renderizada) */
+  barcodeTargetMm: number;
   barcodeFontPt: number;
   barcodeBlockMm: number;
   totalBlockMm: number;
@@ -69,9 +70,9 @@ const SIZE_STYLES: Record<WeighLabelSize, SizeStyle> = {
     infoValFs: "5.5pt",
     totalLblFs: "5.5pt",
     totalValFs: "13pt",
-    barcodeHeightMm: 8,
-    barcodeWidth: 1.8,
-    barcodeFontPt: 5,
+    barcodeHeightMm: 9,
+    barcodeTargetMm: 30,
+    barcodeFontPt: 6,
     barcodeBlockMm: 32,
     totalBlockMm: 10,
   },
@@ -85,10 +86,10 @@ const SIZE_STYLES: Record<WeighLabelSize, SizeStyle> = {
     infoValFs: "7pt",
     totalLblFs: "7pt",
     totalValFs: "18pt",
-    barcodeHeightMm: 10,
-    barcodeWidth: 2.2,
-    barcodeFontPt: 6,
-    barcodeBlockMm: 42,
+    barcodeHeightMm: 11,
+    barcodeTargetMm: 38,
+    barcodeFontPt: 7,
+    barcodeBlockMm: 40,
     totalBlockMm: 17,
   },
   "60x80": {
@@ -101,10 +102,10 @@ const SIZE_STYLES: Record<WeighLabelSize, SizeStyle> = {
     infoValFs: "9pt",
     totalLblFs: "9pt",
     totalValFs: "22pt",
-    barcodeHeightMm: 14,
-    barcodeWidth: 2.8,
+    barcodeHeightMm: 16,
+    barcodeTargetMm: 42,
     barcodeFontPt: 8,
-    barcodeBlockMm: 46,
+    barcodeBlockMm: 44,
     totalBlockMm: 19,
   },
 };
@@ -144,18 +145,33 @@ const KG_NUMBER = (v: number) =>
 const fmtDateBR = (d: Date) =>
   d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 
+// 96 DPI base usado por todos os navegadores em CSS pixels.
+const PX_PER_MM = 96 / 25.4; // ≈ 3.7795
+
+/**
+ * EAN-13 ocupa um número fixo de "módulos" (a unidade base de largura):
+ *   • 95 módulos para os dados/guardas
+ *   • + 11 módulos de quiet zone à esquerda
+ *   • + 7  módulos de quiet zone à direita
+ * Total = 113 módulos. Para CODE128 usamos uma estimativa mais larga.
+ */
 function generateBarcodeSvg(value: string, style: SizeStyle): string {
-  // Renderiza o código de barras em um SVG offscreen e devolve o markup.
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  // JsBarcode usa "height" em pixels; convertemos mm → px (~3.78 px/mm @ 96 dpi).
-  const heightPx = Math.round(style.barcodeHeightMm * 3.78);
+  const targetPx = style.barcodeTargetMm * PX_PER_MM;
+  const heightPx = Math.round(style.barcodeHeightMm * PX_PER_MM);
+  const fontPx = Math.max(8, Math.round(style.barcodeFontPt * 1.6));
+
+  // Tenta EAN-13 primeiro (sempre 113 módulos).
+  // Calcula a largura por barra em px integer-friendly.
+  const eanModules = 113;
+  const eanWidth = Math.max(1, Math.round((targetPx / eanModules) * 100) / 100);
   try {
     JsBarcode(svg, value, {
       format: "EAN13",
-      width: style.barcodeWidth,
+      width: eanWidth,
       height: heightPx,
       displayValue: true,
-      fontSize: Math.round(style.barcodeFontPt * 1.6),
+      fontSize: fontPx,
       textMargin: 0,
       margin: 0,
       background: "#ffffff",
@@ -163,19 +179,31 @@ function generateBarcodeSvg(value: string, style: SizeStyle): string {
     });
   } catch {
     try {
+      // Fallback: CODE128 — largura por módulo um pouco maior para legibilidade.
+      const c128Width = Math.max(1, Math.round((targetPx / 90) * 100) / 100);
       JsBarcode(svg, value, {
         format: "CODE128",
-        width: style.barcodeWidth,
+        width: c128Width,
         height: heightPx,
         displayValue: true,
-        fontSize: Math.round(style.barcodeFontPt * 1.6),
+        fontSize: fontPx,
         textMargin: 0,
         margin: 0,
+        background: "#ffffff",
+        lineColor: "#000000",
       });
     } catch {
       return `<text x="0" y="20">${value}</text>`;
     }
   }
+
+  // Forçar bordas nítidas + remover qualquer width/height embutidos para
+  // que o CSS controle o tamanho final em mm (sem reescala distorcida).
+  svg.setAttribute("shape-rendering", "crispEdges");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.removeAttribute("width");
+  svg.removeAttribute("height");
+
   return new XMLSerializer().serializeToString(svg);
 }
 
@@ -332,15 +360,17 @@ export function printWeighLabel(input: WeighLabelData | WeighLabelData[]): void 
     padding-top: 0.5mm;
   }
   .barcode {
-    flex: 1 1 ${style.barcodeBlockMm}mm;
+    flex: 0 0 ${style.barcodeBlockMm}mm;
     min-width: 0;
     display: flex; align-items: flex-end;
+    justify-content: flex-start;
   }
   .barcode svg {
-    width: 100%;
-    max-width: ${style.barcodeBlockMm}mm;
+    width: ${style.barcodeTargetMm}mm;
     height: ${style.barcodeHeightMm}mm;
     display: block;
+    shape-rendering: crispEdges;
+    image-rendering: pixelated;
   }
   .total {
     flex: 0 0 ${style.totalBlockMm}mm;
