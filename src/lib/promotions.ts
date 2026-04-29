@@ -258,18 +258,45 @@ export async function validateCoupon(
   return { ok: true, coupon: c, discount };
 }
 
+export interface ConsumeCouponContext {
+  companyId: string;
+  customerId: string;
+  customerName: string;
+  saleId?: string | null;
+  discountAmount: number;
+  usedByUserId?: string | null;
+}
+
 /**
- * Incrementa atomicamente o uses_count do cupom. Seguro porque a UNIQUE
- * (company_id, UPPER(code)) impede dois cupons iguais e o RLS já restringe a
- * empresa. Se outro caixa "consumir" antes, o valor refletirá na próxima
- * carga; eventuais corridas em uso último são aceitáveis para um POS.
+ * Incrementa atomicamente o uses_count do cupom e registra o uso na tabela
+ * coupon_uses (auditoria por cliente). Cupons só podem ser consumidos com
+ * identificação de cliente — quem chamar deve garantir customerId preenchido.
  */
-export async function consumeCoupon(coupon: Coupon): Promise<void> {
+export async function consumeCoupon(
+  coupon: Coupon,
+  ctx: ConsumeCouponContext,
+): Promise<void> {
   const next = (coupon.uses_count ?? 0) + 1;
   await (supabase as any)
     .from("coupons")
     .update({ uses_count: next })
     .eq("id", coupon.id);
+
+  // Best-effort: registrar o uso (não invalida a venda em caso de falha)
+  try {
+    await (supabase as any).from("coupon_uses").insert({
+      company_id: ctx.companyId,
+      coupon_id: coupon.id,
+      coupon_code: coupon.code,
+      customer_id: ctx.customerId,
+      customer_name: ctx.customerName,
+      sale_id: ctx.saleId ?? null,
+      discount_amount: ctx.discountAmount,
+      used_by_user_id: ctx.usedByUserId ?? null,
+    });
+  } catch (e) {
+    console.warn("[coupons] falha ao gravar coupon_uses:", e);
+  }
 }
 
 // ── Fetch helpers ────────────────────────────────────────────────────────────

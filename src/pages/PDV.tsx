@@ -578,12 +578,25 @@ export default function PDV() {
     }
   }, [cart.length, subtotalAfterPromo, appliedCoupon]);
 
+  // Cupom só vale com cliente identificado — se o cliente for removido, retira o cupom.
+  useEffect(() => {
+    if (appliedCoupon && !selectedCustomer) {
+      setAppliedCoupon(null);
+      setCouponInput("");
+      toast.info("Cupom removido: identifique o cliente para aplicar cupons.");
+    }
+  }, [selectedCustomer, appliedCoupon]);
+
   async function handleApplyCoupon() {
     if (!activeCompany?.id) return;
     const code = couponInput.trim();
     if (!code) return;
     if (subtotalAfterPromo <= 0) {
       toast.error("Adicione itens ao carrinho antes de aplicar um cupom.");
+      return;
+    }
+    if (!selectedCustomer) {
+      toast.error("Identifique o cliente antes de aplicar um cupom.");
       return;
     }
     setCouponLoading(true);
@@ -1400,10 +1413,20 @@ export default function PDV() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/products", activeCompany!.id] });
 
-      // Consume coupon usage (best-effort; failure não invalida a venda)
-      if (appliedCoupon) {
+      // Consume coupon usage (best-effort; failure não invalida a venda).
+      // Cupom só pode ser aplicado com cliente identificado — checamos novamente
+      // por segurança antes de gravar o uso.
+      if (appliedCoupon && selectedCustomer) {
         try {
-          await consumeCoupon(appliedCoupon);
+          const { data: userData } = await supabase.auth.getUser();
+          await consumeCoupon(appliedCoupon, {
+            companyId: activeCompany!.id,
+            customerId: selectedCustomer.id,
+            customerName: selectedCustomer.name,
+            saleId: sale.id,
+            discountAmount: couponDiscountAmt,
+            usedByUserId: userData.user?.id ?? null,
+          });
         } catch (e) {
           console.error("Falha ao incrementar uso do cupom:", e);
         }
