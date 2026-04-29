@@ -382,7 +382,7 @@ export default function PDV() {
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data: products = [], isLoading, isFetched: productsFetched } = useQuery<Product[]>({
     queryKey: ["/api/products", activeCompany?.id],
     enabled: !!activeCompany?.id,
     queryFn: async () => {
@@ -1515,13 +1515,7 @@ export default function PDV() {
 
   // Skeleton de página inteira no carregamento inicial. Após carregar pela
   // primeira vez, refetches em segundo plano não exibem o skeleton novamente.
-  const [initialLoaded, setInitialLoaded] = useState(false);
-  useEffect(() => {
-    if (initialLoaded) return;
-    if (activeCompany?.id && !isLoading) {
-      setInitialLoaded(true);
-    }
-  }, [initialLoaded, activeCompany?.id, isLoading]);
+  const initialLoaded = !!activeCompany?.id && productsFetched;
 
   if (!initialLoaded) {
     return (

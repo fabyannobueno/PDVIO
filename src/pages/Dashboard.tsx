@@ -101,7 +101,7 @@ export default function Dashboard() {
   const { start, end } = useMemo(() => todayRange(), []);
 
   // Sales today
-  const { data: todaySales = [], isLoading: loadingSales } = useQuery<Sale[]>({
+  const { data: todaySales = [], isLoading: loadingSales, isFetched: fetchedSales } = useQuery<Sale[]>({
     queryKey: ["/dashboard/sales-today", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -119,7 +119,7 @@ export default function Dashboard() {
   });
 
   // Recent sales (last 5)
-  const { data: recentSales = [], isLoading: loadingRecent } = useQuery<Sale[]>({
+  const { data: recentSales = [], isLoading: loadingRecent, isFetched: fetchedRecent } = useQuery<Sale[]>({
     queryKey: ["/dashboard/recent-sales", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -179,7 +179,7 @@ export default function Dashboard() {
   );
 
   // Customer count
-  const { data: customerCount = 0, isLoading: loadingCustomers } = useQuery<number>({
+  const { data: customerCount = 0, isLoading: loadingCustomers, isFetched: fetchedCustomers } = useQuery<number>({
     queryKey: ["/dashboard/customer-count", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -193,7 +193,7 @@ export default function Dashboard() {
   });
 
   // Product count (for onboarding)
-  const { data: productCount = 0, isLoading: loadingProducts } = useQuery<number>({
+  const { data: productCount = 0, isLoading: loadingProducts, isFetched: fetchedProducts } = useQuery<number>({
     queryKey: ["/dashboard/product-count", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -251,13 +251,7 @@ export default function Dashboard() {
 
   // Skeleton de página inteira no carregamento inicial. Após carregar a primeira
   // vez, refetches em segundo plano não exibem o skeleton novamente.
-  const [initialLoaded, setInitialLoaded] = useState(false);
-  useEffect(() => {
-    if (initialLoaded) return;
-    if (cid && !loadingSales && !loadingRecent && !loadingCustomers && !loadingProducts) {
-      setInitialLoaded(true);
-    }
-  }, [initialLoaded, cid, loadingSales, loadingRecent, loadingCustomers, loadingProducts]);
+  const initialLoaded = !!cid && fetchedSales && fetchedRecent && fetchedCustomers && fetchedProducts;
 
   if (!initialLoaded) {
     return (

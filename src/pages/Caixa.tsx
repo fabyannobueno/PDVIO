@@ -201,7 +201,7 @@ export default function Caixa() {
   }
 
   // ── Active session ──────────────────────────────────────────────────────────
-  const { data: activeSession, isLoading: loadingActive } = useQuery({
+  const { data: activeSession, isLoading: loadingActive, isFetched: activeFetched } = useQuery({
     queryKey: ["/caixa/active", activeCompany?.id, activeOperator?.id ?? user?.id ?? null],
     enabled: !!activeCompany && !!user?.id,
     queryFn: async () => {
@@ -509,13 +509,7 @@ export default function Caixa() {
   // ── Render ─────────────────────────────────────────────────────────────────
   // Skeleton de página inteira no carregamento inicial. Após carregar pela
   // primeira vez, refetches em segundo plano não exibem o skeleton novamente.
-  const [initialLoaded, setInitialLoaded] = useState(false);
-  useEffect(() => {
-    if (initialLoaded) return;
-    if (activeCompany?.id && !loadingActive) {
-      setInitialLoaded(true);
-    }
-  }, [initialLoaded, activeCompany?.id, loadingActive]);
+  const initialLoaded = !!activeCompany?.id && activeFetched;
 
   if (!initialLoaded) {
     return (
