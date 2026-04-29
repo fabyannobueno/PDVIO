@@ -1498,6 +1498,15 @@ function CouponUsesDialog({
   const rows = usesQuery.data ?? [];
   const total = rows.reduce((s, r) => s + Number(r.discount_amount ?? 0), 0);
 
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    setPage(1);
+  }, [coupon?.id]);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <Dialog open={!!coupon} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-2xl">
@@ -1525,7 +1534,7 @@ function CouponUsesDialog({
                 <strong className="text-foreground">{fmtBRL(total)}</strong>
               </span>
             </div>
-            <div className="rounded-md border border-border max-h-[60vh] overflow-y-auto">
+            <div className="rounded-md border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1535,7 +1544,7 @@ function CouponUsesDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {pageRows.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                         {new Date(r.used_at).toLocaleString("pt-BR", {
@@ -1555,6 +1564,45 @@ function CouponUsesDialog({
                 </TableBody>
               </Table>
             </div>
+            {rows.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  Página {safePage} de {totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={safePage <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const p = i + 1;
+                    return (
+                      <Button
+                        key={p}
+                        variant={p === safePage ? "default" : "outline"}
+                        size="sm"
+                        className="min-w-[2rem]"
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    );
+                  })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={safePage >= totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>
