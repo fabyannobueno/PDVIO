@@ -435,7 +435,99 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
         )}
       </div>
 
-      <div className="rounded-md border border-border bg-card">
+      {/* Mobile: card list */}
+      <div className="space-y-2 md:hidden">
+        {promotionsQuery.isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-md" />
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            {search
+              ? "Nenhuma promoção encontrada para essa busca."
+              : "Nenhuma promoção cadastrada. Crie a primeira regra de desconto automático."}
+          </div>
+        ) : (
+          paginated.map((p) => {
+            const productName = products.find((x) => x.id === p.product_id)?.name;
+            const active = isPromotionActive(p);
+            return (
+              <div
+                key={p.id}
+                className="rounded-md border border-border bg-card p-3 space-y-2"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium leading-tight break-words">{p.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {p.kind === "category_percent"
+                        ? p.category
+                        : productName ?? "—"}
+                    </p>
+                  </div>
+                  {active ? (
+                    <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">
+                      Ativa
+                    </Badge>
+                  ) : p.is_active ? (
+                    <Badge variant="outline">Fora da vigência</Badge>
+                  ) : (
+                    <Badge variant="secondary">Desativada</Badge>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {p.kind === "category_percent" ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Percent className="h-3.5 w-3.5 text-emerald-600" />
+                      {Number(p.discount_percent ?? 0).toLocaleString("pt-BR", {
+                        maximumFractionDigits: 2,
+                      })}
+                      %
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <Package className="h-3.5 w-3.5 text-blue-600" />
+                      Leve {p.buy_qty} · Pague {p.pay_qty}
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {fmtDate(p.starts_at)} → {fmtDate(p.ends_at)}
+                  </span>
+                </div>
+                {canManage && (
+                  <div className="flex items-center justify-end gap-1 border-t border-border pt-2">
+                    <Switch
+                      checked={p.is_active}
+                      onCheckedChange={() => toggleMutation.mutate(p)}
+                      aria-label="Ativar/desativar"
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => openEdit(p)}
+                      aria-label="Editar"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setDeleteId(p.id)}
+                      aria-label="Remover"
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block rounded-md border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -542,53 +634,54 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
             )}
           </TableBody>
         </Table>
-        {filtered.length > PAGE_SIZE && (
-          <div className="flex flex-col items-center gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-between">
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} promoções
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                disabled={safePage === 1}
-                onClick={() => { setPage((p) => p - 1); scrollAppToTop(); }}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="px-2 text-sm font-medium sm:hidden">
-                {safePage} / {totalPages}
-              </span>
-              <div className="hidden items-center gap-1 sm:flex">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <Button
-                    key={p}
-                    size="icon"
-                    variant={p === safePage ? "default" : "ghost"}
-                    className="h-8 w-8 text-sm"
-                    onClick={() => { setPage(p); scrollAppToTop(); }}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                disabled={safePage === totalPages}
-                onClick={() => { setPage((p) => p + 1); scrollAppToTop(); }}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-card px-3 py-3 sm:flex-row sm:justify-between sm:px-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} promoções
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              disabled={safePage === 1}
+              onClick={() => { setPage((p) => p - 1); scrollAppToTop(); }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="px-2 text-sm font-medium sm:hidden">
+              {safePage} / {totalPages}
+            </span>
+            <div className="hidden items-center gap-1 sm:flex">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <Button
+                  key={p}
+                  size="icon"
+                  variant={p === safePage ? "default" : "ghost"}
+                  className="h-8 w-8 text-sm"
+                  onClick={() => { setPage(p); scrollAppToTop(); }}
+                >
+                  {p}
+                </Button>
+              ))}
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              disabled={safePage === totalPages}
+              onClick={() => { setPage((p) => p + 1); scrollAppToTop(); }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editing ? "Editar promoção" : "Nova promoção"}
@@ -627,7 +720,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
             </div>
 
             {form.kind === "category_percent" ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Categoria</Label>
                   <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
@@ -780,7 +873,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="promo-buy">Leve (N)</Label>
                     <Input
@@ -812,7 +905,7 @@ function PromotionsTab({ companyId, canManage, products, categories }: Promotion
               </>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="promo-start">Início (opcional)</Label>
                 <Input
@@ -1132,7 +1225,117 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
         )}
       </div>
 
-      <div className="rounded-md border border-border bg-card">
+      {/* Mobile: card list */}
+      <div className="space-y-2 md:hidden">
+        {couponsQuery.isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-md" />
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            {search
+              ? "Nenhum cupom encontrado para essa busca."
+              : "Nenhum cupom cadastrado. Crie códigos para campanhas e fidelidade."}
+          </div>
+        ) : (
+          paginated.map((c) => {
+            const active = isCouponActive(c);
+            return (
+              <div
+                key={c.id}
+                className="rounded-md border border-border bg-card p-3 space-y-2"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono font-semibold leading-tight break-all">
+                      {c.code}
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {c.kind === "percent"
+                        ? `${Number(c.value).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% de desconto`
+                        : `${fmtBRL(Number(c.value))} de desconto`}
+                    </p>
+                  </div>
+                  {active ? (
+                    <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">
+                      Ativo
+                    </Badge>
+                  ) : c.is_active ? (
+                    <Badge variant="outline">
+                      {c.max_uses != null && c.uses_count >= c.max_uses
+                        ? "Esgotado"
+                        : "Fora da vigência"}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">Desativado</Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <div>
+                    <span className="block">Compra mínima</span>
+                    <span className="text-foreground">
+                      {Number(c.min_purchase) > 0 ? fmtBRL(Number(c.min_purchase)) : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block">Usos</span>
+                    <span className="text-foreground">
+                      {c.uses_count}
+                      {c.max_uses != null ? ` / ${c.max_uses}` : ""}
+                    </span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="block">Vigência</span>
+                    <span className="text-foreground">
+                      {fmtDate(c.starts_at)} → {fmtDate(c.ends_at)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-1 border-t border-border pt-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setUsesCoupon(c)}
+                    aria-label="Ver usos"
+                    title="Ver usos"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                  {canManage && (
+                    <>
+                      <Switch
+                        checked={c.is_active}
+                        onCheckedChange={() => toggleMutation.mutate(c)}
+                        aria-label="Ativar/desativar"
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => openEdit(c)}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setDeleteId(c.id)}
+                        aria-label="Remover"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block rounded-md border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -1243,53 +1446,54 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
             )}
           </TableBody>
         </Table>
-        {filtered.length > PAGE_SIZE && (
-          <div className="flex flex-col items-center gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-between">
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} cupons
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                disabled={safePage === 1}
-                onClick={() => { setPage((p) => p - 1); scrollAppToTop(); }}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="px-2 text-sm font-medium sm:hidden">
-                {safePage} / {totalPages}
-              </span>
-              <div className="hidden items-center gap-1 sm:flex">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <Button
-                    key={p}
-                    size="icon"
-                    variant={p === safePage ? "default" : "ghost"}
-                    className="h-8 w-8 text-sm"
-                    onClick={() => { setPage(p); scrollAppToTop(); }}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                disabled={safePage === totalPages}
-                onClick={() => { setPage((p) => p + 1); scrollAppToTop(); }}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-card px-3 py-3 sm:flex-row sm:justify-between sm:px-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} cupons
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              disabled={safePage === 1}
+              onClick={() => { setPage((p) => p - 1); scrollAppToTop(); }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="px-2 text-sm font-medium sm:hidden">
+              {safePage} / {totalPages}
+            </span>
+            <div className="hidden items-center gap-1 sm:flex">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <Button
+                  key={p}
+                  size="icon"
+                  variant={p === safePage ? "default" : "ghost"}
+                  className="h-8 w-8 text-sm"
+                  onClick={() => { setPage(p); scrollAppToTop(); }}
+                >
+                  {p}
+                </Button>
+              ))}
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              disabled={safePage === totalPages}
+              onClick={() => { setPage((p) => p + 1); scrollAppToTop(); }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar cupom" : "Novo cupom"}</DialogTitle>
           </DialogHeader>
@@ -1317,7 +1521,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Tipo de desconto</Label>
                 <Select
@@ -1353,7 +1557,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="cup-min">Compra mínima (R$)</Label>
                 <MoneyInput
@@ -1377,7 +1581,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="cup-start">Início (opcional)</Label>
                 <Input
@@ -1509,9 +1713,9 @@ function CouponUsesDialog({
 
   return (
     <Dialog open={!!coupon} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="break-all">
             Usos do cupom{coupon ? ` ${coupon.code}` : ""}
           </DialogTitle>
         </DialogHeader>
@@ -1534,7 +1738,34 @@ function CouponUsesDialog({
                 <strong className="text-foreground">{fmtBRL(total)}</strong>
               </span>
             </div>
-            <div className="rounded-md border border-border">
+            {/* Mobile: card list */}
+            <div className="space-y-2 sm:hidden">
+              {pageRows.map((r) => (
+                <div
+                  key={r.id}
+                  className="rounded-md border border-border p-3 space-y-1"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium break-words">{r.customer_name}</span>
+                    <span className="whitespace-nowrap font-semibold">
+                      {fmtBRL(Number(r.discount_amount))}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(r.used_at).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: table */}
+            <div className="hidden sm:block rounded-md border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1565,7 +1796,7 @@ function CouponUsesDialog({
               </Table>
             </div>
             {rows.length > PAGE_SIZE && (
-              <div className="flex items-center justify-between gap-2 text-sm">
+              <div className="flex flex-col items-center gap-2 text-sm sm:flex-row sm:justify-between">
                 <span className="text-muted-foreground">
                   Página {safePage} de {totalPages}
                 </span>
@@ -1578,20 +1809,25 @@ function CouponUsesDialog({
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const p = i + 1;
-                    return (
-                      <Button
-                        key={p}
-                        variant={p === safePage ? "default" : "outline"}
-                        size="sm"
-                        className="min-w-[2rem]"
-                        onClick={() => setPage(p)}
-                      >
-                        {p}
-                      </Button>
-                    );
-                  })}
+                  <span className="px-2 text-sm font-medium sm:hidden">
+                    {safePage} / {totalPages}
+                  </span>
+                  <div className="hidden items-center gap-1 sm:flex">
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const p = i + 1;
+                      return (
+                        <Button
+                          key={p}
+                          variant={p === safePage ? "default" : "outline"}
+                          size="sm"
+                          className="min-w-[2rem]"
+                          onClick={() => setPage(p)}
+                        >
+                          {p}
+                        </Button>
+                      );
+                    })}
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
