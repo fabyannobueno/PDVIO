@@ -39,6 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { Barcode } from "@/components/Barcode";
 import logoPdvio from "@assets/PDVIO2_1776817647719.png";
 import { maskPhone, maskDocument, maskCpf, maskCnpj, maskRandomPixKey } from "@/lib/masks";
+import { isValidCPF } from "@/lib/document";
 import { toast } from "sonner";
 import {
   autoReconnect as autoReconnectPrinter,
@@ -142,6 +143,8 @@ export default function Configuracoes() {
   const [fullName, setFullName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [profileCpf, setProfileCpf] = useState("");
+  const [profileBirthDate, setProfileBirthDate] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -182,9 +185,12 @@ export default function Configuracoes() {
         .single();
       if (error && error.code !== "PGRST116") throw error;
       if (!profileLoaded) {
-        setFullName(data?.full_name ?? user?.user_metadata?.full_name ?? "");
-        setProfilePhone(data?.phone ?? "");
-        setProfileAvatar(data?.avatar_url ?? null);
+        const d: any = data || {};
+        setFullName(d.full_name ?? user?.user_metadata?.full_name ?? "");
+        setProfilePhone(d.phone ? maskPhone(String(d.phone)) : "");
+        setProfileAvatar(d.avatar_url ?? null);
+        setProfileCpf(d.cpf ? maskCpf(String(d.cpf)) : "");
+        setProfileBirthDate(d.birth_date ? String(d.birth_date).slice(0, 10) : "");
         setProfileLoaded(true);
       }
       return data;
@@ -554,22 +560,51 @@ export default function Configuracoes() {
   // ── Save profile ───────────────────────────────────────────────────────────
   const saveProfile = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      const trimmedName = fullName.trim();
+      if (!trimmedName) throw new Error("Nome obrigatório");
+      if (!profileAvatar) throw new Error("Foto de perfil obrigatória");
+
+      const cpfDigits = profileCpf.replace(/\D/g, "");
+      if (cpfDigits.length !== 11 || !isValidCPF(cpfDigits)) {
+        throw new Error("CPF inválido");
+      }
+      if (!profileBirthDate) throw new Error("Data de nascimento obrigatória");
+      const phoneDigits = profilePhone.replace(/\D/g, "");
+      if (phoneDigits.length < 10) throw new Error("Telefone inválido");
+
+      // Checa unicidade do CPF (índice único também garante no banco)
+      const { data: existing, error: checkErr } = await supabase
         .from("profiles")
-        .upsert({
-          id: user!.id,
-          full_name: fullName.trim(),
-          phone: profilePhone.trim() || null,
-          email: user!.email ?? null,
-          avatar_url: profileAvatar,
-        });
-      if (error) throw error;
+        .select("id")
+        .eq("cpf", cpfDigits)
+        .neq("id", user!.id)
+        .maybeSingle();
+      if (checkErr) throw new Error(checkErr.message);
+      if (existing) throw new Error("Este CPF já está vinculado a outra conta");
+
+      const payload: any = {
+        id: user!.id,
+        full_name: trimmedName,
+        phone: phoneDigits,
+        email: user!.email ?? null,
+        avatar_url: profileAvatar,
+        cpf: cpfDigits,
+        birth_date: profileBirthDate,
+        profile_completed: true,
+      };
+      const { error } = await supabase.from("profiles").upsert(payload);
+      if (error) {
+        if ((error as any).code === "23505") {
+          throw new Error("Este CPF já está vinculado a outra conta");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Perfil atualizado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["/config/profile"] });
     },
-    onError: () => toast.error("Erro ao salvar perfil"),
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar perfil"),
   });
 
   const isOwner = activeCompany?.role === "owner";
@@ -1073,7 +1108,7 @@ export default function Configuracoes() {
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="full-name">Nome completo</Label>
+                      <Label htmlFor="full-name">Nome completo *</Label>
                       <Input
                         id="full-name"
                         value={fullName}
@@ -1083,13 +1118,47 @@ export default function Configuracoes() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="profile-phone">Telefone</Label>
+                      <Label htmlFor="profile-phone">Telefone *</Label>
                       <Input
                         id="profile-phone"
                         value={profilePhone}
                         onChange={(e) => setProfilePhone(maskPhone(e.target.value))}
                         placeholder="(11) 99999-9999"
+                        inputMode="numeric"
                         data-testid="input-profile-phone"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-cpf">CPF *</Label>
+                      <Input
+                        id="profile-cpf"
+                        value={profileCpf}
+                        onChange={(e) => setProfileCpf(maskCpf(e.target.value))}
+                        placeholder="000.000.000-00"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        data-testid="input-profile-cpf"
+                      />
+                      <p className="text-xs text-muted-foreground">Único por conta.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-birth-date">Data de nascimento *</Label>
+                      <Input
+                        id="profile-birth-date"
+                        type="date"
+                        value={profileBirthDate}
+                        onChange={(e) => setProfileBirthDate(e.target.value)}
+                        max={(() => {
+                          const d = new Date();
+                          d.setFullYear(d.getFullYear() - 13);
+                          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                        })()}
+                        min={(() => {
+                          const d = new Date();
+                          d.setFullYear(d.getFullYear() - 120);
+                          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                        })()}
+                        data-testid="input-profile-birth-date"
                       />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
