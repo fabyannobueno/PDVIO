@@ -145,6 +145,7 @@ export default function Configuracoes() {
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [profileCpf, setProfileCpf] = useState("");
   const [profileBirthDate, setProfileBirthDate] = useState("");
+  const [profileCompletedLocked, setProfileCompletedLocked] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -191,6 +192,8 @@ export default function Configuracoes() {
         setProfileAvatar(d.avatar_url ?? null);
         setProfileCpf(d.cpf ? maskCpf(String(d.cpf)) : "");
         setProfileBirthDate(d.birth_date ? String(d.birth_date).slice(0, 10) : "");
+        // CPF fica bloqueado pra edição se o perfil já estiver marcado como completo.
+        setProfileCompletedLocked(!!d.profile_completed && !!d.cpf);
         setProfileLoaded(true);
       }
       return data;
@@ -572,15 +575,18 @@ export default function Configuracoes() {
       const phoneDigits = profilePhone.replace(/\D/g, "");
       if (phoneDigits.length < 10) throw new Error("Telefone inválido");
 
-      // Checa unicidade do CPF (índice único também garante no banco)
-      const { data: existing, error: checkErr } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("cpf", cpfDigits)
-        .neq("id", user!.id)
-        .maybeSingle();
-      if (checkErr) throw new Error(checkErr.message);
-      if (existing) throw new Error("Este CPF já está vinculado a outra conta");
+      // Só checa unicidade do CPF se ele for novo/diferente do banco — depois
+      // que profile_completed=true ele é imutável e nem é enviado no upsert.
+      if (!profileCompletedLocked) {
+        const { data: existing, error: checkErr } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("cpf", cpfDigits)
+          .neq("id", user!.id)
+          .maybeSingle();
+        if (checkErr) throw new Error(checkErr.message);
+        if (existing) throw new Error("Este CPF já está vinculado a outra conta");
+      }
 
       const payload: any = {
         id: user!.id,
@@ -588,10 +594,15 @@ export default function Configuracoes() {
         phone: phoneDigits,
         email: user!.email ?? null,
         avatar_url: profileAvatar,
-        cpf: cpfDigits,
-        birth_date: profileBirthDate,
         profile_completed: true,
       };
+      // CPF e Data de nascimento só são gravados quando o perfil ainda não foi
+      // marcado como completo. Após profile_completed=true, ambos se tornam
+      // imutáveis.
+      if (!profileCompletedLocked) {
+        payload.cpf = cpfDigits;
+        payload.birth_date = profileBirthDate;
+      }
       const { error } = await supabase.from("profiles").upsert(payload);
       if (error) {
         if ((error as any).code === "23505") {
@@ -1137,9 +1148,16 @@ export default function Configuracoes() {
                         placeholder="000.000.000-00"
                         inputMode="numeric"
                         autoComplete="off"
+                        disabled={profileCompletedLocked}
+                        readOnly={profileCompletedLocked}
+                        className={profileCompletedLocked ? "opacity-60" : undefined}
                         data-testid="input-profile-cpf"
                       />
-                      <p className="text-xs text-muted-foreground">Único por conta.</p>
+                      <p className="text-xs text-muted-foreground">
+                        {profileCompletedLocked
+                          ? "O CPF não pode ser alterado depois de cadastrado."
+                          : "Único por conta. Não poderá ser alterado depois de salvo."}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="profile-birth-date">Data de nascimento *</Label>
@@ -1158,8 +1176,16 @@ export default function Configuracoes() {
                           d.setFullYear(d.getFullYear() - 120);
                           return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
                         })()}
+                        disabled={profileCompletedLocked}
+                        readOnly={profileCompletedLocked}
+                        className={profileCompletedLocked ? "opacity-60" : undefined}
                         data-testid="input-profile-birth-date"
                       />
+                      {profileCompletedLocked && (
+                        <p className="text-xs text-muted-foreground">
+                          A data de nascimento não pode ser alterada depois de cadastrada.
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                       <Label htmlFor="profile-email">E-mail</Label>
