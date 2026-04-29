@@ -40,6 +40,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import logoIconSrc from "@/assets/logo-icon.png";
+import MarginReport from "@/components/relatorios/MarginReport";
 // @ts-ignore
 import jsPDF from "jspdf";
 // @ts-ignore
@@ -945,6 +946,16 @@ export default function Relatorios() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* ── Margem & lucro ─────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold">Margem & lucro por produto</h2>
+        <MarginReport
+          companyId={activeCompany?.id ?? null}
+          saleIds={saleIds}
+          totalReceita={totalReceita}
+        />
       </div>
 
       {/* ── Hidden PNG template ────────────────────────────────────────────── */}

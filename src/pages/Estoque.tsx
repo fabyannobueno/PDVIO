@@ -47,7 +47,9 @@ import {
   TrendingUp,
   Package as PackageIcon,
   Search,
+  ShoppingBag,
 } from "lucide-react";
+import PurchaseSuggestions from "@/components/estoque/PurchaseSuggestions";
 
 interface ProductRow {
   id: string;
@@ -432,6 +434,9 @@ export default function Estoque() {
           <TabsTrigger value="alerts" data-testid="tab-alerts">
             <AlertTriangle className="mr-2 h-4 w-4" /> Alertas ({lowStock.length})
           </TabsTrigger>
+          <TabsTrigger value="suggestions" data-testid="tab-suggestions">
+            <ShoppingBag className="mr-2 h-4 w-4" /> Sugestão de compra
+          </TabsTrigger>
           <TabsTrigger value="history" data-testid="tab-history">
             <History className="mr-2 h-4 w-4" /> Histórico
           </TabsTrigger>
@@ -710,6 +715,14 @@ export default function Estoque() {
               </div>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="suggestions" className="space-y-3">
+          <PurchaseSuggestions
+            companyId={activeCompany?.id ?? null}
+            products={products}
+            loadingProducts={loadingProducts}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-3">

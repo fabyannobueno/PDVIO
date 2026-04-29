@@ -20,6 +20,10 @@ A modern Point-of-Sale (PDV) web application for Brazilian businesses, built wit
 - `src/integrations/supabase/types.ts` — Auto-generated Supabase DB types
 - `src/components/app/` — AppLayout, AppSidebar, AppHeader
 - `src/lib/printer.ts` — Thermal printer integration (ESC/POS via Web Serial / Web USB / Web Bluetooth + window.print fallback). Settings persisted in localStorage under `pdvio:printer:settings`.
+- `src/lib/labelPrinter.ts` — Weighing label printing (40x40 / 60x40 / 60x80). Generates EAN-13 barcode SVG sized in millimetres with crisp edges so handheld scanners can decode it.
+- `src/components/dashboard/DashboardInsights.tsx` — Month-over-month comparatives on the dashboard: revenue vs. previous month, top-growing/declining product, peak hour.
+- `src/components/estoque/PurchaseSuggestions.tsx` — Sales-based purchase suggestions tab inside Estoque (configurable analysis window and desired coverage).
+- `src/components/relatorios/MarginReport.tsx` — Margin & profit report (top products by profit, low-margin alerts, missing-cost flag) embedded in `Relatorios`.
 - `supabase/migrations/` — Database migration SQL files
 
 ## Environment Variables
