@@ -53,6 +53,14 @@ Uses Supabase (PostgreSQL) with Row Level Security (RLS). Tables:
 - `coupons` — Códigos digitados no PDV (% ou R$), com compra mínima, limite de usos e validade. Único por empresa via UNIQUE(company_id, UPPER(code))
 - Colunas extras em `sales`: `coupon_id`, `coupon_code`, `coupon_discount`, `promotion_discount` para rastrear origem de desconto em relatórios
   Migração: `supabase/migrations/20260428_promotions_coupons.sql` (precisa ser aplicada manualmente via SQL editor do Supabase)
+- `plans` / `subscriptions` / `invoices` — Planos da plataforma (Iniciante, Essencial, Pro, Empresarial), assinaturas por empresa e faturas (`supabase/migrations/20260506_plans_subscriptions_invoices.sql`)
+
+## Limites por plano
+
+Hook central: `src/hooks/usePlanLimits.ts`. Quando a empresa não tem assinatura ativa, usa o plano `iniciante` (1 loja, 1 usuário, 1 caixa, 50 produtos) como fallback. Bloqueios aplicados em:
+- Produtos (`src/pages/Produtos.tsx`) — `canAddProduct` no botão "Novo Produto" + badge de uso no cabeçalho
+- Onboarding (`src/pages/Onboarding.tsx`) — `canAddCompany` ao criar nova loja (apenas no fluxo `?new=1`); banner com link para `/planos`
+- Operadores do caixa (`src/pages/Configuracoes.tsx`, aba Equipe) — `canAddCashier` no botão "Novo operador" + badge de uso. A aba também mostra badge de membros (`canAddUser`) só leitura.
 
 ## User Flow
 

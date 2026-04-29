@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { formatLimit } from "@/lib/plans";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1320,9 +1321,11 @@ export default function Produtos() {
   // ── Dialog helpers ─────────────────────────────────────────────────────────
 
   function openCreate() {
-    if (!planLimits.canAddProduct) {
+    if (!planLimits.loading && !planLimits.canAddProduct) {
       toast.error(
-        `Limite do plano atingido (${planLimits.usage.products}/${planLimits.limits.products} produtos). Faça upgrade do plano para cadastrar mais.`,
+        `Limite do plano atingido (${planLimits.usage.products}/${formatLimit(
+          planLimits.limits.products
+        )} produtos). Faça upgrade do plano para cadastrar mais.`,
         { duration: 6000 }
       );
       return;
@@ -1578,10 +1581,31 @@ export default function Produtos() {
             {isLoading ? "Carregando..." : `${products.length} produto${products.length !== 1 ? "s" : ""} cadastrado${products.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Button onClick={openCreate} data-testid="button-novo-produto" className="w-full shrink-0 sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Produto
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {!planLimits.loading && (
+            <Badge
+              variant={planLimits.canAddProduct ? "outline" : "destructive"}
+              className="shrink-0"
+              data-testid="badge-products-usage"
+            >
+              {planLimits.usage.products}/{formatLimit(planLimits.limits.products)}
+            </Badge>
+          )}
+          <Button
+            onClick={openCreate}
+            data-testid="button-novo-produto"
+            className="w-full shrink-0 sm:w-auto"
+            disabled={!planLimits.loading && !planLimits.canAddProduct}
+            title={
+              !planLimits.loading && !planLimits.canAddProduct
+                ? "Limite do plano atingido"
+                : undefined
+            }
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Produto
+          </Button>
+        </div>
       </div>
 
       {/* Migration banner */}

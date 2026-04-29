@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompany } from "@/contexts/CompanyContext";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { formatLimit } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,6 +130,7 @@ export default function Configuracoes() {
   const { user } = useAuth();
   const { activeCompany, refresh: refreshCompany } = useCompany();
   const queryClient = useQueryClient();
+  const planLimits = usePlanLimits();
 
   // ── Company form state ─────────────────────────────────────────────────────
   const [companyName, setCompanyName] = useState("");
@@ -248,6 +251,15 @@ export default function Configuracoes() {
   const staffCardRef = useRef<HTMLDivElement>(null);
 
   function openCreateStaff() {
+    if (!planLimits.loading && !planLimits.canAddCashier) {
+      toast.error(
+        `Limite do plano atingido (${planLimits.usage.cashiers}/${formatLimit(
+          planLimits.limits.cashiers
+        )} operadores). Faça upgrade do plano para cadastrar mais.`,
+        { duration: 6000 }
+      );
+      return;
+    }
     setEditingStaff(null);
     setSName("");
     setSRole("cashier");
@@ -1276,8 +1288,17 @@ export default function Configuracoes() {
         <TabsContent value="equipe" className="space-y-6">
           <Card className="border-border/60">
             <CardHeader>
-              <CardTitle className="text-base">Membros da equipe</CardTitle>
-              <CardDescription>Pessoas com acesso de login a esta empresa.</CardDescription>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">Membros da equipe</CardTitle>
+                  <CardDescription>Pessoas com acesso de login a esta empresa.</CardDescription>
+                </div>
+                {!planLimits.loading && (
+                  <Badge variant="outline" className="shrink-0" data-testid="badge-members-usage">
+                    {planLimits.usage.users}/{formatLimit(planLimits.limits.users)}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {loadingMembers ? (
@@ -1330,10 +1351,31 @@ export default function Configuracoes() {
                   Cadastre os operadores que vão liberar sangrias e cancelamentos com cartão e senha.
                 </CardDescription>
               </div>
-              <Button size="sm" onClick={openCreateStaff} data-testid="button-new-staff" className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Novo operador
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                {!planLimits.loading && (
+                  <Badge
+                    variant={planLimits.canAddCashier ? "outline" : "destructive"}
+                    data-testid="badge-staff-usage"
+                  >
+                    {planLimits.usage.cashiers}/{formatLimit(planLimits.limits.cashiers)}
+                  </Badge>
+                )}
+                <Button
+                  size="sm"
+                  onClick={openCreateStaff}
+                  data-testid="button-new-staff"
+                  className="gap-1.5"
+                  disabled={!planLimits.loading && !planLimits.canAddCashier}
+                  title={
+                    !planLimits.loading && !planLimits.canAddCashier
+                      ? "Limite do plano atingido"
+                      : undefined
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                  Novo operador
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingStaff ? (

@@ -3,6 +3,7 @@ import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompany } from "@/contexts/CompanyContext";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { toast } from "sonner";
-import { Loader2, Store, UtensilsCrossed, ShoppingBasket, Truck, Bike, ShoppingBag, Package, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Store, UtensilsCrossed, ShoppingBasket, Truck, Bike, ShoppingBag, Package, CheckCircle2, AlertCircle, Crown } from "lucide-react";
 import { maskDocument } from "@/lib/masks";
 import { onlyDigits, isValidDocument, isValidCNPJ, fetchCnpjBrasilAPI, type CnpjData } from "@/lib/document";
+import { formatLimit } from "@/lib/plans";
 
 const BUSINESS_TYPES = [
   { value: "restaurant", label: "Restaurante", icon: UtensilsCrossed },
@@ -31,6 +33,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isAddingNew = searchParams.get("new") === "1";
+  const planLimits = usePlanLimits();
 
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState("restaurant");
@@ -113,6 +116,19 @@ export default function Onboarding() {
         return;
       }
     }
+
+    // Bloqueia ao atingir o limite de lojas do plano. Aplica também a quem
+    // ainda não assinou nenhum plano (limites do Iniciante).
+    if (isAddingNew && !planLimits.loading && !planLimits.canAddCompany) {
+      toast.error(
+        `Limite do plano atingido (${planLimits.usage.companies}/${formatLimit(
+          planLimits.limits.stores
+        )} lojas). Faça upgrade do plano para cadastrar mais empresas.`,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     setLoading(true);
 
     // Always get a fresh session before making the insert.
@@ -199,6 +215,34 @@ export default function Onboarding() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
+              {isAddingNew && !planLimits.loading && !planLimits.canAddCompany && (
+                <div
+                  className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm space-y-2"
+                  data-testid="banner-store-limit"
+                >
+                  <div className="flex items-center gap-2 font-semibold text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    Limite de lojas atingido
+                  </div>
+                  <p className="text-muted-foreground">
+                    Você já tem {planLimits.usage.companies} de{" "}
+                    {formatLimit(planLimits.limits.stores)} loja(s) permitida(s) pelo
+                    plano {planLimits.planName ?? "atual"}. Faça upgrade para cadastrar
+                    mais empresas.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    onClick={() => navigate("/planos")}
+                    className="gap-1.5"
+                  >
+                    <Crown className="h-4 w-4" />
+                    Ver planos
+                  </Button>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="name">Nome da empresa *</Label>
                 <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Lanchonete da Praça" />
@@ -314,7 +358,8 @@ export default function Onboarding() {
                     docLoading ||
                     (docDigits.length === 14 &&
                       (!cnpjData ||
-                        (cnpjData.situacao_cadastral || "").toUpperCase().trim() !== "ATIVA"))
+                        (cnpjData.situacao_cadastral || "").toUpperCase().trim() !== "ATIVA")) ||
+                    (isAddingNew && !planLimits.loading && !planLimits.canAddCompany)
                   }
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
