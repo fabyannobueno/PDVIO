@@ -427,7 +427,7 @@ export default function Estoque() {
       </div>
 
       <Tabs defaultValue="positions" className="w-full">
-        <TabsList>
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:inline-flex sm:h-10 sm:w-auto sm:grid-cols-none sm:gap-0">
           <TabsTrigger value="positions" data-testid="tab-positions">
             <PackageIcon className="mr-2 h-4 w-4" /> Posições
           </TabsTrigger>
@@ -435,7 +435,9 @@ export default function Estoque() {
             <AlertTriangle className="mr-2 h-4 w-4" /> Alertas ({lowStock.length})
           </TabsTrigger>
           <TabsTrigger value="suggestions" data-testid="tab-suggestions">
-            <ShoppingBag className="mr-2 h-4 w-4" /> Sugestão de compra
+            <ShoppingBag className="mr-2 h-4 w-4" />
+            <span className="sm:hidden">Sugestões</span>
+            <span className="hidden sm:inline">Sugestão de compra</span>
           </TabsTrigger>
           <TabsTrigger value="history" data-testid="tab-history">
             <History className="mr-2 h-4 w-4" /> Histórico

@@ -297,68 +297,135 @@ export default function PurchaseSuggestions({ companyId, products, loadingProduc
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Vendido ({windowDays}d)</TableHead>
-                    <TableHead className="text-right">Média/dia</TableHead>
-                    <TableHead className="text-right">Estoque</TableHead>
-                    <TableHead className="text-right">Cobertura</TableHead>
-                    <TableHead className="text-right">Sugerir compra</TableHead>
-                    <TableHead className="text-right">Custo est.</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginated.map((r) => {
-                    const cov = r.coverage;
-                    const covLabel =
-                      cov === Infinity
-                        ? "—"
-                        : `${cov.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}d`;
-                    const covTone =
-                      cov < 3
-                        ? "bg-red-500/15 text-red-600 border-red-500/30"
-                        : cov < 7
-                          ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
-                          : cov < 14
-                            ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
-                            : "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
-                    return (
-                      <TableRow key={r.product.id} data-testid={`row-suggestion-${r.product.id}`}>
-                        <TableCell>
-                          <div className="font-medium">{r.product.name}</div>
+            <>
+              {/* Mobile cards */}
+              <div className="space-y-2 p-3 md:hidden">
+                {paginated.map((r) => {
+                  const cov = r.coverage;
+                  const covLabel =
+                    cov === Infinity
+                      ? "—"
+                      : `${cov.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}d`;
+                  const covTone =
+                    cov < 3
+                      ? "bg-red-500/15 text-red-600 border-red-500/30"
+                      : cov < 7
+                        ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
+                        : cov < 14
+                          ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
+                          : "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
+                  return (
+                    <div
+                      key={r.product.id}
+                      className="rounded-lg border border-border bg-card p-3"
+                      data-testid={`card-suggestion-${r.product.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{r.product.name}</p>
                           {r.product.sku && (
-                            <div className="text-xs text-muted-foreground">SKU: {r.product.sku}</div>
+                            <p className="font-mono text-xs text-muted-foreground">SKU: {r.product.sku}</p>
                           )}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {fmtQty(r.sold, r.product.stock_unit)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">
-                          {r.dailyAvg.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {fmtQty(r.stock, r.product.stock_unit)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="outline" className={covTone}>
-                            {covLabel}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-bold tabular-nums text-primary">
+                        </div>
+                        <Badge variant="outline" className={`shrink-0 ${covTone}`}>
+                          {covLabel}
+                        </Badge>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-xs">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">Vendido ({windowDays}d)</span>
+                          <span className="tabular-nums">{fmtQty(r.sold, r.product.stock_unit)}</span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">Média/dia</span>
+                          <span className="tabular-nums">
+                            {r.dailyAvg.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">Estoque</span>
+                          <span className="tabular-nums">{fmtQty(r.stock, r.product.stock_unit)}</span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">Custo est.</span>
+                          <span className="tabular-nums">{r.cost > 0 ? fmtBRL(r.cost) : "—"}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2">
+                        <span className="text-xs text-muted-foreground">Sugerir compra</span>
+                        <span className="font-bold tabular-nums text-primary">
                           {r.suggest > 0 ? fmtQty(r.suggest, r.product.stock_unit) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {r.cost > 0 ? fmtBRL(r.cost) : "—"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="text-right">Vendido ({windowDays}d)</TableHead>
+                      <TableHead className="text-right">Média/dia</TableHead>
+                      <TableHead className="text-right">Estoque</TableHead>
+                      <TableHead className="text-right">Cobertura</TableHead>
+                      <TableHead className="text-right">Sugerir compra</TableHead>
+                      <TableHead className="text-right">Custo est.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginated.map((r) => {
+                      const cov = r.coverage;
+                      const covLabel =
+                        cov === Infinity
+                          ? "—"
+                          : `${cov.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}d`;
+                      const covTone =
+                        cov < 3
+                          ? "bg-red-500/15 text-red-600 border-red-500/30"
+                          : cov < 7
+                            ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
+                            : cov < 14
+                              ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
+                              : "bg-emerald-500/15 text-emerald-600 border-emerald-500/30";
+                      return (
+                        <TableRow key={r.product.id} data-testid={`row-suggestion-${r.product.id}`}>
+                          <TableCell>
+                            <div className="font-medium">{r.product.name}</div>
+                            {r.product.sku && (
+                              <div className="text-xs text-muted-foreground">SKU: {r.product.sku}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {fmtQty(r.sold, r.product.stock_unit)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">
+                            {r.dailyAvg.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {fmtQty(r.stock, r.product.stock_unit)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline" className={covTone}>
+                              {covLabel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-bold tabular-nums text-primary">
+                            {r.suggest > 0 ? fmtQty(r.suggest, r.product.stock_unit) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {r.cost > 0 ? fmtBRL(r.cost) : "—"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
