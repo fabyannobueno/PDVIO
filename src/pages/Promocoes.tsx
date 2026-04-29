@@ -64,7 +64,6 @@ import {
   ChevronRight,
   History,
 } from "lucide-react";
-import { scrollAppToTop } from "@/lib/scrollToTop";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
