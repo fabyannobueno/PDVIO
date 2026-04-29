@@ -305,53 +305,105 @@ export default function MarginReport({ companyId, saleIds, totalReceita }: Props
               Nenhum produto com custo cadastrado neste período.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Qtd</TableHead>
-                    <TableHead className="text-right">Receita</TableHead>
-                    <TableHead className="text-right">Custo</TableHead>
-                    <TableHead className="text-right">Lucro</TableHead>
-                    <TableHead className="text-right">Margem</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.top.map((r) => (
-                    <TableRow key={r.key} data-testid={`row-margin-top-${r.key}`}>
-                      <TableCell className="font-medium">{r.name}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {fmtQty(r.qty, r.unit)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{fmtBRL(r.revenue)}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {fmtBRL(r.cost)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums font-bold text-emerald-600">
-                        {fmtBRL(r.profit)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge
-                          variant="outline"
-                          className={
-                            r.marginPct >= 30
-                              ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
-                              : r.marginPct >= 15
-                                ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
-                                : r.marginPct >= 0
-                                  ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
-                                  : "bg-red-500/15 text-red-600 border-red-500/30"
-                          }
-                        >
-                          {fmtPct(r.marginPct)}
-                        </Badge>
-                      </TableCell>
+            <>
+              {/* Mobile: lista em cartões */}
+              <ul className="divide-y divide-border md:hidden">
+                {data.top.map((r) => (
+                  <li
+                    key={r.key}
+                    data-testid={`row-margin-top-${r.key}`}
+                    className="px-4 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium leading-snug">{r.name}</p>
+                      <Badge
+                        variant="outline"
+                        className={`shrink-0 ${
+                          r.marginPct >= 30
+                            ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                            : r.marginPct >= 15
+                              ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
+                              : r.marginPct >= 0
+                                ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
+                                : "bg-red-500/15 text-red-600 border-red-500/30"
+                        }`}
+                      >
+                        {fmtPct(r.marginPct)}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Qtd</span>
+                        <span className="tabular-nums font-medium">{fmtQty(r.qty, r.unit)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Receita</span>
+                        <span className="tabular-nums font-medium">{fmtBRL(r.revenue)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Custo</span>
+                        <span className="tabular-nums text-muted-foreground">{fmtBRL(r.cost)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Lucro</span>
+                        <span className="tabular-nums font-bold text-emerald-600">
+                          {fmtBRL(r.profit)}
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Desktop: tabela */}
+              <div className="hidden overflow-x-auto md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="text-right">Qtd</TableHead>
+                      <TableHead className="text-right">Receita</TableHead>
+                      <TableHead className="text-right">Custo</TableHead>
+                      <TableHead className="text-right">Lucro</TableHead>
+                      <TableHead className="text-right">Margem</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {data.top.map((r) => (
+                      <TableRow key={r.key} data-testid={`row-margin-top-${r.key}`}>
+                        <TableCell className="font-medium">{r.name}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {fmtQty(r.qty, r.unit)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtBRL(r.revenue)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {fmtBRL(r.cost)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-bold text-emerald-600">
+                          {fmtBRL(r.profit)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge
+                            variant="outline"
+                            className={
+                              r.marginPct >= 30
+                                ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                                : r.marginPct >= 15
+                                  ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
+                                  : r.marginPct >= 0
+                                    ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
+                                    : "bg-red-500/15 text-red-600 border-red-500/30"
+                            }
+                          >
+                            {fmtPct(r.marginPct)}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -366,7 +418,49 @@ export default function MarginReport({ companyId, saleIds, totalReceita }: Props
                 <h3 className="text-sm font-semibold">Atenção — margem baixa ou negativa</h3>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            {/* Mobile: lista em cartões */}
+            <ul className="divide-y divide-border md:hidden">
+              {data.bottom.map((r) => (
+                <li
+                  key={r.key}
+                  data-testid={`row-margin-bottom-${r.key}`}
+                  className="px-4 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium leading-snug">{r.name}</p>
+                    <Badge
+                      variant="outline"
+                      className={`shrink-0 ${
+                        r.marginPct >= 0
+                          ? "bg-amber-500/15 text-amber-600 border-amber-500/30"
+                          : "bg-red-500/15 text-red-600 border-red-500/30"
+                      }`}
+                    >
+                      {fmtPct(r.marginPct)}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Receita</span>
+                      <span className="tabular-nums font-medium">{fmtBRL(r.revenue)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Lucro</span>
+                      <span
+                        className={`tabular-nums font-bold ${
+                          r.profit >= 0 ? "text-amber-600" : "text-rose-600"
+                        }`}
+                      >
+                        {fmtBRL(r.profit)}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop: tabela */}
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
