@@ -165,9 +165,9 @@ const SECTIONS: RoadmapSection[] = [
     title: "Inteligência",
     icon: Brain,
     items: [
-      { title: "Dashboard com comparativos", description: "Receita vs. mês anterior, produto que mais cresceu/caiu e horário de pico.", status: "planned" },
-      { title: "Previsão de vendas", description: "Sugestão de compra baseada no histórico de vendas.", status: "planned" },
-      { title: "Relatório de margem/lucro", description: "Cálculo de margem por produto (depende do campo de custo no produto).", status: "planned" },
+      { title: "Dashboard com comparativos", description: "Receita vs. mês anterior, produto que mais cresceu/caiu e horário de pico.", status: "done" },
+      { title: "Previsão de vendas", description: "Sugestão de compra baseada no histórico de vendas.", status: "done" },
+      { title: "Relatório de margem/lucro", description: "Cálculo de margem por produto (depende do campo de custo no produto).", status: "done" },
     ],
   },
   {
