@@ -41,6 +41,9 @@ import Roadmap from "./pages/Roadmap";
 import Promocoes from "./pages/Promocoes";
 import Suporte from "./pages/Suporte";
 import SuporteTicket from "./pages/SuporteTicket";
+import Planos from "./pages/Planos";
+import Checkout from "./pages/Checkout";
+import Faturas from "./pages/Faturas";
 import { PermissionGuard } from "@/components/PermissionGuard";
 
 const queryClient = new QueryClient({
@@ -135,6 +138,9 @@ const App = () => (
                   <Route path="/roadmap" element={<Roadmap />} />
                   <Route path="/suporte" element={<Suporte />} />
                   <Route path="/suporte/ticket/:seq" element={<SuporteTicket />} />
+                  <Route path="/planos" element={<PermissionGuard permission="manage_billing"><Planos /></PermissionGuard>} />
+                  <Route path="/checkout" element={<PermissionGuard permission="manage_billing"><Checkout /></PermissionGuard>} />
+                  <Route path="/faturas" element={<PermissionGuard permission="view_billing"><Faturas /></PermissionGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

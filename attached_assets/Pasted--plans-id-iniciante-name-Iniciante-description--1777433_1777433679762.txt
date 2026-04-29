@@ -1,0 +1,150 @@
+{
+  "plans": [
+    {
+      "id": "iniciante",
+      "name": "Iniciante",
+      "description": "Para quem está começando e precisa do básico bem feito.",
+      "pricing": {
+        "type": "free",
+        "monthly": 0,
+        "yearly": 0,
+        "annual_monthly_equivalent": 0,
+        "annual_total": 0,
+        "currency": "BRL",
+        "display_price": "R$ 0"
+      },
+      "limits": {
+        "stores": 1,
+        "users": 1,
+        "cashiers": 1,
+        "products": 50
+      },
+      "features": [
+        "1 Caixa / Usuário",
+        "Até 50 produtos",
+        "Relatórios básicos",
+        "Sem gestão de mesas",
+        "Sem KDS (Cozinha)"
+      ],
+      "highlight": false,
+      "cta": {
+        "label": "Começar grátis",
+        "url": "/checkout?planId=iniciante&billingCycle=monthly",
+        "billingCycle": "monthly"
+      }
+    },
+    {
+      "id": "essencial",
+      "name": "Essencial",
+      "description": "Para quem já tem clientes e precisa crescer com organização.",
+      "pricing": {
+        "type": "paid",
+        "monthly": 69,
+        "yearly": 588,
+        "annual_monthly_equivalent": 49,
+        "annual_total": 588,
+        "currency": "BRL",
+        "display_price": "R$ 69/mês",
+        "display_annual_price": "R$ 49/mês no anual",
+        "billing_note": "Cobrado R$ 588 anualmente"
+      },
+      "limits": {
+        "stores": 2,
+        "users_per_store": 3,
+        "products": 1000
+      },
+      "features": [
+        "Até 2 lojas",
+        "Até 1.000 produtos",
+        "3 usuários por loja",
+        "Comandas e mesas",
+        "Suporte por chat"
+      ],
+      "highlight": true,
+      "cta": {
+        "monthly": {
+          "label": "Assinar mensal",
+          "url": "/checkout?planId=essencial&billingCycle=monthly",
+          "billingCycle": "monthly"
+        },
+        "yearly": {
+          "label": "Assinar anual",
+          "url": "/checkout?planId=essencial&billingCycle=yearly",
+          "billingCycle": "yearly"
+        }
+      }
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "description": "O sistema completo para operar em alta performance, com várias lojas.",
+      "pricing": {
+        "type": "paid",
+        "monthly": 159,
+        "yearly": 1548,
+        "annual_monthly_equivalent": 129,
+        "annual_total": 1548,
+        "currency": "BRL",
+        "display_price": "R$ 159/mês",
+        "display_annual_price": "R$ 129/mês no anual",
+        "billing_note": "Cobrado R$ 1.548 anualmente"
+      },
+      "limits": {
+        "stores": 10,
+        "users": "unlimited",
+        "cashiers": "unlimited",
+        "products": "unlimited"
+      },
+      "features": [
+        "Multi-loja até 10 lojas",
+        "Usuários e caixas ilimitados",
+        "Produtos ilimitados",
+        "KDS (Tela da cozinha)",
+        "Estoque, fichas e BI completo",
+        "Suporte prioritário via WhatsApp"
+      ],
+      "highlight": false,
+      "cta": {
+        "monthly": {
+          "label": "Assinar mensal",
+          "url": "/checkout?planId=pro&billingCycle=monthly",
+          "billingCycle": "monthly"
+        },
+        "yearly": {
+          "label": "Assinar anual",
+          "url": "/checkout?planId=pro&billingCycle=yearly",
+          "billingCycle": "yearly"
+        }
+      }
+    },
+    {
+      "id": "empresarial",
+      "name": "Empresarial",
+      "description": "Para redes, franquias e operações complexas com várias lojas.",
+      "pricing": {
+        "type": "custom",
+        "currency": "BRL",
+        "display_price": "Custom",
+        "billing_note": "Plano personalizado sob consulta"
+      },
+      "limits": {
+        "stores": "unlimited",
+        "users": "unlimited",
+        "cashiers": "unlimited",
+        "products": "unlimited"
+      },
+      "features": [
+        "Tudo do plano Pro",
+        "Lojas ilimitadas",
+        "API de integração aberta",
+        "Gerente de conta dedicado",
+        "Onboarding personalizado"
+      ],
+      "highlight": false,
+      "cta": {
+        "label": "Entrar em contato",
+        "url": "https://www.pdvio.com.br/contato"
+      }
+    }
+  ]
+}

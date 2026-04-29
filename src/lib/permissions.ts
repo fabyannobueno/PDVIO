@@ -20,6 +20,8 @@ export type Permission =
   | "view_balanca"
   | "view_promocoes"
   | "manage_promocoes"
+  | "view_billing"
+  | "manage_billing"
   | "manage_company"
   | "manage_staff"
   | "manage_products"
@@ -51,6 +53,8 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_balanca",
     "view_promocoes",
     "manage_promocoes",
+    "view_billing",
+    "manage_billing",
     "manage_company",
     "manage_staff",
     "manage_products",

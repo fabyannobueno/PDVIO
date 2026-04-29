@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import DashboardInsights from "@/components/dashboard/DashboardInsights";
+import { PlanBanner } from "@/components/billing/PlanBanner";
 import {
   ShoppingCart,
   Package,
@@ -334,6 +335,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 p-6 md:p-8 animate-fade-in">
+      <PlanBanner />
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-subtle p-8">
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gradient-primary opacity-10 blur-3xl" />

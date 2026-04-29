@@ -20,6 +20,8 @@ import {
   BookOpen,
   Scale,
   Tag,
+  Crown,
+  Receipt,
 } from "lucide-react";
 import {
   Sidebar,
@@ -65,6 +67,8 @@ const management: NavItem[] = [
 ];
 
 const settings: NavItem[] = [
+  { title: "Plano", url: "/planos", icon: Crown, perm: "manage_billing" },
+  { title: "Faturas", url: "/faturas", icon: Receipt, perm: "view_billing" },
   { title: "Configurações", url: "/configuracoes", icon: Settings, perm: "view_configuracoes" },
 ];
 
