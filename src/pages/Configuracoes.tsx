@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { formatLimit } from "@/lib/plans";
+import { BUSINESS_TYPES } from "@/lib/businessTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -107,16 +108,6 @@ function parseAddress(raw: string | null): AddressFields {
 function serializeAddress(a: AddressFields): string {
   return JSON.stringify(a);
 }
-
-const BUSINESS_TYPES = [
-  { value: "restaurant", label: "Restaurante" },
-  { value: "snack_bar", label: "Lanchonete" },
-  { value: "market", label: "Mercado" },
-  { value: "distributor", label: "Distribuidora" },
-  { value: "delivery", label: "Delivery" },
-  { value: "retail", label: "Loja física" },
-  { value: "other", label: "Outro" },
-];
 
 const ROLE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   owner: { label: "Dono", icon: Crown, color: "text-primary" },

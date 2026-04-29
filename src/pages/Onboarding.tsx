@@ -12,20 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { toast } from "sonner";
-import { Loader2, Store, UtensilsCrossed, ShoppingBasket, Truck, Bike, ShoppingBag, Package, CheckCircle2, AlertCircle, Crown } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Crown } from "lucide-react";
 import { maskDocument } from "@/lib/masks";
 import { onlyDigits, isValidDocument, isValidCNPJ, fetchCnpjBrasilAPI, type CnpjData } from "@/lib/document";
 import { formatLimit } from "@/lib/plans";
-
-const BUSINESS_TYPES = [
-  { value: "restaurant", label: "Restaurante", icon: UtensilsCrossed },
-  { value: "snack_bar", label: "Lanchonete", icon: ShoppingBag },
-  { value: "market", label: "Mercado", icon: ShoppingBasket },
-  { value: "distributor", label: "Distribuidora", icon: Truck },
-  { value: "delivery", label: "Delivery", icon: Bike },
-  { value: "retail", label: "Loja física", icon: Store },
-  { value: "other", label: "Outro", icon: Package },
-];
+import { BUSINESS_TYPES } from "@/lib/businessTypes";
 
 export default function Onboarding() {
   const { user } = useAuth();
@@ -250,7 +241,7 @@ export default function Onboarding() {
 
               <div className="space-y-2">
                 <Label>Tipo de negócio *</Label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {BUSINESS_TYPES.map((b) => {
                     const Icon = b.icon;
                     const active = businessType === b.value;
