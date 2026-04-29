@@ -22,6 +22,7 @@ import {
   Tag,
   Crown,
   Receipt,
+  Lock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,6 +41,8 @@ import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermission";
 import type { Permission } from "@/lib/permissions";
 import { scrollAppToTop } from "@/lib/scrollToTop";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { isRoutePlanAllowed } from "@/lib/planAccess";
 
 type NavItem = { title: string; url: string; icon: typeof LayoutDashboard; perm: Permission };
 
@@ -82,6 +85,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { can } = usePermissions();
+  const { planId } = usePlanLimits();
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
@@ -91,22 +95,37 @@ export function AppSidebar() {
     scrollAppToTop();
   };
 
-  const renderItem = (item: NavItem) => (
-    <SidebarMenuItem key={item.url} className={collapsed ? "flex justify-center" : ""}>
-      <SidebarMenuButton
-        asChild
-        className={cn(
-          isActive(item.url) ? "bg-sidebar-accent font-medium text-sidebar-primary" : "",
-          collapsed && "justify-center",
-        )}
-      >
-        <NavLink to={item.url} end={item.url === "/"} onClick={handleNavClick}>
-          <item.icon className="h-4 w-4" />
-          {!collapsed && <span>{item.title}</span>}
-        </NavLink>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
+  const renderItem = (item: NavItem) => {
+    const planLocked = !isRoutePlanAllowed(planId, item.url);
+    return (
+      <SidebarMenuItem key={item.url} className={collapsed ? "flex justify-center" : ""}>
+        <SidebarMenuButton
+          asChild
+          className={cn(
+            isActive(item.url) ? "bg-sidebar-accent font-medium text-sidebar-primary" : "",
+            collapsed && "justify-center",
+            planLocked && "text-muted-foreground/70",
+          )}
+          tooltip={planLocked ? `${item.title} — exige plano superior` : undefined}
+        >
+          <NavLink to={item.url} end={item.url === "/"} onClick={handleNavClick}>
+            <item.icon className="h-4 w-4" />
+            {!collapsed && (
+              <span className="flex-1 flex items-center justify-between gap-2">
+                <span>{item.title}</span>
+                {planLocked && (
+                  <Lock
+                    className="h-3 w-3 text-muted-foreground/70 shrink-0"
+                    data-testid={`lock-${item.url.slice(1) || "dashboard"}`}
+                  />
+                )}
+              </span>
+            )}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   const visibleOperational = operational.filter((i) => can(i.perm));
   const visibleManagement = management.filter((i) => can(i.perm));

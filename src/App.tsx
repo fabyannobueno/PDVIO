@@ -45,6 +45,7 @@ import Planos from "./pages/Planos";
 import Checkout from "./pages/Checkout";
 import Faturas from "./pages/Faturas";
 import { PermissionGuard } from "@/components/PermissionGuard";
+import { PlanGuard } from "@/components/PlanGuard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,22 +120,22 @@ const App = () => (
                 >
                   <Route path="/" element={<PermissionGuard permission="view_dashboard"><Dashboard /></PermissionGuard>} />
                   <Route path="/pdv" element={<PermissionGuard permission="view_pdv"><PDV /></PermissionGuard>} />
-                  <Route path="/comandas" element={<PermissionGuard permission="view_comandas"><Comandas /></PermissionGuard>} />
-                  <Route path="/kds" element={<PermissionGuard permission="view_kds"><KDS /></PermissionGuard>} />
+                  <Route path="/comandas" element={<PermissionGuard permission="view_comandas"><PlanGuard><Comandas /></PlanGuard></PermissionGuard>} />
+                  <Route path="/kds" element={<PermissionGuard permission="view_kds"><PlanGuard><KDS /></PlanGuard></PermissionGuard>} />
                   <Route path="/produtos" element={<PermissionGuard permission="view_produtos"><Produtos /></PermissionGuard>} />
-                  <Route path="/clientes" element={<PermissionGuard permission="view_clientes"><Clientes /></PermissionGuard>} />
-                  <Route path="/crediario" element={<PermissionGuard permission="view_crediario"><Crediario /></PermissionGuard>} />
-                  <Route path="/financeiro" element={<PermissionGuard permission="view_financeiro"><Financeiro /></PermissionGuard>} />
+                  <Route path="/clientes" element={<PermissionGuard permission="view_clientes"><PlanGuard><Clientes /></PlanGuard></PermissionGuard>} />
+                  <Route path="/crediario" element={<PermissionGuard permission="view_crediario"><PlanGuard><Crediario /></PlanGuard></PermissionGuard>} />
+                  <Route path="/financeiro" element={<PermissionGuard permission="view_financeiro"><PlanGuard><Financeiro /></PlanGuard></PermissionGuard>} />
                   <Route path="/relatorios" element={<PermissionGuard permission="view_relatorios"><Relatorios /></PermissionGuard>} />
                   <Route path="/vendas" element={<PermissionGuard permission="view_vendas"><Vendas /></PermissionGuard>} />
                   <Route path="/caixa" element={<PermissionGuard permission="view_caixa"><Caixa /></PermissionGuard>} />
                   <Route path="/configuracoes" element={<PermissionGuard permission="view_configuracoes"><Configuracoes /></PermissionGuard>} />
-                  <Route path="/auditoria" element={<PermissionGuard permission="view_auditoria"><Auditoria /></PermissionGuard>} />
-                  <Route path="/estoque" element={<PermissionGuard permission="view_estoque"><Estoque /></PermissionGuard>} />
-                  <Route path="/balanca" element={<PermissionGuard permission="view_balanca"><Balanca /></PermissionGuard>} />
-                  <Route path="/fornecedores" element={<PermissionGuard permission="view_fornecedores"><Fornecedores /></PermissionGuard>} />
-                  <Route path="/contas" element={<PermissionGuard permission="view_contas"><Contas /></PermissionGuard>} />
-                  <Route path="/promocoes" element={<PermissionGuard permission="view_promocoes"><Promocoes /></PermissionGuard>} />
+                  <Route path="/auditoria" element={<PermissionGuard permission="view_auditoria"><PlanGuard><Auditoria /></PlanGuard></PermissionGuard>} />
+                  <Route path="/estoque" element={<PermissionGuard permission="view_estoque"><PlanGuard><Estoque /></PlanGuard></PermissionGuard>} />
+                  <Route path="/balanca" element={<PermissionGuard permission="view_balanca"><PlanGuard><Balanca /></PlanGuard></PermissionGuard>} />
+                  <Route path="/fornecedores" element={<PermissionGuard permission="view_fornecedores"><PlanGuard><Fornecedores /></PlanGuard></PermissionGuard>} />
+                  <Route path="/contas" element={<PermissionGuard permission="view_contas"><PlanGuard><Contas /></PlanGuard></PermissionGuard>} />
+                  <Route path="/promocoes" element={<PermissionGuard permission="view_promocoes"><PlanGuard><Promocoes /></PlanGuard></PermissionGuard>} />
                   <Route path="/roadmap" element={<Roadmap />} />
                   <Route path="/suporte" element={<Suporte />} />
                   <Route path="/suporte/ticket/:seq" element={<SuporteTicket />} />

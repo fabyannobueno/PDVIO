@@ -62,6 +62,10 @@ Hook central: `src/hooks/usePlanLimits.ts`. Quando a empresa não tem assinatura
 - Onboarding (`src/pages/Onboarding.tsx`) — `canAddCompany` ao criar nova loja (apenas no fluxo `?new=1`); banner com link para `/planos`
 - Operadores do caixa (`src/pages/Configuracoes.tsx`, aba Equipe) — `canAddCashier` no botão "Novo operador" + badge de uso. A aba também mostra badge de membros (`canAddUser`) só leitura.
 
+## Acesso a páginas por plano
+
+`src/lib/planAccess.ts` define o plano mínimo necessário por rota e `src/components/PlanGuard.tsx` protege as rotas em `App.tsx`. Quem está no Iniciante (ou sem plano) só acessa: dashboard, pdv, caixa, produtos, vendas, relatórios, suporte, roadmap, planos, faturas e configurações. Páginas restritas (clientes, crediário, comandas, kds, financeiro, contas, estoque, balança, fornecedores, promoções, auditoria) mostram cadeado no sidebar e tela de upgrade ao tentar acessar.
+
 ## User Flow
 
 1. `/auth` — Sign in or create account
