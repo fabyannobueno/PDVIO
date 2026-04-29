@@ -507,6 +507,76 @@ export default function Caixa() {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  // Skeleton de página inteira no carregamento inicial. Após carregar pela
+  // primeira vez, refetches em segundo plano não exibem o skeleton novamente.
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  useEffect(() => {
+    if (initialLoaded) return;
+    if (activeCompany?.id && !loadingActive) {
+      setInitialLoaded(true);
+    }
+  }, [initialLoaded, activeCompany?.id, loadingActive]);
+
+  if (!initialLoaded) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 md:p-8 animate-fade-in">
+        {/* Header skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+        </div>
+
+        {/* Status card skeleton */}
+        <div className="rounded-xl border border-border/60 bg-card p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-9 rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-28" />
+            </div>
+          </div>
+        </div>
+
+        {/* Summary cards skeleton */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/60 bg-card p-5 space-y-3">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ))}
+        </div>
+
+        {/* List card skeleton */}
+        <div className="rounded-xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <Skeleton className="h-5 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6 md:p-8 animate-fade-in">
       <div>

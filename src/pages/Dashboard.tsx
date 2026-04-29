@@ -249,6 +249,95 @@ export default function Dashboard() {
   const allStepsDone = onboardingSteps.every((s) => s.done);
   const onboardingLoading = loadingProducts || loadingRecent || loadingSales;
 
+  // Skeleton de página inteira no carregamento inicial. Após carregar a primeira
+  // vez, refetches em segundo plano não exibem o skeleton novamente.
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  useEffect(() => {
+    if (initialLoaded) return;
+    if (cid && !loadingSales && !loadingRecent && !loadingCustomers && !loadingProducts) {
+      setInitialLoaded(true);
+    }
+  }, [initialLoaded, cid, loadingSales, loadingRecent, loadingCustomers, loadingProducts]);
+
+  if (!initialLoaded) {
+    return (
+      <div className="space-y-8 p-6 md:p-8 animate-fade-in">
+        {/* Hero skeleton */}
+        <div className="rounded-2xl border border-border bg-gradient-subtle p-8">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="mt-2 h-9 w-64 max-w-full" />
+          <Skeleton className="mt-3 h-4 w-72 max-w-full" />
+        </div>
+
+        {/* Extras row skeleton (cotações + tempo) */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/60 bg-card p-5 space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-7 w-32" />
+              <Skeleton className="h-3 w-40" />
+            </div>
+          ))}
+        </div>
+
+        {/* Insights skeleton */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/60 bg-card p-5 space-y-3">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          ))}
+        </div>
+
+        {/* Stats grid skeleton */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/60 bg-card p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-8 w-24" />
+                </div>
+                <Skeleton className="h-9 w-9 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick actions + onboarding skeleton */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4">
+            <Skeleton className="h-6 w-40" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-4 rounded-xl border border-border bg-card p-4">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-44" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-5 w-5 rounded-full" />
+                  <Skeleton className="h-4 flex-1" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 p-6 md:p-8 animate-fade-in">
       {/* Hero */}

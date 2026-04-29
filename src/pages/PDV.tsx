@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
@@ -1511,6 +1512,96 @@ export default function PDV() {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  // Skeleton de página inteira no carregamento inicial. Após carregar pela
+  // primeira vez, refetches em segundo plano não exibem o skeleton novamente.
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  useEffect(() => {
+    if (initialLoaded) return;
+    if (activeCompany?.id && !isLoading) {
+      setInitialLoaded(true);
+    }
+  }, [initialLoaded, activeCompany?.id, isLoading]);
+
+  if (!initialLoaded) {
+    return (
+      <div className="flex h-full overflow-hidden bg-background animate-fade-in">
+        {/* Left: products skeleton */}
+        <div className={`flex flex-col overflow-hidden ${mobileView === "cart" ? "hidden md:flex" : "flex"} flex-1`}>
+          {/* Search bar skeleton */}
+          <div className="border-b border-border bg-background px-4 py-3">
+            <div className="flex gap-2">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-10 shrink-0" />
+              <Skeleton className="hidden h-10 w-10 shrink-0 md:inline-flex" />
+            </div>
+          </div>
+
+          {/* Category tabs skeleton */}
+          <div className="flex gap-1.5 overflow-x-auto border-b border-border bg-background px-4 py-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-7 w-20 shrink-0 rounded-full" />
+            ))}
+          </div>
+
+          {/* Products grid skeleton */}
+          <div className="flex-1 overflow-hidden">
+            <div className="grid grid-cols-2 gap-2.5 p-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="flex flex-col rounded-xl border border-border bg-card p-3 space-y-2">
+                  <Skeleton className="aspect-square w-full rounded-lg" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <div className="border-t border-border/50 pt-2">
+                    <Skeleton className="h-5 w-20" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: cart panel skeleton (desktop only) */}
+        <div className={`flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-muted/20 ${mobileView === "products" ? "hidden md:flex" : "flex"} w-full md:w-[400px]`}>
+          {/* Cart header */}
+          <div className="flex items-center justify-between border-b border-border bg-background px-5 py-3.5">
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-8 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </div>
+
+          {/* Cart items area */}
+          <div className="flex-1 p-4 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border bg-card p-3 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cart footer */}
+          <div className="border-t border-border bg-background p-4 space-y-3">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="flex justify-between">
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-6 w-28" />
+            </div>
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-11 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full overflow-hidden bg-background">
