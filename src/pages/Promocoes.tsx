@@ -62,6 +62,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  History,
 } from "lucide-react";
 import { scrollAppToTop } from "@/lib/scrollToTop";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -930,6 +931,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
   const [form, setForm] = useState<CouponForm>(EMPTY_COUPON_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [usesCoupon, setUsesCoupon] = useState<Coupon | null>(null);
 
   const couponsQuery = useQuery({
     queryKey: ["coupons", companyId],
@@ -1199,6 +1201,15 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setUsesCoupon(c)}
+                          aria-label="Ver usos"
+                          title="Ver usos"
+                        >
+                          <History className="h-4 w-4" />
+                        </Button>
                         {canManage && (
                           <>
                             <Switch
@@ -1442,6 +1453,112 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CouponUsesDialog
+        coupon={usesCoupon}
+        companyId={companyId}
+        onClose={() => setUsesCoupon(null)}
+      />
     </div>
+  );
+}
+
+interface CouponUseRow {
+  id: string;
+  used_at: string;
+  customer_name: string;
+  customer_id: string;
+  discount_amount: number;
+  sale_id: string | null;
+}
+
+function CouponUsesDialog({
+  coupon,
+  companyId,
+  onClose,
+}: {
+  coupon: Coupon | null;
+  companyId: string;
+  onClose: () => void;
+}) {
+  const usesQuery = useQuery({
+    queryKey: ["coupon-uses", coupon?.id, companyId],
+    enabled: !!coupon?.id && !!companyId,
+    queryFn: async (): Promise<CouponUseRow[]> => {
+      const { data, error } = await (supabase as any)
+        .from("coupon_uses")
+        .select("id, used_at, customer_name, customer_id, discount_amount, sale_id")
+        .eq("company_id", companyId)
+        .eq("coupon_id", coupon!.id)
+        .order("used_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as CouponUseRow[];
+    },
+  });
+
+  const rows = usesQuery.data ?? [];
+  const total = rows.reduce((s, r) => s + Number(r.discount_amount ?? 0), 0);
+
+  return (
+    <Dialog open={!!coupon} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            Usos do cupom{coupon ? ` ${coupon.code}` : ""}
+          </DialogTitle>
+        </DialogHeader>
+        {usesQuery.isLoading ? (
+          <div className="space-y-2 py-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Este cupom ainda não foi utilizado.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{rows.length} {rows.length === 1 ? "uso" : "usos"}</span>
+              <span>
+                Total descontado:{" "}
+                <strong className="text-foreground">{fmtBRL(total)}</strong>
+              </span>
+            </div>
+            <div className="rounded-md border border-border max-h-[60vh] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="text-right">Desconto</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {new Date(r.used_at).toLocaleString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </TableCell>
+                      <TableCell className="font-medium">{r.customer_name}</TableCell>
+                      <TableCell className="text-right">
+                        {fmtBRL(Number(r.discount_amount))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
