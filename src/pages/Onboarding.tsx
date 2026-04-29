@@ -154,7 +154,22 @@ export default function Onboarding() {
       logo_url: data.logo_url,
       role: "owner",
     });
-    navigate("/", { replace: true });
+
+    // Verifica se o perfil pessoal já está completo. Se não, vai para
+    // /complete-profile (obrigatório). Caso contrário, vai direto para o app.
+    let profileComplete = false;
+    try {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name, phone, avatar_url, cpf, birth_date")
+        .eq("id", user!.id)
+        .maybeSingle();
+      const p: any = prof || {};
+      profileComplete = !!(p.full_name && p.phone && p.avatar_url && p.cpf && p.birth_date);
+    } catch {
+      profileComplete = false;
+    }
+    navigate(profileComplete ? "/" : "/complete-profile", { replace: true });
   };
 
   return (

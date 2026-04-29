@@ -15,6 +15,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import AuthConfirm from "./pages/AuthConfirm";
 import Onboarding from "./pages/Onboarding";
+import CompleteProfile from "./pages/CompleteProfile";
 import Produtos from "./pages/Produtos";
 import PDV from "./pages/PDV";
 import Clientes from "./pages/Clientes";
@@ -95,6 +96,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Onboarding />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/complete-profile"
+                  element={
+                    <ProtectedRoute>
+                      <CompleteProfile />
                     </ProtectedRoute>
                   }
                 />
