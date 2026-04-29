@@ -28,13 +28,11 @@ export function AppLayout() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("full_name, phone, avatar_url, cpf, birth_date")
+        .select("profile_completed")
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled) return;
-      const p: any = data || {};
-      const complete = !!(p.full_name && p.phone && p.avatar_url && p.cpf && p.birth_date);
-      setProfileComplete(complete);
+      setProfileComplete(!!data?.profile_completed);
       setProfileLoading(false);
     })();
     return () => {

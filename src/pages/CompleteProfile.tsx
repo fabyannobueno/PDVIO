@@ -70,7 +70,7 @@ export default function CompleteProfile() {
       setLoading(true);
       const { data } = await supabase
         .from("profiles")
-        .select("full_name, phone, avatar_url, cpf, birth_date")
+        .select("full_name, phone, avatar_url, cpf, birth_date, profile_completed")
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled) return;
@@ -81,9 +81,7 @@ export default function CompleteProfile() {
       setAvatar(p.avatar_url ?? null);
       setCpf(p.cpf ? maskCpf(String(p.cpf)) : "");
       setBirthDate(p.birth_date ? String(p.birth_date).slice(0, 10) : "");
-      // Considera completo se tudo preenchido
-      const complete = !!(p.full_name && p.phone && p.avatar_url && p.cpf && p.birth_date);
-      setAlreadyComplete(complete);
+      setAlreadyComplete(!!p.profile_completed);
       setLoading(false);
     })();
     return () => {
@@ -194,6 +192,7 @@ export default function CompleteProfile() {
         avatar_url: avatar,
         cpf: cpfDigits,
         birth_date: birthDate,
+        profile_completed: true,
       };
       const { error } = await supabase.from("profiles").upsert(payload);
       if (error) {

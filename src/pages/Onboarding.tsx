@@ -155,17 +155,15 @@ export default function Onboarding() {
       role: "owner",
     });
 
-    // Verifica se o perfil pessoal já está completo. Se não, vai para
-    // /complete-profile (obrigatório). Caso contrário, vai direto para o app.
+    // Verifica a flag profile_completed. Se false, força /complete-profile.
     let profileComplete = false;
     try {
       const { data: prof } = await supabase
         .from("profiles")
-        .select("full_name, phone, avatar_url, cpf, birth_date")
+        .select("profile_completed")
         .eq("id", user!.id)
         .maybeSingle();
-      const p: any = prof || {};
-      profileComplete = !!(p.full_name && p.phone && p.avatar_url && p.cpf && p.birth_date);
+      profileComplete = !!prof?.profile_completed;
     } catch {
       profileComplete = false;
     }
