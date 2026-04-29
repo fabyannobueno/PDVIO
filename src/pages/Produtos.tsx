@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -975,6 +977,7 @@ async function lookupBarcode(barcode: string): Promise<LookupResult> {
 
 export default function Produtos() {
   const { activeCompany } = useCompany();
+  const planLimits = usePlanLimits();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -1317,6 +1320,13 @@ export default function Produtos() {
   // ── Dialog helpers ─────────────────────────────────────────────────────────
 
   function openCreate() {
+    if (!planLimits.canAddProduct) {
+      toast.error(
+        `Limite do plano atingido (${planLimits.usage.products}/${planLimits.limits.products} produtos). Faça upgrade do plano para cadastrar mais.`,
+        { duration: 6000 }
+      );
+      return;
+    }
     setEditProduct(null);
     setForm(EMPTY_FORM);
     setAddons([]);
