@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { scrollAppToTop } from "@/lib/scrollToTop";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -61,10 +62,13 @@ interface Props {
   loadingProducts: boolean;
 }
 
+const PAGE_SIZE = 8;
+
 export default function PurchaseSuggestions({ companyId, products, loadingProducts }: Props) {
   const [windowDays, setWindowDays] = useState(30);
   const [coverageDays, setCoverageDays] = useState(14);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const since = useMemo(() => {
     const d = new Date();
@@ -163,6 +167,15 @@ export default function PurchaseSuggestions({ companyId, products, loadingProduc
 
   const urgent = filtered.filter((r) => r.coverage < 7).length;
   const loading = loadingProducts || loadingSales || loadingItems;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // Voltar para a página 1 ao mudar filtros (busca, janela, cobertura).
+  useEffect(() => {
+    setPage(1);
+  }, [search, windowDays, coverageDays]);
 
   return (
     <div className="space-y-4">
@@ -298,7 +311,7 @@ export default function PurchaseSuggestions({ companyId, products, loadingProduc
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((r) => {
+                  {paginated.map((r) => {
                     const cov = r.coverage;
                     const covLabel =
                       cov === Infinity
@@ -349,6 +362,42 @@ export default function PurchaseSuggestions({ companyId, products, loadingProduc
           )}
         </CardContent>
       </Card>
+
+      {totalPages > 1 && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-center text-xs text-muted-foreground sm:text-left">
+            Página {safePage} de {totalPages} · {filtered.length} sugestão(ões)
+          </p>
+          <div className="flex w-full gap-2 sm:w-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 sm:flex-none"
+              disabled={safePage <= 1}
+              onClick={() => {
+                setPage((p) => p - 1);
+                scrollAppToTop();
+              }}
+              data-testid="btn-suggestion-prev"
+            >
+              Anterior
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 sm:flex-none"
+              disabled={safePage >= totalPages}
+              onClick={() => {
+                setPage((p) => p + 1);
+                scrollAppToTop();
+              }}
+              data-testid="btn-suggestion-next"
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
+      )}
 
       <p className="text-xs text-muted-foreground">
         A previsão usa a média de vendas dos últimos {windowDays} dias e busca manter{" "}
