@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Receipt,
   Crown,
@@ -10,7 +10,18 @@ import {
   AlertCircle,
   ChevronRight,
   Loader2,
+  Ban,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +43,6 @@ import {
   type InvoiceStatus,
 } from "@/lib/plans";
 import QRCode from "qrcode";
-import { useEffect } from "react";
 import { Copy } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,11 +57,62 @@ const STATUS_STYLE: Record<InvoiceStatus, { variant: "default" | "secondary" | "
 
 export default function Faturas() {
   const { activeCompany } = useCompany();
-  const { data: active, isFetched: subFetched } = useActiveSubscription();
-  const { data: invoices = [], isFetched: invoicesFetched } = useInvoices();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data: active, isFetching: subFetching } = useActiveSubscription();
+  const { data: invoices = [], isFetching: invoicesFetching } = useInvoices();
   const [openInvoice, setOpenInvoice] = useState<InvoiceRow | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
-  const initialLoaded = !!activeCompany?.id && subFetched && invoicesFetched;
+  const initialLoaded =
+    !!activeCompany?.id && !subFetching && !invoicesFetching;
+
+  // Auto-abre fatura via ?invoice=ID quando vinda dos modais globais
+  useEffect(() => {
+    const id = searchParams.get("invoice");
+    if (!id || !invoices.length) return;
+    const inv = invoices.find((i) => i.id === id);
+    if (inv) {
+      setOpenInvoice(inv);
+      // Limpa o param sem recarregar
+      const next = new URLSearchParams(searchParams);
+      next.delete("invoice");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, invoices, setSearchParams]);
+
+  async function handleCancelPlan() {
+    if (!activeCompany?.id) return;
+    try {
+      setCancelling(true);
+      const { error } = await (supabase as any).rpc("cancel_subscription", {
+        _company_id: activeCompany.id,
+      });
+      if (error) throw error;
+      toast({
+        title: "Plano cancelado",
+        description:
+          "Seu plano e funcionalidades ficam ativos até o fim do período. Depois disso, você volta para o Iniciante.",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["/billing/active-subscription"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["/billing/invoices"],
+      });
+      setConfirmCancel(false);
+    } catch (e: any) {
+      toast({
+        title: "Erro ao cancelar",
+        description: e?.message ?? "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   if (!initialLoaded) {
     return (
@@ -85,7 +146,7 @@ export default function Faturas() {
       {/* Resumo da assinatura */}
       {sub && plan ? (
         <div className="rounded-2xl border bg-gradient-to-br from-primary/5 to-transparent p-6">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Plano atual
@@ -93,10 +154,31 @@ export default function Faturas() {
               <h2 className="mt-1 text-2xl font-bold">{plan.name}</h2>
               <p className="text-sm text-muted-foreground">{plan.description}</p>
             </div>
-            <Badge variant={sub.status === "active" ? "default" : "secondary"}>
-              {statusLabel(sub.status)}
+            <Badge
+              variant={
+                sub.cancelled_at
+                  ? "destructive"
+                  : sub.status === "active"
+                  ? "default"
+                  : "secondary"
+              }
+            >
+              {sub.cancelled_at ? "Cancelado" : statusLabel(sub.status)}
             </Badge>
           </div>
+
+          {sub.cancelled_at && sub.current_period_end && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                Plano cancelado. Suas funcionalidades continuam ativas até{" "}
+                <strong>
+                  {new Date(sub.current_period_end).toLocaleDateString("pt-BR")}
+                </strong>
+                . Depois disso, sua conta volta para o plano Iniciante.
+              </p>
+            </div>
+          )}
 
           <div className="mt-5 grid gap-4 border-t pt-4 sm:grid-cols-3">
             <div>
@@ -110,7 +192,9 @@ export default function Faturas() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Próximo vencimento</p>
+              <p className="text-xs text-muted-foreground">
+                {sub.cancelled_at ? "Ativo até" : "Próximo vencimento"}
+              </p>
               <p className="font-medium">
                 {sub.next_due_at ? (
                   <>
@@ -125,6 +209,25 @@ export default function Faturas() {
               </p>
             </div>
           </div>
+
+          {/* Botão de cancelar — só para planos pagos ativos não cancelados */}
+          {plan.pricing_type === "paid" &&
+            sub.status === "active" &&
+            !sub.cancelled_at &&
+            activeCompany?.role === "owner" && (
+              <div className="mt-5 flex justify-end border-t pt-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => setConfirmCancel(true)}
+                  data-testid="button-cancel-plan"
+                >
+                  <Ban className="mr-2 h-4 w-4" />
+                  Cancelar plano
+                </Button>
+              </div>
+            )}
         </div>
       ) : (
         <div
@@ -216,6 +319,39 @@ export default function Faturas() {
         invoice={openInvoice}
         onClose={() => setOpenInvoice(null)}
       />
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent data-testid="dialog-confirm-cancel">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar plano?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Seu plano <strong>{plan?.name}</strong> e todas as funcionalidades
+              continuam ativos até{" "}
+              <strong>
+                {sub?.next_due_at
+                  ? new Date(sub.next_due_at).toLocaleDateString("pt-BR")
+                  : "—"}
+              </strong>
+              . Após essa data, sua conta passa para o plano Iniciante e os
+              limites menores começam a valer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelPlan();
+              }}
+              disabled={cancelling}
+              data-testid="button-confirm-cancel"
+            >
+              {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Cancelar plano
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

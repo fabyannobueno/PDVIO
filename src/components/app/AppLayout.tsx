@@ -9,6 +9,8 @@ import { useOperator } from "@/contexts/OperatorContext";
 import { OperatorLockScreen } from "@/components/OperatorLockScreen";
 import { supabase } from "@/integrations/supabase/client";
 import { useBillingRealtime } from "@/hooks/useBillingRealtime";
+import { useAutoDowngrade } from "@/hooks/useAutoDowngrade";
+import { BillingModals } from "@/components/billing/BillingModals";
 import { Loader2 } from "lucide-react";
 
 export function AppLayout() {
@@ -16,6 +18,7 @@ export function AppLayout() {
   const { companies, loading } = useCompany();
   const { isLocked } = useOperator();
   useBillingRealtime();
+  useAutoDowngrade();
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
 
@@ -72,6 +75,7 @@ export function AppLayout() {
         </div>
       </div>
       {isLocked && <OperatorLockScreen />}
+      <BillingModals />
     </SidebarProvider>
   );
 }

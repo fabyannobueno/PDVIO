@@ -1,14 +1,22 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Crown, Sparkles, Loader2 } from "lucide-react";
+import { Check, Crown, Sparkles, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { usePlans, useActiveSubscription } from "@/hooks/useSubscription";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import {
   formatBRL,
   formatLimit,
+  isUnlimited,
   type BillingCycle,
   type PlanRow,
 } from "@/lib/plans";
@@ -16,18 +24,92 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
+const PLAN_RANK: Record<string, number> = {
+  iniciante: 0,
+  essencial: 1,
+  pro: 2,
+  empresarial: 3,
+};
+
 export default function Planos() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { activeCompany } = useCompany();
   const queryClient = useQueryClient();
-  const { data: plans = [], isFetched: plansFetched } = usePlans();
-  const { data: active, isFetched: subFetched } = useActiveSubscription();
+  const { data: plans = [], isFetching: plansFetching } = usePlans();
+  const { data: active, isFetching: subFetching } = useActiveSubscription();
+  const { usage } = usePlanLimits();
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [activatingId, setActivatingId] = useState<string | null>(null);
 
-  const initialLoaded = !!activeCompany?.id && plansFetched && subFetched;
-  const currentPlanId = active?.subscription?.plan_id ?? null;
+  const initialLoaded =
+    !!activeCompany?.id && !plansFetching && !subFetching;
+  const currentPlan = active?.plan ?? null;
+  const currentSub = active?.subscription ?? null;
+  const currentPlanId = currentSub?.plan_id ?? null;
+  const isCurrentPaid = currentPlan?.pricing_type === "paid";
+
+  /**
+   * Verifica se um plano-alvo é proibido (downgrade) e por quê.
+   * Regras:
+   *  - Quem tem plano pago não pode ir para o Iniciante (precisa cancelar).
+   *  - Não pode escolher um plano cujos limites são MENORES que o uso atual
+   *    (lojas, produtos, equipe).
+   */
+  function blockReason(plan: PlanRow): string | null {
+    if (plan.id === currentPlanId) return null;
+
+    const targetRank = PLAN_RANK[plan.id] ?? 0;
+    const currentRank = currentPlanId ? PLAN_RANK[currentPlanId] ?? 0 : 0;
+    const isDowngrade = targetRank < currentRank;
+
+    if (plan.pricing_type === "free" && isCurrentPaid) {
+      return "Para voltar ao Iniciante, cancele seu plano em Faturas. Ele segue ativo até o fim do período.";
+    }
+
+    if (isDowngrade) {
+      const exceeds: string[] = [];
+      if (
+        !isUnlimited(plan.max_stores) &&
+        usage.companies > (plan.max_stores as number)
+      ) {
+        exceeds.push(
+          `${usage.companies} loja(s) (este plano permite ${plan.max_stores})`
+        );
+      }
+      if (
+        !isUnlimited(plan.max_products) &&
+        usage.products > (plan.max_products as number)
+      ) {
+        exceeds.push(
+          `${usage.products} produto(s) (este plano permite ${plan.max_products})`
+        );
+      }
+      if (
+        !isUnlimited(plan.max_users) &&
+        usage.users > (plan.max_users as number)
+      ) {
+        exceeds.push(
+          `${usage.users} usuário(s) (este plano permite ${plan.max_users})`
+        );
+      }
+      if (
+        !isUnlimited(plan.max_cashiers) &&
+        usage.cashiers > (plan.max_cashiers as number)
+      ) {
+        exceeds.push(
+          `${usage.cashiers} operador(es) (este plano permite ${plan.max_cashiers})`
+        );
+      }
+      if (exceeds.length > 0) {
+        return `Você tem ${exceeds.join(
+          ", "
+        )}. Reduza para abaixo do limite antes de descer de plano.`;
+      }
+    }
+
+    return null;
+  }
 
   const sortedPlans = useMemo(
     () => [...plans].sort((a, b) => a.sort_order - b.sort_order),
@@ -36,6 +118,16 @@ export default function Planos() {
 
   async function handleSelect(plan: PlanRow) {
     if (!activeCompany) return;
+
+    const reason = blockReason(plan);
+    if (reason) {
+      toast({
+        title: "Não é possível mudar para esse plano",
+        description: reason,
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (plan.pricing_type === "custom") {
       window.open("https://www.pdvio.com.br/contato", "_blank");
@@ -130,6 +222,7 @@ export default function Planos() {
           const yearly = Number(plan.price_yearly);
           const yearlyMonthlyEq = yearly > 0 ? yearly / 12 : 0;
           const isLoading = activatingId === plan.id;
+          const blocked = !isCurrent ? blockReason(plan) : null;
 
           return (
             <div
@@ -217,24 +310,52 @@ export default function Planos() {
                 </div>
               </div>
 
-              <Button
-                className="mt-6 w-full"
-                variant={plan.highlight ? "default" : "outline"}
-                onClick={() => handleSelect(plan)}
-                disabled={isCurrent || isLoading}
-                data-testid={`button-select-${plan.id}`}
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isCurrent
-                  ? "Plano atual"
-                  : isCustom
-                  ? "Entrar em contato"
-                  : isFree
-                  ? "Começar grátis"
-                  : cycle === "yearly"
-                  ? "Assinar anual"
-                  : "Assinar mensal"}
-              </Button>
+              {blocked ? (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="mt-6 inline-block w-full">
+                        <Button
+                          className="w-full cursor-not-allowed"
+                          variant="outline"
+                          onClick={() => handleSelect(plan)}
+                          disabled={false}
+                          aria-disabled
+                          data-testid={`button-select-${plan.id}`}
+                        >
+                          <Lock className="mr-2 h-4 w-4" />
+                          Indisponível
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      className="max-w-xs text-xs leading-snug"
+                    >
+                      {blocked}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Button
+                  className="mt-6 w-full"
+                  variant={plan.highlight ? "default" : "outline"}
+                  onClick={() => handleSelect(plan)}
+                  disabled={isCurrent || isLoading}
+                  data-testid={`button-select-${plan.id}`}
+                >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isCurrent
+                    ? "Plano atual"
+                    : isCustom
+                    ? "Entrar em contato"
+                    : isFree
+                    ? "Começar grátis"
+                    : cycle === "yearly"
+                    ? "Assinar anual"
+                    : "Assinar mensal"}
+                </Button>
+              )}
             </div>
           );
         })}
