@@ -414,7 +414,7 @@ export default function Comandas() {
     },
   });
 
-  const { data: comandas = [], isLoading } = useQuery<Comanda[]>({
+  const { data: comandas = [], isFetching: isLoading } = useQuery<Comanda[]>({
     queryKey: ["/comandas", cid],
     enabled: !!cid,
     queryFn: async () => {
