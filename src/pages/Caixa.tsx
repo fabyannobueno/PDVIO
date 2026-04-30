@@ -201,7 +201,7 @@ export default function Caixa() {
   }
 
   // ── Active session ──────────────────────────────────────────────────────────
-  const { data: activeSession, isLoading: loadingActive, isFetched: activeFetched } = useQuery({
+  const { data: activeSession, isLoading: loadingActive, isFetching: activeFetching } = useQuery({
     queryKey: ["/caixa/active", activeCompany?.id, activeOperator?.id ?? user?.id ?? null],
     enabled: !!activeCompany && !!user?.id,
     queryFn: async () => {
@@ -507,11 +507,12 @@ export default function Caixa() {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  // Skeleton de página inteira no carregamento inicial. Após carregar pela
-  // primeira vez, refetches em segundo plano não exibem o skeleton novamente.
-  const initialLoaded = !!activeCompany?.id && activeFetched;
+  // Skeleton de página inteira sempre que a sessão ativa está sendo buscada.
+  // Toda vez que o caixa carrega, o esqueleto aparece até que a busca termine
+  // (inclusive em recargas/refetches em segundo plano).
+  const caixaReady = !!activeCompany?.id && !activeFetching;
 
-  if (!initialLoaded) {
+  if (!caixaReady) {
     return (
       <div className="space-y-6 p-4 sm:p-6 md:p-8 animate-fade-in">
         {/* Header skeleton */}
