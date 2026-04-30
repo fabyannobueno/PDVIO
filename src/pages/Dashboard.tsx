@@ -102,7 +102,7 @@ export default function Dashboard() {
   const { start, end } = useMemo(() => todayRange(), []);
 
   // Sales today
-  const { data: todaySales = [], isLoading: loadingSales, isFetched: fetchedSales } = useQuery<Sale[]>({
+  const { data: todaySales = [], isLoading: loadingSales, isFetching: fetchingSales } = useQuery<Sale[]>({
     queryKey: ["/dashboard/sales-today", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -120,7 +120,7 @@ export default function Dashboard() {
   });
 
   // Recent sales (last 5)
-  const { data: recentSales = [], isLoading: loadingRecent, isFetched: fetchedRecent } = useQuery<Sale[]>({
+  const { data: recentSales = [], isLoading: loadingRecent, isFetching: fetchingRecent } = useQuery<Sale[]>({
     queryKey: ["/dashboard/recent-sales", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -180,7 +180,7 @@ export default function Dashboard() {
   );
 
   // Customer count
-  const { data: customerCount = 0, isLoading: loadingCustomers, isFetched: fetchedCustomers } = useQuery<number>({
+  const { data: customerCount = 0, isLoading: loadingCustomers, isFetching: fetchingCustomers } = useQuery<number>({
     queryKey: ["/dashboard/customer-count", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -194,7 +194,7 @@ export default function Dashboard() {
   });
 
   // Product count (for onboarding)
-  const { data: productCount = 0, isLoading: loadingProducts, isFetched: fetchedProducts } = useQuery<number>({
+  const { data: productCount = 0, isLoading: loadingProducts, isFetching: fetchingProducts } = useQuery<number>({
     queryKey: ["/dashboard/product-count", cid],
     enabled: !!cid,
     queryFn: async () => {
@@ -250,11 +250,13 @@ export default function Dashboard() {
   const allStepsDone = onboardingSteps.every((s) => s.done);
   const onboardingLoading = loadingProducts || loadingRecent || loadingSales;
 
-  // Skeleton de página inteira no carregamento inicial. Após carregar a primeira
-  // vez, refetches em segundo plano não exibem o skeleton novamente.
-  const initialLoaded = !!cid && fetchedSales && fetchedRecent && fetchedCustomers && fetchedProducts;
+  // Skeleton de página inteira sempre que algum dado está sendo buscado.
+  // Toda vez que a dashboard carrega, o esqueleto aparece até que todas as
+  // queries terminem (inclusive em recargas/refetches).
+  const dashboardReady =
+    !!cid && !fetchingSales && !fetchingRecent && !fetchingCustomers && !fetchingProducts;
 
-  if (!initialLoaded) {
+  if (!dashboardReady) {
     return (
       <div className="space-y-8 p-6 md:p-8 animate-fade-in">
         {/* Hero skeleton */}
