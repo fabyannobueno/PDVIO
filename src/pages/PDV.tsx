@@ -382,7 +382,7 @@ export default function PDV() {
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
-  const { data: products = [], isLoading, isFetched: productsFetched } = useQuery<Product[]>({
+  const { data: products = [], isLoading, isFetching: productsFetching } = useQuery<Product[]>({
     queryKey: ["/api/products", activeCompany?.id],
     enabled: !!activeCompany?.id,
     queryFn: async () => {
@@ -1513,11 +1513,12 @@ export default function PDV() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  // Skeleton de página inteira no carregamento inicial. Após carregar pela
-  // primeira vez, refetches em segundo plano não exibem o skeleton novamente.
-  const initialLoaded = !!activeCompany?.id && productsFetched;
+  // Skeleton de página inteira sempre que algum dado está sendo buscado.
+  // Toda vez que o PDV carrega, o esqueleto aparece até que a busca de
+  // produtos termine (inclusive em recargas/refetches em segundo plano).
+  const pdvReady = !!activeCompany?.id && !productsFetching;
 
-  if (!initialLoaded) {
+  if (!pdvReady) {
     return (
       <div className="flex h-full overflow-hidden bg-background animate-fade-in">
         {/* Left: products skeleton */}
