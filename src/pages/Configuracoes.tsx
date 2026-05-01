@@ -3008,14 +3008,25 @@ export default function Configuracoes() {
               </div>
 
               {/* ── Actions ── */}
-              <div className="flex flex-col items-center gap-2 text-center">
-                <Button onClick={downloadPlate} className="gap-2" disabled={!qrDataUrl}>
-                  <Download className="h-4 w-4" />
-                  Baixar Placa (PNG)
-                </Button>
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button onClick={downloadPlate} className="gap-2" disabled={!qrDataUrl}>
+                    <Download className="h-4 w-4" />
+                    Baixar Placa (PNG)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    disabled={!deliverySlug}
+                    onClick={() => window.open(`https://pdvio.shop/${deliverySlug}`, "_blank")}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Acessar loja
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {deliverySlug
-                    ? `Link: pdvio.shop/${deliverySlug}`
+                    ? `pdvio.shop/${deliverySlug}`
                     : "Configure o slug da loja na aba Delivery para personalizar o link."}
                 </p>
               </div>
