@@ -16,7 +16,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket } from "lucide-react";
+import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff } from "lucide-react";
+import { MoneyInput, parseMoney } from "@/components/ui/money-input";
+import { Textarea } from "@/components/ui/textarea";
+import { testWApiConnection } from "@/lib/whatsapp";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { fetchBanks, type BrasilApiBank } from "@/lib/brasilApiBanks";
@@ -144,6 +147,44 @@ export default function Configuracoes() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Delivery / Cardápio digital state ─────────────────────────────────────
+  interface DayHours { day: string; isOpen: boolean; openTime: string; closeTime: string; }
+  const DEFAULT_HOURS: DayHours[] = [
+    { day: "Segunda", isOpen: false, openTime: "08:00", closeTime: "18:00" },
+    { day: "Terça",   isOpen: false, openTime: "08:00", closeTime: "18:00" },
+    { day: "Quarta",  isOpen: false, openTime: "08:00", closeTime: "18:00" },
+    { day: "Quinta",  isOpen: false, openTime: "08:00", closeTime: "18:00" },
+    { day: "Sexta",   isOpen: false, openTime: "08:00", closeTime: "18:00" },
+    { day: "Sábado",  isOpen: false, openTime: "08:00", closeTime: "18:00" },
+    { day: "Domingo", isOpen: false, openTime: "08:00", closeTime: "18:00" },
+  ];
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+  const [deliverySlug, setDeliverySlug] = useState("");
+  const [deliveryDescription, setDeliveryDescription] = useState("");
+  const [deliveryLogoUrl, setDeliveryLogoUrl] = useState("");
+  const [deliveryCoverUrl, setDeliveryCoverUrl] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState("");
+  const [deliveryMinOrder, setDeliveryMinOrder] = useState("");
+  const [deliveryFreeThreshold, setDeliveryFreeThreshold] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
+  const [deliveryPickupTime, setDeliveryPickupTime] = useState("");
+  const [deliveryPrimaryColor, setDeliveryPrimaryColor] = useState("#6d28d9");
+  const [deliveryWhatsapp, setDeliveryWhatsapp] = useState("");
+  const [deliveryInstagram, setDeliveryInstagram] = useState("");
+  const [deliveryFacebook, setDeliveryFacebook] = useState("");
+  const [deliveryHours, setDeliveryHours] = useState<DayHours[]>(DEFAULT_HOURS);
+  const [deliveryLoaded, setDeliveryLoaded] = useState(false);
+
+  // ── W-API / WhatsApp state ─────────────────────────────────────────────────
+  const [wapiInstanceId, setWapiInstanceId] = useState("");
+  const [wapiToken, setWapiToken] = useState("");
+  const [wapiShowToken, setWapiShowToken] = useState(false);
+  const [wapiTesting, setWapiTesting] = useState(false);
+
+  function generateDeliverySlug(name: string) {
+    return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
   // ── Fetch company ──────────────────────────────────────────────────────────
   const { isLoading: loadingCompany } = useQuery({
     queryKey: ["/config/company", activeCompany?.id],
@@ -163,6 +204,28 @@ export default function Configuracoes() {
         setEmail(data.email ?? "");
         setAddr(parseAddress(data.address));
         setCompanyLoaded(true);
+      }
+      if (!deliveryLoaded) {
+        setDeliveryEnabled(data.delivery_enabled ?? false);
+        setDeliverySlug(data.delivery_slug ?? "");
+        setDeliveryDescription(data.delivery_description ?? "");
+        setDeliveryLogoUrl(data.delivery_logo_url ?? "");
+        setDeliveryCoverUrl(data.delivery_cover_url ?? "");
+        setDeliveryFee(data.delivery_fee != null ? String(Number(data.delivery_fee).toFixed(2)).replace(".", ",") : "");
+        setDeliveryMinOrder(data.delivery_min_order != null ? String(Number(data.delivery_min_order).toFixed(2)).replace(".", ",") : "");
+        setDeliveryFreeThreshold(data.delivery_free_threshold != null ? String(Number(data.delivery_free_threshold).toFixed(2)).replace(".", ",") : "");
+        setDeliveryTime(data.delivery_time ?? "");
+        setDeliveryPickupTime(data.delivery_pickup_time ?? "");
+        setDeliveryPrimaryColor(data.delivery_primary_color ?? "#6d28d9");
+        setDeliveryWhatsapp(data.delivery_whatsapp ?? "");
+        setDeliveryInstagram(data.delivery_instagram ?? "");
+        setDeliveryFacebook(data.delivery_facebook ?? "");
+        if (Array.isArray(data.delivery_operating_hours) && data.delivery_operating_hours.length === 7) {
+          setDeliveryHours(data.delivery_operating_hours as DayHours[]);
+        }
+        setWapiInstanceId(data.wapi_instance_id ?? "");
+        setWapiToken(data.wapi_token ?? "");
+        setDeliveryLoaded(true);
       }
       return data;
     },
@@ -494,6 +557,69 @@ export default function Configuracoes() {
     },
     onError: () => toast.error("Erro ao salvar empresa"),
   });
+
+  // ── Delivery save ──────────────────────────────────────────────────────────
+  const saveDelivery = useMutation({
+    mutationFn: async () => {
+      const slug = deliverySlug.trim();
+      if (deliveryEnabled && !slug) throw new Error("Preencha o slug (link) da loja.");
+      if (slug && !/^[a-z0-9-]{3,60}$/.test(slug))
+        throw new Error("Slug deve ter 3-60 letras minúsculas, números ou hífens.");
+      const fee = deliveryFee ? parseMoney(deliveryFee) : 0;
+      const minOrder = deliveryMinOrder ? parseMoney(deliveryMinOrder) : 0;
+      const freeThreshold = deliveryFreeThreshold ? parseMoney(deliveryFreeThreshold) : null;
+      const { error } = await supabase.from("companies").update({
+        delivery_enabled: deliveryEnabled,
+        delivery_slug: slug || null,
+        delivery_description: deliveryDescription.trim() || null,
+        delivery_logo_url: deliveryLogoUrl.trim() || null,
+        delivery_cover_url: deliveryCoverUrl.trim() || null,
+        delivery_fee: fee,
+        delivery_min_order: minOrder,
+        delivery_free_threshold: freeThreshold,
+        delivery_time: deliveryTime.trim() || null,
+        delivery_pickup_time: deliveryPickupTime.trim() || null,
+        delivery_primary_color: deliveryPrimaryColor,
+        delivery_whatsapp: deliveryWhatsapp.trim() || null,
+        delivery_instagram: deliveryInstagram.trim() || null,
+        delivery_facebook: deliveryFacebook.trim() || null,
+        delivery_operating_hours: deliveryHours as any,
+      } as any).eq("id", activeCompany!.id);
+      if (error) {
+        if (error.message?.includes("delivery_slug")) throw new Error("Esse slug já está em uso. Escolha outro.");
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Configurações de delivery salvas!");
+      queryClient.invalidateQueries({ queryKey: ["/config/company"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  // ── W-API save ─────────────────────────────────────────────────────────────
+  const saveWapi = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("companies").update({
+        wapi_instance_id: wapiInstanceId.trim() || null,
+        wapi_token: wapiToken.trim() || null,
+      } as any).eq("id", activeCompany!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => toast.success("Credenciais W-API salvas!"),
+    onError: () => toast.error("Erro ao salvar credenciais W-API"),
+  });
+
+  async function handleTestWapi() {
+    setWapiTesting(true);
+    try {
+      const result = await testWApiConnection({ instanceId: wapiInstanceId.trim(), token: wapiToken.trim() });
+      if (result.ok) toast.success("✅ Conexão W-API funcionando!");
+      else toast.error(`Falha: ${result.error}`);
+    } finally {
+      setWapiTesting(false);
+    }
+  }
 
   // ── ViaCEP lookup ──────────────────────────────────────────────────────────
   async function lookupCep(rawCep: string) {
@@ -895,6 +1021,14 @@ export default function Configuracoes() {
           <TabsTrigger value="pagamentos" className="gap-2" data-testid="tab-pagamentos">
             <Wallet className="h-4 w-4" />
             Pagamentos
+          </TabsTrigger>
+          <TabsTrigger value="delivery" className="gap-2" data-testid="tab-delivery">
+            <Truck className="h-4 w-4" />
+            Delivery
+          </TabsTrigger>
+          <TabsTrigger value="whatsapp" className="gap-2" data-testid="tab-whatsapp">
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
           </TabsTrigger>
         </TabsList>
 
@@ -1921,6 +2055,447 @@ export default function Configuracoes() {
           </Card>
 
           <CrediarioConfigCard />
+        </TabsContent>
+
+        {/* ── Delivery / Cardápio digital ──────────────────────────────── */}
+        <TabsContent value="delivery" className="space-y-6">
+          {/* Ativar delivery */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Delivery e cardápio digital
+              </CardTitle>
+              <CardDescription>
+                Ative para disponibilizar um cardápio digital público com link exclusivo da sua loja.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <p className="font-medium">Ativar delivery / cardápio digital</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Quando ativo, seu cardápio fica acessível pelo link público abaixo.
+                  </p>
+                </div>
+                <Switch
+                  checked={deliveryEnabled}
+                  onCheckedChange={setDeliveryEnabled}
+                  disabled={!isOwner}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Identificação da loja */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Identificação da loja</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="del-slug">Link da loja (slug)</Label>
+                <div className="flex gap-2 items-center">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">pdvio.com/</span>
+                  <Input
+                    id="del-slug"
+                    value={deliverySlug}
+                    onChange={(e) => setDeliverySlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                    placeholder="minha-pizzaria"
+                    disabled={!isOwner}
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    title="Gerar a partir do nome da empresa"
+                    disabled={!isOwner}
+                    onClick={() => setDeliverySlug(generateDeliverySlug(companyName))}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Somente letras minúsculas, números e hífens (3-60 caracteres).
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="del-desc">Descrição da loja</Label>
+                <Textarea
+                  id="del-desc"
+                  value={deliveryDescription}
+                  onChange={(e) => setDeliveryDescription(e.target.value)}
+                  placeholder="Ex.: Pizzaria artesanal com os melhores sabores da cidade..."
+                  disabled={!isOwner}
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Visual */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Visual da loja</CardTitle>
+              <CardDescription>URLs públicas das imagens. Use serviços como Imgur, Cloudinary, etc.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="del-logo">URL do logotipo</Label>
+                  <Input
+                    id="del-logo"
+                    value={deliveryLogoUrl}
+                    onChange={(e) => setDeliveryLogoUrl(e.target.value)}
+                    placeholder="https://..."
+                    disabled={!isOwner}
+                  />
+                  {deliveryLogoUrl && (
+                    <img src={deliveryLogoUrl} alt="logo" className="h-16 w-auto rounded border object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-cover">URL da capa / banner</Label>
+                  <Input
+                    id="del-cover"
+                    value={deliveryCoverUrl}
+                    onChange={(e) => setDeliveryCoverUrl(e.target.value)}
+                    placeholder="https://..."
+                    disabled={!isOwner}
+                  />
+                  {deliveryCoverUrl && (
+                    <img src={deliveryCoverUrl} alt="capa" className="h-16 w-full rounded border object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="del-color">Cor principal da loja</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="del-color"
+                    type="color"
+                    value={deliveryPrimaryColor}
+                    onChange={(e) => setDeliveryPrimaryColor(e.target.value)}
+                    disabled={!isOwner}
+                    className="h-10 w-16 cursor-pointer rounded border border-border bg-transparent p-1"
+                  />
+                  <span className="font-mono text-sm text-muted-foreground">{deliveryPrimaryColor}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Configurações de entrega */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Configurações de entrega</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="del-fee">Taxa de entrega (R$)</Label>
+                  <MoneyInput
+                    id="del-fee"
+                    value={deliveryFee}
+                    onChange={setDeliveryFee}
+                    disabled={!isOwner}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-min">Pedido mínimo (R$)</Label>
+                  <MoneyInput
+                    id="del-min"
+                    value={deliveryMinOrder}
+                    onChange={setDeliveryMinOrder}
+                    disabled={!isOwner}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-free">Frete grátis acima de (R$)</Label>
+                  <MoneyInput
+                    id="del-free"
+                    value={deliveryFreeThreshold}
+                    onChange={setDeliveryFreeThreshold}
+                    disabled={!isOwner}
+                    placeholder="Sem frete grátis"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-time">
+                    <Clock className="inline h-3.5 w-3.5 mr-1" />
+                    Tempo de entrega
+                  </Label>
+                  <Input
+                    id="del-time"
+                    value={deliveryTime}
+                    onChange={(e) => setDeliveryTime(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="Ex.: 30-45 min"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-pickup">
+                    <Clock className="inline h-3.5 w-3.5 mr-1" />
+                    Tempo para retirada
+                  </Label>
+                  <Input
+                    id="del-pickup"
+                    value={deliveryPickupTime}
+                    onChange={(e) => setDeliveryPickupTime(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="Ex.: 20 min"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Contato e redes sociais */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Contato e redes sociais</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="del-whatsapp">WhatsApp da loja</Label>
+                  <Input
+                    id="del-whatsapp"
+                    value={deliveryWhatsapp}
+                    onChange={(e) => setDeliveryWhatsapp(maskPhone(e.target.value))}
+                    disabled={!isOwner}
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-instagram">Instagram</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">@</span>
+                    <Input
+                      id="del-instagram"
+                      value={deliveryInstagram}
+                      onChange={(e) => setDeliveryInstagram(e.target.value.replace(/^@/, ""))}
+                      disabled={!isOwner}
+                      placeholder="minhaloja"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-facebook">Facebook</Label>
+                  <Input
+                    id="del-facebook"
+                    value={deliveryFacebook}
+                    onChange={(e) => setDeliveryFacebook(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="facebook.com/minhaloja"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Horário de funcionamento */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Horário de funcionamento</CardTitle>
+              <CardDescription>Configure os dias e horários em que sua loja aceita pedidos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {deliveryHours.map((dh, idx) => (
+                  <div key={dh.day} className="flex flex-wrap items-center gap-3 rounded-md border border-border p-2">
+                    <Switch
+                      checked={dh.isOpen}
+                      onCheckedChange={(val) => {
+                        const next = [...deliveryHours];
+                        next[idx] = { ...next[idx], isOpen: val };
+                        setDeliveryHours(next);
+                      }}
+                      disabled={!isOwner}
+                    />
+                    <span className="w-16 text-sm font-medium">{dh.day}</span>
+                    {dh.isOpen ? (
+                      <>
+                        <Input
+                          type="time"
+                          value={dh.openTime}
+                          onChange={(e) => {
+                            const next = [...deliveryHours];
+                            next[idx] = { ...next[idx], openTime: e.target.value };
+                            setDeliveryHours(next);
+                          }}
+                          disabled={!isOwner}
+                          className="w-32"
+                        />
+                        <span className="text-sm text-muted-foreground">até</span>
+                        <Input
+                          type="time"
+                          value={dh.closeTime}
+                          onChange={(e) => {
+                            const next = [...deliveryHours];
+                            next[idx] = { ...next[idx], closeTime: e.target.value };
+                            setDeliveryHours(next);
+                          }}
+                          disabled={!isOwner}
+                          className="w-32"
+                        />
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Fechado</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {isOwner && (
+            <div className="flex justify-end">
+              <Button onClick={() => saveDelivery.mutate()} disabled={saveDelivery.isPending}>
+                {saveDelivery.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Salvar configurações de delivery
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── WhatsApp / W-API ─────────────────────────────────────────── */}
+        <TabsContent value="whatsapp" className="space-y-6">
+          {/* Tutorial */}
+          <Card className="border-border/60 bg-[#075e54]/5 border-[#25d366]/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-[#25d366]" />
+                W-API — Envio automático de WhatsApp
+              </CardTitle>
+              <CardDescription>
+                Integre sua loja com o W-API para enviar notificações automáticas pelo WhatsApp (novos pedidos, status, etc).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <p className="text-sm font-semibold">Como criar sua conta no W-API:</p>
+                <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                  <li>
+                    Acesse{" "}
+                    <a
+                      href="https://w-api.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline underline-offset-4 inline-flex items-center gap-1"
+                    >
+                      w-api.app <ExternalLink className="h-3 w-3" />
+                    </a>
+                    {" "}e clique em <strong>Começar grátis</strong>.
+                  </li>
+                  <li>Crie uma conta e faça login no painel.</li>
+                  <li>Clique em <strong>Nova instância</strong> e dê um nome (ex.: "minha-loja").</li>
+                  <li>Na instância criada, clique em <strong>Conectar</strong> e escaneie o QR Code com o WhatsApp que vai enviar as mensagens.</li>
+                  <li>No menu <strong>API</strong> da instância, copie o <strong>Instance ID</strong> e o <strong>Token</strong> e cole abaixo.</li>
+                </ol>
+              </div>
+
+              <div className="flex justify-start">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="https://w-api.app/" target="_blank" rel="noopener noreferrer" className="gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir painel W-API
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Credenciais */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Credenciais da instância</CardTitle>
+              <CardDescription>
+                Salvas com segurança por empresa. Nunca compartilhe seu token.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="wapi-instance">Instance ID</Label>
+                <Input
+                  id="wapi-instance"
+                  value={wapiInstanceId}
+                  onChange={(e) => setWapiInstanceId(e.target.value.trim())}
+                  placeholder="Ex.: A1B2C3D4E5F6"
+                  disabled={!isOwner}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="wapi-token">Token (Bearer)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="wapi-token"
+                    type={wapiShowToken ? "text" : "password"}
+                    value={wapiToken}
+                    onChange={(e) => setWapiToken(e.target.value.trim())}
+                    placeholder="Cole seu token aqui"
+                    disabled={!isOwner}
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setWapiShowToken((v) => !v)}
+                    title={wapiShowToken ? "Ocultar token" : "Mostrar token"}
+                  >
+                    {wapiShowToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {wapiInstanceId && wapiToken && (
+                <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground font-mono break-all">
+                  POST https://api.w-api.app/v1/message/send-text?instanceId=<span className="text-foreground">{wapiInstanceId}</span>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleTestWapi}
+                  disabled={wapiTesting || !wapiInstanceId || !wapiToken}
+                >
+                  {wapiTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  Testar conexão
+                </Button>
+                {isOwner && (
+                  <Button onClick={() => saveWapi.mutate()} disabled={saveWapi.isPending}>
+                    {saveWapi.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Salvar credenciais
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status e informações */}
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Como funciona</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>• Após salvar as credenciais, o PDVIO usará a sua instância W-API para enviar mensagens automáticas aos clientes da sua loja.</p>
+              <p>• O WhatsApp conectado na instância precisa ficar aberto e com internet para o envio funcionar.</p>
+              <p>• O plano gratuito do W-API permite até 1.000 mensagens/mês. Para volumes maiores, consulte os planos pagos em{" "}
+                <a href="https://w-api.app/#pricing" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 inline-flex items-center gap-1">
+                  w-api.app/pricing <ExternalLink className="h-3 w-3" />
+                </a>.
+              </p>
+              <p>• Em caso de desconexão, basta abrir o painel W-API, acessar sua instância e escanear o QR Code novamente.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
