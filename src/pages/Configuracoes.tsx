@@ -209,10 +209,8 @@ export default function Configuracoes() {
     try {
       const S = 3;
       const W = 320, H = 560;
-      const canvas = document.createElement("canvas");
-      canvas.width = W * S;
-      canvas.height = H * S;
-      const ctx = canvas.getContext("2d")!;
+      const offscreen = new OffscreenCanvas(W * S, H * S);
+      const ctx = offscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
       ctx.scale(S, S);
 
       const rr = (x: number, y: number, w: number, h: number, r: number) => {
@@ -242,7 +240,7 @@ export default function Configuracoes() {
 
       // 3 ── Diagonal stripes (top half)
       ctx.save();
-      ctx.rect(0, 0, W, H / 2); ctx.clip();
+      ctx.beginPath(); ctx.rect(0, 0, W, H / 2); ctx.clip();
       ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
       for (let i = -H; i < W + H; i += 16) {
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke();
@@ -251,7 +249,7 @@ export default function Configuracoes() {
 
       // 4 ── Hexagon outlines (bottom half)
       ctx.save();
-      ctx.rect(0, H / 2, W, H / 2); ctx.clip();
+      ctx.beginPath(); ctx.rect(0, H / 2, W, H / 2); ctx.clip();
       ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
       const hR = 18;
       for (let row = 0; row * hR * 1.5 < H / 2 + hR * 2; row++) {
@@ -338,38 +336,44 @@ export default function Configuracoes() {
         } catch { /* show white box without logo */ }
       }
 
+      // ── Fixed Y positions (no overlap)
+      const nameY    = logoY + logoSize + 32;   // 152
+      const dividerY = logoY + logoSize + 52;   // 172
+      const subY     = logoY + logoSize + 74;   // 194 (text baseline)
+      const qrPad   = 14;
+      const qrSize  = 180;
+      const qrY     = logoY + logoSize + 104;  // 224 (box top = 224-14 = 210 → gap ~16px below subY)
+      const qrX     = W / 2 - qrSize / 2;
+
       // 11 ── Store name
       const name = companyName || "Nome da loja";
       ctx.fillStyle = "white";
-      ctx.font = `bold 22px system-ui, sans-serif`;
+      ctx.font = `bold 24px system-ui, sans-serif`;
       ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 8;
-      ctx.fillText(name, W / 2, logoY + logoSize + 28, W - 40);
-      ctx.shadowBlur = 0;
+      ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 8;
+      ctx.fillText(name, W / 2, nameY, W - 48);
+      ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
 
       // 12 ── Divider
-      ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(32, logoY + logoSize + 40); ctx.lineTo(W - 32, logoY + logoSize + 40); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(40, dividerY); ctx.lineTo(W - 40, dividerY); ctx.stroke();
 
       // 13 ── "ACESSE NOSSO CARDÁPIO"
-      ctx.fillStyle = "rgba(255,255,255,0.80)";
-      ctx.font = `600 11px system-ui, sans-serif`;
-      ctx.letterSpacing = "4px";
-      ctx.fillText("ACESSE NOSSO CARDÁPIO", W / 2, logoY + logoSize + 60);
-      ctx.letterSpacing = "0px";
+      ctx.fillStyle = "rgba(255,255,255,0.82)";
+      ctx.font = `600 10px system-ui, sans-serif`;
+      ctx.fillText("ACESSE NOSSO CARDÁPIO", W / 2, subY);
 
       // 14 ── QR Code
-      const qrImg = new Image();
-      await new Promise<void>((res, rej) => { qrImg.onload = () => res(); qrImg.onerror = rej; qrImg.src = qrDataUrl; });
-      const qrSize = 176, qrX = W / 2 - qrSize / 2, qrY = logoY + logoSize + 72;
-      const qrPad = 12;
+      const qrBitmap = await createImageBitmap(
+        await fetch(qrDataUrl).then(r => r.blob())
+      );
       ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 16;
       rr(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 16);
       ctx.fillStyle = "white"; ctx.fill();
       ctx.shadowBlur = 0;
       ctx.save();
       rr(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 16); ctx.clip();
-      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+      ctx.drawImage(qrBitmap, qrX, qrY, qrSize, qrSize);
       ctx.restore();
 
       // 15 ── URL pill
@@ -392,13 +396,20 @@ export default function Configuracoes() {
       ctx.font = `500 9px system-ui, sans-serif`;
       ctx.fillText("Powered by PDVIO", W / 2, pillY + pillH + 20);
 
-      // 17 ── Download
-      const link = document.createElement("a");
-      link.download = `placa-qr-${deliverySlug || "loja"}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      // 17 ── Download via blob URL
+      const blob = await offscreen.convertToBlob({ type: "image/png" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = Object.assign(window.document.createElement("a"), {
+        href: blobUrl,
+        download: `placa-qr-${deliverySlug || "loja"}.png`,
+      });
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error("downloadPlate error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("downloadPlate error:", msg);
       toast.error("Erro ao exportar a placa.");
     }
   }, [deliverySlug, deliveryPrimaryColor, deliveryLogoUrl, companyName, qrDataUrl]);
