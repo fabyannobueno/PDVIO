@@ -1611,14 +1611,10 @@ export default function Produtos() {
           ...(info.description ? { description: info.description } : {}),
           ...(resolvedCategory ? { category: resolvedCategory } : {}),
         }));
-        if (info.imageUrl) {
-          setImageBase64((current) => {
-            if (current) return current;
-            fetchAndResizeImageUrl(info.imageUrl!).then((b64) => {
-              if (b64) setImageBase64(b64);
-            });
-            return current;
-          });
+        if (info.imageUrl && !imageBase64) {
+          fetchAndResizeImageUrl(info.imageUrl).then((b64) => {
+            if (b64) setImageBase64(b64);
+          }).catch(() => {});
         }
         toast.success(info.name ? `Produto encontrado: ${info.name}` : "Código reconhecido. Verifique os campos.");
       } else {
