@@ -3027,7 +3027,7 @@ export default function Configuracoes() {
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>• Após salvar as credenciais, o PDVIO usará a sua instância W-API para enviar mensagens automáticas aos clientes da sua loja.</p>
               <p>• O WhatsApp conectado na instância precisa ficar aberto e com internet para o envio funcionar.</p>
-              <p>• O plano gratuito do W-API permite até 1.000 mensagens/mês. Para volumes maiores, consulte os planos pagos em{" "}
+              <p>• O W-API é um serviço pago. Consulte os planos disponíveis em{" "}
                 <a href="https://w-api.app/#pricing" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 inline-flex items-center gap-1">
                   w-api.app/pricing <ExternalLink className="h-3 w-3" />
                 </a>.
