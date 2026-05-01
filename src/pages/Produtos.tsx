@@ -65,6 +65,7 @@ import {
   ChevronsUpDown,
   Check,
   Receipt,
+  ImageIcon,
 } from "lucide-react";
 import { BarcodeScanner } from "@/components/app/BarcodeScanner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -998,6 +999,46 @@ export default function Produtos() {
   const [ncmQuery, setNcmQuery] = useState("");
   const [ncmResults, setNcmResults] = useState<BrasilApiNcm[]>([]);
   const [ncmLoading, setNcmLoading] = useState(false);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageUpload(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx. 5MB).");
+      return;
+    }
+    setImageUploading(true);
+    try {
+      const bitmap = await createImageBitmap(file).catch(() => {
+        throw new Error("Não foi possível carregar a imagem.");
+      });
+      const SIZE = 500;
+      const canvas = window.document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, SIZE, SIZE);
+      const srcRatio = bitmap.width / bitmap.height;
+      let sx = 0, sy = 0, sw = bitmap.width, sh = bitmap.height;
+      if (srcRatio > 1) {
+        sw = bitmap.height;
+        sx = (bitmap.width - sw) / 2;
+      } else {
+        sh = bitmap.width;
+        sy = (bitmap.height - sh) / 2;
+      }
+      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+      bitmap.close();
+      setImageBase64(canvas.toDataURL("image/jpeg", 0.85));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao processar imagem");
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
 
   useEffect(() => {
     if (!ncmPopoverOpen) return;
@@ -1255,6 +1296,7 @@ export default function Produtos() {
         promotion_start: values.is_promotion && values.promotion_start ? values.promotion_start : null,
         promotion_end: values.is_promotion && values.promotion_end ? values.promotion_end : null,
         ncm: values.ncm.replace(/\D/g, "").trim() || null,
+        image_url: imageBase64 || null,
       } as never)
         .select("id")
         .single();
@@ -1292,6 +1334,7 @@ export default function Produtos() {
           promotion_start: values.is_promotion && values.promotion_start ? values.promotion_start : null,
           promotion_end: values.is_promotion && values.promotion_end ? values.promotion_end : null,
           ncm: values.ncm.replace(/\D/g, "").trim() || null,
+          image_url: imageBase64 || null,
         } as never)
         .eq("id", editProduct!.id);
       if (error) throw error;
@@ -1339,6 +1382,7 @@ export default function Produtos() {
   async function openEdit(product: Product) {
     setEditProduct(product);
     setAddons([]);
+    setImageBase64(product.image_url ?? null);
     const { data: addonRows } = await supabase
       .from("product_addons" as never)
       .select("*")
@@ -1380,6 +1424,7 @@ export default function Produtos() {
     setEditProduct(null);
     setForm(EMPTY_FORM);
     setAddons([]);
+    setImageBase64(null);
   }
 
   function handleScanResult(result: { barcode: string; name?: string; description?: string; category?: string }) {
@@ -1985,6 +2030,67 @@ export default function Produtos() {
                 }}
                 placeholder="EX: HAMBÚRGUER ARTESANAL"
                 style={{ textTransform: "uppercase" }}
+              />
+            </div>
+
+            {/* Image upload */}
+            <div className="space-y-2">
+              <Label>Imagem do produto</Label>
+              <div className="flex items-center gap-4">
+                <div
+                  className="relative flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted transition-colors hover:border-primary/60"
+                  onClick={() => !imageUploading && imageInputRef.current?.click()}
+                >
+                  {imageBase64 ? (
+                    <img
+                      src={imageBase64}
+                      alt="Imagem do produto"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+                  )}
+                  {imageUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={imageUploading}
+                    onClick={() => imageInputRef.current?.click()}
+                  >
+                    {imageBase64 ? "Trocar imagem" : "Escolher imagem"}
+                  </Button>
+                  {imageBase64 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setImageBase64(null)}
+                    >
+                      Remover
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG ou WebP · máx. 5MB · 500×500 px
+                  </p>
+                </div>
+              </div>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file);
+                }}
               />
             </div>
 
