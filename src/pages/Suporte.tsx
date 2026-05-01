@@ -430,16 +430,16 @@ export default function Suporte() {
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="contato" data-testid="tab-contato">
+        <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-3">
+          <TabsTrigger value="contato" data-testid="tab-contato" className="shrink-0 whitespace-nowrap sm:shrink">
             <MessageSquare className="mr-1.5 h-4 w-4" />
             Abrir chamado
           </TabsTrigger>
-          <TabsTrigger value="chamados" data-testid="tab-chamados">
+          <TabsTrigger value="chamados" data-testid="tab-chamados" className="shrink-0 whitespace-nowrap sm:shrink">
             <Inbox className="mr-1.5 h-4 w-4" />
             Meus chamados
           </TabsTrigger>
-          <TabsTrigger value="faq" data-testid="tab-faq">
+          <TabsTrigger value="faq" data-testid="tab-faq" className="shrink-0 whitespace-nowrap sm:shrink">
             <HelpCircle className="mr-1.5 h-4 w-4" />
             Perguntas frequentes
           </TabsTrigger>
