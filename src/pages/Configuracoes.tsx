@@ -2865,44 +2865,94 @@ export default function Configuracoes() {
                 style={{ background: deliveryPrimaryColor }}
                 className="relative w-80 overflow-hidden rounded-3xl shadow-2xl select-none"
               >
-                {/* Decorative blurred shapes */}
+                {/* ── Layer 1: Blurred ambient blobs (CSS blur) ── */}
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <div className="absolute -top-10 -left-10 h-48 w-48 rounded-full bg-white/20" style={{ filter: "blur(40px)" }} />
+                  <div className="absolute -top-6 right-0 h-36 w-36 rounded-full bg-white/15" style={{ filter: "blur(30px)" }} />
+                  <div className="absolute bottom-0 -right-8 h-56 w-56 rounded-full bg-black/25" style={{ filter: "blur(45px)" }} />
+                  <div className="absolute -bottom-6 left-4 h-40 w-40 rounded-full bg-white/12" style={{ filter: "blur(35px)" }} />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-black/10" style={{ filter: "blur(50px)" }} />
+                </div>
+
+                {/* ── Layer 2: Sharp geometric texture (SVG) ── */}
                 <svg
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 h-full w-full"
                   xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 320 560"
+                  preserveAspectRatio="xMidYMid slice"
                 >
                   <defs>
-                    <filter id="blur-heavy"><feGaussianBlur stdDeviation="28" /></filter>
-                    <filter id="blur-mid"><feGaussianBlur stdDeviation="16" /></filter>
-                    <filter id="blur-light"><feGaussianBlur stdDeviation="8" /></filter>
+                    {/* Dot grid pattern */}
+                    <pattern id="qr-dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <circle cx="10" cy="10" r="1.5" fill="rgba(255,255,255,0.18)" />
+                    </pattern>
+                    {/* Diagonal lines pattern */}
+                    <pattern id="qr-lines" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+                      <line x1="0" y1="16" x2="16" y2="0" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+                    </pattern>
+                    {/* Hexagon pattern */}
+                    <pattern id="qr-hex" x="0" y="0" width="34.6" height="40" patternUnits="userSpaceOnUse">
+                      <polygon points="17.3,2 32.6,11 32.6,29 17.3,38 2,29 2,11" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+                      <polygon points="34.6,22 49.9,31 49.9,49 34.6,58 19.3,49 19.3,31" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+                    </pattern>
+                    <radialGradient id="qr-vignette" cx="50%" cy="50%" r="60%">
+                      <stop offset="0%" stopColor="transparent" />
+                      <stop offset="100%" stopColor="rgba(0,0,0,0.35)" />
+                    </radialGradient>
                   </defs>
-                  <circle cx="20%" cy="15%" r="90" fill="rgba(255,255,255,0.18)" filter="url(#blur-heavy)" />
-                  <circle cx="85%" cy="10%" r="60" fill="rgba(255,255,255,0.12)" filter="url(#blur-mid)" />
-                  <circle cx="75%" cy="85%" r="100" fill="rgba(0,0,0,0.18)" filter="url(#blur-heavy)" />
-                  <circle cx="10%" cy="80%" r="70" fill="rgba(255,255,255,0.10)" filter="url(#blur-mid)" />
-                  <polygon
-                    points="290,0 320,60 260,60"
-                    fill="rgba(255,255,255,0.08)"
-                    filter="url(#blur-light)"
-                  />
-                  <polygon
-                    points="0,280 50,340 -50,340"
-                    fill="rgba(255,255,255,0.07)"
-                    filter="url(#blur-light)"
-                  />
-                  <rect
-                    x="60" y="20" width="200" height="6" rx="3"
-                    fill="rgba(255,255,255,0.08)"
-                    transform="rotate(-30 160 60)"
-                    filter="url(#blur-light)"
-                  />
-                  <rect
-                    x="10" y="180" width="120" height="4" rx="2"
-                    fill="rgba(255,255,255,0.06)"
-                    transform="rotate(20 80 200)"
-                    filter="url(#blur-light)"
-                  />
-                  <circle cx="50%" cy="50%" r="130" fill="rgba(0,0,0,0.10)" filter="url(#blur-heavy)" />
+
+                  {/* Full-plate dot grid */}
+                  <rect width="320" height="560" fill="url(#qr-dots)" />
+
+                  {/* Diagonal lines — top half only */}
+                  <rect width="320" height="280" fill="url(#qr-lines)" opacity="0.7" />
+
+                  {/* Hexagon grid — bottom half */}
+                  <rect y="280" width="320" height="280" fill="url(#qr-hex)" opacity="0.8" />
+
+                  {/* Vignette overlay */}
+                  <rect width="320" height="560" fill="url(#qr-vignette)" />
+
+                  {/* Corner accent — top-left quarter arc */}
+                  <circle cx="0" cy="0" r="80" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="2" />
+                  <circle cx="0" cy="0" r="120" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1.5" />
+                  <circle cx="0" cy="0" r="160" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+
+                  {/* Corner accent — bottom-right quarter arc */}
+                  <circle cx="320" cy="560" r="90" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
+                  <circle cx="320" cy="560" r="140" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1.5" />
+                  <circle cx="320" cy="560" r="190" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+
+                  {/* Top-right diamond cluster */}
+                  <polygon points="290,18 302,30 290,42 278,30" fill="rgba(255,255,255,0.18)" />
+                  <polygon points="308,4 316,12 308,20 300,12" fill="rgba(255,255,255,0.12)" />
+                  <polygon points="270,6 278,14 270,22 262,14" fill="rgba(255,255,255,0.08)" />
+
+                  {/* Bottom-left diamond cluster */}
+                  <polygon points="30,520 42,532 30,544 18,532" fill="rgba(255,255,255,0.15)" />
+                  <polygon points="10,504 18,512 10,520 2,512" fill="rgba(255,255,255,0.10)" />
+                  <polygon points="50,534 58,542 50,550 42,542" fill="rgba(255,255,255,0.07)" />
+
+                  {/* Horizontal rule lines across the middle */}
+                  <line x1="0" y1="140" x2="320" y2="140" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+                  <line x1="0" y1="420" x2="320" y2="420" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+
+                  {/* Diagonal accent stripes — corners */}
+                  <line x1="-20" y1="80" x2="80" y2="-20" stroke="rgba(255,255,255,0.12)" strokeWidth="2" />
+                  <line x1="-20" y1="110" x2="110" y2="-20" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
+                  <line x1="340" y1="480" x2="240" y2="580" stroke="rgba(255,255,255,0.12)" strokeWidth="2" />
+                  <line x1="340" y1="450" x2="210" y2="580" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5" />
+
+                  {/* Small plus/cross marks scattered */}
+                  {[
+                    [40, 70], [280, 100], [20, 440], [300, 380], [160, 30], [155, 530],
+                  ].map(([x, y], i) => (
+                    <g key={i} transform={`translate(${x},${y})`} opacity="0.25">
+                      <line x1="-6" y1="0" x2="6" y2="0" stroke="white" strokeWidth="1.5" />
+                      <line x1="0" y1="-6" x2="0" y2="6" stroke="white" strokeWidth="1.5" />
+                    </g>
+                  ))}
                 </svg>
 
                 {/* Inner frosted glass card */}
