@@ -47,6 +47,7 @@ const SECTIONS: RoadmapSection[] = [
     items: [
       { title: "Formas de pagamento configuráveis", description: "Em Configurações > Pagamentos o dono escolhe quais formas (Dinheiro, Crédito, Débito, PIX, Ticket, Misto) ficam ativas. PDV e Comandas só exibem e aceitam as formas habilitadas, com atualização em tempo real em todas as abas/dispositivos abertos.", status: "done" },
       { title: "Confirmação de PIX antes de finalizar", description: "Ao finalizar uma venda no PDV ou fechar uma comanda em PIX, abre uma janela com o QR Code e o copia-e-cola. O cliente paga, mostra o comprovante e o operador confere e confirma manualmente o recebimento (PIX estático gratuito) antes da venda ser efetivada.", status: "done" },
+      { title: "TEF integrado", description: "Integração com maquininhas de cartão via TEF (Transferência Eletrônica de Fundos), permitindo processar pagamentos de crédito e débito diretamente pelo PDVIO, sem precisar digitar o valor na maquininha manualmente.", status: "planned" },
       { title: "Autenticação e cadastro", description: "Login, cadastro, recuperação e múltiplas empresas por usuário.", status: "done" },
       { title: "Dashboard", description: "Visão geral de vendas, ticket médio e principais indicadores.", status: "done" },
       { title: "PDV", description: "Frente de caixa com pagamentos, descontos, leitor de código de barras e impressão.", status: "done" },
