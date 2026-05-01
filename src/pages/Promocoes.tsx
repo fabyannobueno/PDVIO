@@ -999,6 +999,7 @@ interface CouponForm {
   value: string;
   min_purchase: string;
   max_uses: string;
+  max_uses_per_customer: string;
   starts_at: string;
   ends_at: string;
   is_active: boolean;
@@ -1010,6 +1011,7 @@ const EMPTY_COUPON_FORM: CouponForm = {
   value: "",
   min_purchase: "",
   max_uses: "",
+  max_uses_per_customer: "",
   starts_at: "",
   ends_at: "",
   is_active: true,
@@ -1115,6 +1117,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
       value: c.kind === "fixed" ? formatMoneyInput(c.value) : formatPercentInput(c.value),
       min_purchase: c.min_purchase ? formatMoneyInput(c.min_purchase) : "",
       max_uses: c.max_uses != null ? String(c.max_uses) : "",
+      max_uses_per_customer: c.max_uses_per_customer != null ? String(c.max_uses_per_customer) : "",
       starts_at: fmtDateTimeLocal(c.starts_at),
       ends_at: fmtDateTimeLocal(c.ends_at),
       is_active: c.is_active,
@@ -1142,6 +1145,11 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
       const maxUses = input.max_uses ? parseInt(input.max_uses, 10) : null;
       if (maxUses != null && (!Number.isFinite(maxUses) || maxUses <= 0))
         throw new Error("Limite de usos inválido.");
+      const maxUsesPerCustomer = input.max_uses_per_customer
+        ? parseInt(input.max_uses_per_customer, 10)
+        : null;
+      if (maxUsesPerCustomer != null && (!Number.isFinite(maxUsesPerCustomer) || maxUsesPerCustomer <= 0))
+        throw new Error("Limite por cliente inválido.");
 
       const payload: Record<string, unknown> = {
         company_id: companyId,
@@ -1150,6 +1158,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
         value,
         min_purchase: minPurchase,
         max_uses: maxUses,
+        max_uses_per_customer: maxUsesPerCustomer,
         starts_at: localDateTimeToISO(input.starts_at),
         ends_at: localDateTimeToISO(input.ends_at),
         is_active: input.is_active,
@@ -1281,7 +1290,8 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
                     <span className="block">Usos</span>
                     <span className="text-foreground">
                       {c.uses_count}
-                      {c.max_uses != null ? ` / ${c.max_uses}` : ""}
+                      {c.max_uses != null ? ` / ${c.max_uses} total` : ""}
+                      {c.max_uses_per_customer != null ? ` · ${c.max_uses_per_customer}×/cliente` : ""}
                     </span>
                   </div>
                   <div className="col-span-2">
@@ -1380,8 +1390,12 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
                       {Number(c.min_purchase) > 0 ? fmtBRL(Number(c.min_purchase)) : "—"}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {c.uses_count}
-                      {c.max_uses != null ? ` / ${c.max_uses}` : ""}
+                      <span>{c.uses_count}{c.max_uses != null ? ` / ${c.max_uses}` : ""}</span>
+                      {c.max_uses_per_customer != null && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({c.max_uses_per_customer}×/cliente)
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {fmtDate(c.starts_at)} → {fmtDate(c.ends_at)}
@@ -1567,7 +1581,7 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cup-max">Limite de usos</Label>
+                <Label htmlFor="cup-max">Limite de usos total</Label>
                 <Input
                   id="cup-max"
                   type="number"
@@ -1579,6 +1593,23 @@ function CouponsTab({ companyId, canManage }: CouponsTabProps) {
                   placeholder="Ilimitado"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cup-max-per-customer">Limite de usos por cliente</Label>
+              <Input
+                id="cup-max-per-customer"
+                type="number"
+                min={1}
+                value={form.max_uses_per_customer}
+                onChange={(e) =>
+                  setForm({ ...form, max_uses_per_customer: e.target.value.replace(/\D/g, "") })
+                }
+                placeholder="Ilimitado por cliente"
+              />
+              <p className="text-xs text-muted-foreground">
+                Quantas vezes o mesmo cliente pode usar este cupom. Deixe em branco para sem limite.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -42,6 +42,7 @@ export interface Coupon {
   value: number;
   min_purchase: number;
   max_uses: number | null;
+  max_uses_per_customer: number | null;
   uses_count: number;
   starts_at: string | null;
   ends_at: string | null;
@@ -216,11 +217,13 @@ export interface CouponValidationResult {
 
 /**
  * Busca e valida o cupom no banco. Devolve o desconto a aplicar.
+ * Passe `customerId` para verificar o limite de usos por cliente.
  */
 export async function validateCoupon(
   code: string,
   subtotal: number,
   companyId: string,
+  customerId?: string | null,
 ): Promise<CouponValidationResult> {
   const trimmed = code.trim().toUpperCase();
   if (!trimmed) return { ok: false, error: "Digite um código de cupom." };
@@ -251,6 +254,23 @@ export async function validateCoupon(
       ok: false,
       error: `Compra mínima de ${(Number(c.min_purchase) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} para usar este cupom.`,
     };
+
+  if (c.max_uses_per_customer != null && customerId) {
+    const { count, error: countErr } = await (supabase as any)
+      .from("coupon_uses")
+      .select("id", { count: "exact", head: true })
+      .eq("coupon_id", c.id)
+      .eq("customer_id", customerId);
+    if (!countErr && count != null && count >= c.max_uses_per_customer) {
+      return {
+        ok: false,
+        error:
+          c.max_uses_per_customer === 1
+            ? "Este cupom já foi utilizado por este cliente."
+            : `Este cliente já usou este cupom ${c.max_uses_per_customer}x (limite por cliente atingido).`,
+      };
+    }
+  }
 
   const discount = computeCouponDiscount(c, subtotal);
   if (discount <= 0) return { ok: false, error: "Cupom não gera desconto neste subtotal." };

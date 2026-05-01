@@ -602,7 +602,7 @@ export default function PDV() {
     }
     setCouponLoading(true);
     try {
-      const res = await validateCoupon(code, subtotalAfterPromo, activeCompany.id);
+      const res = await validateCoupon(code, subtotalAfterPromo, activeCompany.id, selectedCustomer?.id);
       if (!res.ok || !res.coupon) {
         toast.error(res.error ?? "Cupom inválido.");
         return;
