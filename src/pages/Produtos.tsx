@@ -847,7 +847,7 @@ function cleanCategory(raw: string): string {
     .trim();
 }
 
-type LookupResult = { name: string; description: string; category: string } | null;
+type LookupResult = { name: string; description: string; category: string; imageUrl?: string } | null;
 
 // Tries an Open*Facts endpoint and normalizes the response
 async function tryOpenFactsAPI(url: string): Promise<LookupResult> {
@@ -874,6 +874,7 @@ async function tryOpenFactsAPI(url: string): Promise<LookupResult> {
         p.generic_name ||
         "",
       category: cleanCategory(rawCategory),
+      imageUrl: p.image_front_url || p.image_url || undefined,
     };
   } catch {
     return null;
@@ -907,6 +908,7 @@ async function tryCosmos(barcode: string): Promise<LookupResult> {
         ? `${brand}${j.gpc?.description ?? ""}`.trim().replace(/—\s*$/, "")
         : j.gpc?.description || "",
       category: cleanCategory(category),
+      imageUrl: j.thumbnail_url || j.image_url || undefined,
     };
   } catch {
     return null;
@@ -928,6 +930,7 @@ async function tryUPCDatabase(barcode: string): Promise<LookupResult> {
       name: item.title || "",
       description: item.description || item.brand || "",
       category: item.category || "",
+      imageUrl: item.images?.[0] || undefined,
     };
   } catch {
     return null;
@@ -949,6 +952,36 @@ function resolveLookupCategory(name: string, description: string, apiCategory: s
   const fromApi = guessCategory(cleaned);
   if (fromApi) return fromApi;
   return "";
+}
+
+async function fetchAndResizeImageUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    const SIZE = 500;
+    const canvas = window.document.createElement("canvas");
+    canvas.width = SIZE;
+    canvas.height = SIZE;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, SIZE, SIZE);
+    const srcRatio = bitmap.width / bitmap.height;
+    let sx = 0, sy = 0, sw = bitmap.width, sh = bitmap.height;
+    if (srcRatio > 1) {
+      sw = bitmap.height;
+      sx = (bitmap.width - sw) / 2;
+    } else {
+      sh = bitmap.width;
+      sy = (bitmap.height - sh) / 2;
+    }
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+    bitmap.close();
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return null;
+  }
 }
 
 async function lookupBarcode(barcode: string): Promise<LookupResult> {
@@ -1578,6 +1611,15 @@ export default function Produtos() {
           ...(info.description ? { description: info.description } : {}),
           ...(resolvedCategory ? { category: resolvedCategory } : {}),
         }));
+        if (info.imageUrl) {
+          setImageBase64((current) => {
+            if (current) return current;
+            fetchAndResizeImageUrl(info.imageUrl!).then((b64) => {
+              if (b64) setImageBase64(b64);
+            });
+            return current;
+          });
+        }
         toast.success(info.name ? `Produto encontrado: ${info.name}` : "Código reconhecido. Verifique os campos.");
       } else {
         toast.info("Produto não encontrado na base. Preencha os campos manualmente.");
