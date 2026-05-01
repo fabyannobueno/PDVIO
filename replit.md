@@ -6,7 +6,7 @@ A modern Point-of-Sale (PDV) web application for Brazilian businesses, built wit
 
 - **Frontend**: React 18 + Vite + TypeScript, served on port 5000
 - **UI**: Shadcn UI components + Tailwind CSS
-- **Auth & Database**: Supabase (external managed service)
+- **Auth & Database**: Supabase Cloud (external managed service — project: luznrsvdmlwcajoxaekn.supabase.co)
 - **State Management**: TanStack React Query
 - **Routing**: React Router v6
 
@@ -24,12 +24,19 @@ A modern Point-of-Sale (PDV) web application for Brazilian businesses, built wit
 - `src/components/dashboard/DashboardInsights.tsx` — Month-over-month comparatives on the dashboard: revenue vs. previous month, top-growing/declining product, peak hour.
 - `src/components/estoque/PurchaseSuggestions.tsx` — Sales-based purchase suggestions tab inside Estoque (configurable analysis window and desired coverage).
 - `src/components/relatorios/MarginReport.tsx` — Margin & profit report (top products by profit, low-margin alerts, missing-cost flag) embedded in `Relatorios`.
-- `supabase/migrations/` — Database migration SQL files
+- `supabase/migrations/` — Database migration SQL files (already applied to Supabase Cloud)
 
 ## Environment Variables
 
+Required (set in Replit Secrets/Env Vars):
 - `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/public key (safe for frontend)
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/public key (safe for frontend — RLS enforces security)
+
+Optional (set in Replit Secrets to enable additional features):
+- `VITE_OPENROUTER_API_KEY` — OpenRouter AI key for AI support chat
+- `VITE_URL_API_PIX` — PIX payment gateway base URL
+- `VITE_CHAVE_PIX` — PIX key (chave PIX) for payment generation
+- `VITE_COSMOS_API_KEY` — Cosmos API key for NCM product code lookup
 
 ## Development
 
@@ -40,38 +47,33 @@ npm run build  # Build for production
 
 ## Database
 
-Uses Supabase (PostgreSQL) with Row Level Security (RLS). Tables:
+Uses Supabase Cloud (PostgreSQL) with Row Level Security (RLS). Tables:
 - `profiles` — User profiles (auto-created on signup)
 - `companies` — Business entities
 - `company_members` — Users linked to companies with roles
-- `products` — Product catalog per company (migration: `supabase/migrations/20260420_products.sql`)
+- `products` — Product catalog per company
 - `suppliers` — Fornecedores vinculados à empresa
 - `stock_movements` — Histórico de movimentações de estoque (entrada, ajuste, contagem, perda); trigger atualiza `products.stock_quantity` automaticamente
 - `accounts` — Contas a pagar e a receber, com parcelamento, status (open/paid/cancelled) e fluxo de caixa projetado
-  Migração: `supabase/migrations/20260422_inventory_suppliers_finance.sql`
-- `promotions` — Regras automáticas de desconto (categoria %, leve N pague M) com vigência opcional. Aplicadas no PDV via `src/lib/promotions.ts`
-- `coupons` — Códigos digitados no PDV (% ou R$), com compra mínima, limite de usos e validade. Único por empresa via UNIQUE(company_id, UPPER(code))
-- Colunas extras em `sales`: `coupon_id`, `coupon_code`, `coupon_discount`, `promotion_discount` para rastrear origem de desconto em relatórios
-  Migração: `supabase/migrations/20260428_promotions_coupons.sql` (precisa ser aplicada manualmente via SQL editor do Supabase)
-- `plans` / `subscriptions` / `invoices` — Planos da plataforma (Iniciante, Essencial, Pro, Empresarial), assinaturas por empresa e faturas (`supabase/migrations/20260506_plans_subscriptions_invoices.sql`)
-
-## Limites por plano
-
-Hook central: `src/hooks/usePlanLimits.ts`. Quando a empresa não tem assinatura ativa, usa o plano `iniciante` (1 loja, 1 usuário, 1 caixa, 50 produtos) como fallback. Bloqueios aplicados em:
-- Produtos (`src/pages/Produtos.tsx`) — `canAddProduct` no botão "Novo Produto" + badge de uso no cabeçalho
-- Onboarding (`src/pages/Onboarding.tsx`) — `canAddCompany` ao criar nova loja (apenas no fluxo `?new=1`); banner com link para `/planos`
-- Operadores do caixa (`src/pages/Configuracoes.tsx`, aba Equipe) — `canAddCashier` no botão "Novo operador" + badge de uso. A aba também mostra badge de membros (`canAddUser`) só leitura.
-
-## Acesso a páginas por plano
-
-`src/lib/planAccess.ts` define o plano mínimo necessário por rota e `src/components/PlanGuard.tsx` protege as rotas em `App.tsx`. Quem está no Iniciante (ou sem plano) só acessa: dashboard, pdv, caixa, produtos, vendas, relatórios, suporte, roadmap, planos, faturas e configurações. Páginas restritas (clientes, crediário, comandas, kds, financeiro, contas, estoque, balança, fornecedores, promoções, auditoria) mostram cadeado no sidebar e tela de upgrade ao tentar acessar.
-
-### Atualização em tempo real após pagamento PIX
-
-`src/hooks/useBillingRealtime.ts` é montado no `AppLayout` e assina mudanças nas tabelas `subscriptions` e `invoices` via Supabase Realtime, filtrando por `company_id` da empresa ativa. Quando o pagamento PIX é confirmado (pelo polling em `Faturas.tsx`, por outra aba ou por um webhook server-side), o front invalida automaticamente as queries de billing — o sidebar destrava as páginas, o PlanGuard libera o acesso e os badges de uso refletem os novos limites sem precisar de refresh manual. Migration: `supabase/migrations/20260507_billing_realtime.sql` (precisa ser aplicada manualmente no SQL editor do Supabase para habilitar o realtime nessas tabelas).
+- `promotions` — Regras automáticas de desconto (categoria %, leve N pague M) com vigência opcional
+- `coupons` — Códigos digitados no PDV (% ou R$), com compra mínima, limite de usos e validade
+- `plans` / `subscriptions` / `invoices` — Planos da plataforma, assinaturas por empresa e faturas
+- `cash_sessions` / `cash_movements` — Controle de caixa com sessões por operador
+- `comandas` / `comanda_items` — Sistema de mesas/comandas com KDS
+- `crediario_entries` — Fiado/crediário por cliente
+- `staff_members` — Operadores com cartão + PIN (separados de company_members)
+- `cart_reservations` — Reservas de estoque em tempo real para PDV
+- `audit_logs` — Logs de auditoria para ações sensíveis
 
 ## User Flow
 
 1. `/auth` — Sign in or create account
 2. `/onboarding` — Create first company (if none exist)
 3. `/` — Dashboard (requires auth + company)
+
+## Replit Setup Notes
+
+- App runs on port 5000 (Vite dev server) — mapped to external port 80
+- Supabase is the sole backend — no Replit PostgreSQL is used by this app
+- Auth is Supabase Auth (email/password + magic links) — all RLS policies depend on Supabase JWTs
+- Realtime subscriptions (KDS, billing updates, cart reservations) go through Supabase Realtime WebSocket
