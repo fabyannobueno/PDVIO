@@ -484,7 +484,7 @@ export default function SuporteTicket() {
 
   if (!activeCompany) {
     return (
-      <div className="mx-auto w-full max-w-3xl p-6 text-center text-sm text-muted-foreground">
+      <div className="w-full p-6 text-center text-sm text-muted-foreground">
         Selecione uma empresa para ver este chamado.
       </div>
     );
@@ -492,7 +492,7 @@ export default function SuporteTicket() {
 
   if (ticketQuery.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-3xl space-y-3 p-4 sm:p-6">
+      <div className="w-full space-y-3 p-4 sm:p-6">
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -501,7 +501,7 @@ export default function SuporteTicket() {
 
   if (!ticket) {
     return (
-      <div className="mx-auto w-full max-w-3xl space-y-4 p-6 text-center">
+      <div className="w-full space-y-4 p-6 text-center">
         <p className="text-sm text-muted-foreground">
           Chamado #{seq} não encontrado nesta empresa.
         </p>
@@ -519,7 +519,7 @@ export default function SuporteTicket() {
   const isWithAgent = ticket.status === "human_assigned";
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-3xl flex-col gap-3 p-3 sm:p-4 md:p-6">
+    <div className="flex h-[calc(100vh-4rem)] w-full flex-col gap-3 p-3 sm:p-4 md:p-6">
       {/* Header */}
       <Card className="shrink-0">
         <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
