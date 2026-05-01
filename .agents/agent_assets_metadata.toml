@@ -1,8 +1,3 @@
 uploads = []
 generated = []
-
-[[outputs]]
-id = "jn2kc4Zy0Cpc0xznTeXX-"
-uri = "file://docs/PROMPT_ADMIN_PDVIO.md"
-type = "text"
-title = "Prompt — PDVIO Admin"
+outputs = []
