@@ -174,8 +174,17 @@ export default function Configuracoes() {
   const [deliveryPickupTime, setDeliveryPickupTime] = useState("");
   const [deliveryPrimaryColor, setDeliveryPrimaryColor] = useState("#6d28d9");
   const [deliveryWhatsapp, setDeliveryWhatsapp] = useState("");
+  const [deliveryEmail, setDeliveryEmail] = useState("");
   const [deliveryInstagram, setDeliveryInstagram] = useState("");
   const [deliveryFacebook, setDeliveryFacebook] = useState("");
+  const [deliveryTwitter, setDeliveryTwitter] = useState("");
+  const [deliveryTiktok, setDeliveryTiktok] = useState("");
+  const [deliveryYoutube, setDeliveryYoutube] = useState("");
+  const [deliveryLinkedin, setDeliveryLinkedin] = useState("");
+  const [deliveryThreads, setDeliveryThreads] = useState("");
+  const [deliveryKwai, setDeliveryKwai] = useState("");
+  const [deliveryGoogleBusiness, setDeliveryGoogleBusiness] = useState("");
+  const [deliveryWebsite, setDeliveryWebsite] = useState("");
   const [deliveryHours, setDeliveryHours] = useState<DayHours[]>(DEFAULT_HOURS);
   const [deliveryLoaded, setDeliveryLoaded] = useState(false);
 
@@ -278,6 +287,16 @@ export default function Configuracoes() {
         setDeliveryWhatsapp(data.delivery_whatsapp ?? "");
         setDeliveryInstagram(data.delivery_instagram ?? "");
         setDeliveryFacebook(data.delivery_facebook ?? "");
+        const sl = (data.settings as any)?.social_links ?? {};
+        setDeliveryEmail(sl.email ?? "");
+        setDeliveryTwitter(sl.twitter ?? "");
+        setDeliveryTiktok(sl.tiktok ?? "");
+        setDeliveryYoutube(sl.youtube ?? "");
+        setDeliveryLinkedin(sl.linkedin ?? "");
+        setDeliveryThreads(sl.threads ?? "");
+        setDeliveryKwai(sl.kwai ?? "");
+        setDeliveryGoogleBusiness(sl.google_business ?? "");
+        setDeliveryWebsite(sl.website ?? "");
         if (Array.isArray(data.delivery_operating_hours) && data.delivery_operating_hours.length === 7) {
           setDeliveryHours(data.delivery_operating_hours as DayHours[]);
         }
@@ -647,6 +666,25 @@ export default function Configuracoes() {
         if (error.message?.includes("delivery_slug")) throw new Error("Esse slug já está em uso. Escolha outro.");
         throw error;
       }
+      const currentCompany: any = queryClient.getQueryData(["/config/company", activeCompany!.id]);
+      const existingSettings = (currentCompany?.settings as any) ?? {};
+      const { error: err2 } = await supabase.from("companies").update({
+        settings: {
+          ...existingSettings,
+          social_links: {
+            email: deliveryEmail.trim() || null,
+            twitter: deliveryTwitter.trim() || null,
+            tiktok: deliveryTiktok.trim() || null,
+            youtube: deliveryYoutube.trim() || null,
+            linkedin: deliveryLinkedin.trim() || null,
+            threads: deliveryThreads.trim() || null,
+            kwai: deliveryKwai.trim() || null,
+            google_business: deliveryGoogleBusiness.trim() || null,
+            website: deliveryWebsite.trim() || null,
+          },
+        },
+      } as any).eq("id", activeCompany!.id);
+      if (err2) throw err2;
     },
     onSuccess: () => {
       toast.success("Configurações de delivery salvas!");
@@ -2454,17 +2492,35 @@ export default function Configuracoes() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="del-email">E-mail de contato</Label>
+                  <Input
+                    id="del-email"
+                    type="email"
+                    value={deliveryEmail}
+                    onChange={(e) => setDeliveryEmail(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="contato@minhaloja.com.br"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-website">Site Oficial</Label>
+                  <Input
+                    id="del-website"
+                    value={deliveryWebsite}
+                    onChange={(e) => setDeliveryWebsite(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://www.minhaloja.com.br"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="del-instagram">Instagram</Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">@</span>
-                    <Input
-                      id="del-instagram"
-                      value={deliveryInstagram}
-                      onChange={(e) => setDeliveryInstagram(e.target.value.replace(/^@/, ""))}
-                      disabled={!isOwner}
-                      placeholder="minhaloja"
-                    />
-                  </div>
+                  <Input
+                    id="del-instagram"
+                    value={deliveryInstagram}
+                    onChange={(e) => setDeliveryInstagram(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://instagram.com/minhaloja"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="del-facebook">Facebook</Label>
@@ -2473,7 +2529,77 @@ export default function Configuracoes() {
                     value={deliveryFacebook}
                     onChange={(e) => setDeliveryFacebook(e.target.value)}
                     disabled={!isOwner}
-                    placeholder="facebook.com/minhaloja"
+                    placeholder="https://facebook.com/minhaloja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-twitter">X (Twitter)</Label>
+                  <Input
+                    id="del-twitter"
+                    value={deliveryTwitter}
+                    onChange={(e) => setDeliveryTwitter(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://x.com/minhaloja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-tiktok">TikTok</Label>
+                  <Input
+                    id="del-tiktok"
+                    value={deliveryTiktok}
+                    onChange={(e) => setDeliveryTiktok(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://tiktok.com/@minhaloja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-youtube">YouTube</Label>
+                  <Input
+                    id="del-youtube"
+                    value={deliveryYoutube}
+                    onChange={(e) => setDeliveryYoutube(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://youtube.com/@minhaloja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-linkedin">LinkedIn</Label>
+                  <Input
+                    id="del-linkedin"
+                    value={deliveryLinkedin}
+                    onChange={(e) => setDeliveryLinkedin(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://linkedin.com/company/minhaloja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-threads">Threads</Label>
+                  <Input
+                    id="del-threads"
+                    value={deliveryThreads}
+                    onChange={(e) => setDeliveryThreads(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://threads.net/@minhaloja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-kwai">Kwai</Label>
+                  <Input
+                    id="del-kwai"
+                    value={deliveryKwai}
+                    onChange={(e) => setDeliveryKwai(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://kwai.com/@minhaloja"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="del-google-business">Google Meu Negócio</Label>
+                  <Input
+                    id="del-google-business"
+                    value={deliveryGoogleBusiness}
+                    onChange={(e) => setDeliveryGoogleBusiness(e.target.value)}
+                    disabled={!isOwner}
+                    placeholder="https://g.page/minhaloja"
                   />
                 </div>
               </div>
