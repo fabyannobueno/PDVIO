@@ -430,21 +430,18 @@ export default function Suporte() {
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="contato" data-testid="tab-contato">
-            <MessageSquare className="mr-1.5 h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Abrir chamado</span>
-            <span className="sm:hidden">Chamado</span>
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1 sm:inline-flex sm:h-10 sm:w-auto sm:gap-0">
+          <TabsTrigger value="contato" data-testid="tab-contato" className="gap-1.5 py-2 text-xs sm:text-sm sm:py-1.5">
+            <MessageSquare className="h-4 w-4 shrink-0" />
+            Abrir chamado
           </TabsTrigger>
-          <TabsTrigger value="chamados" data-testid="tab-chamados">
-            <Inbox className="mr-1.5 h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Meus chamados</span>
-            <span className="sm:hidden">Chamados</span>
+          <TabsTrigger value="chamados" data-testid="tab-chamados" className="gap-1.5 py-2 text-xs sm:text-sm sm:py-1.5">
+            <Inbox className="h-4 w-4 shrink-0" />
+            Meus chamados
           </TabsTrigger>
-          <TabsTrigger value="faq" data-testid="tab-faq">
-            <HelpCircle className="mr-1.5 h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Perguntas frequentes</span>
-            <span className="sm:hidden">FAQ</span>
+          <TabsTrigger value="faq" data-testid="tab-faq" className="gap-1.5 py-2 text-xs sm:text-sm sm:py-1.5">
+            <HelpCircle className="h-4 w-4 shrink-0" />
+            Perguntas frequentes
           </TabsTrigger>
         </TabsList>
 
