@@ -2908,7 +2908,7 @@ export default function Configuracoes() {
                 {/* Inner frosted glass card */}
                 <div className="relative z-10 flex flex-col items-center gap-4 px-8 py-10">
                   {/* Logo */}
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white/20 shadow-lg ring-2 ring-white/30 backdrop-blur-sm">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-2xl ring-4 ring-white/60" style={{ boxShadow: `0 0 0 6px rgba(255,255,255,0.25), 0 8px 32px rgba(0,0,0,0.30)` }}>
                     {deliveryLogoUrl ? (
                       <img
                         src={deliveryLogoUrl}
