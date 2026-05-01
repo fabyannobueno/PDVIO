@@ -431,17 +431,20 @@ export default function Suporte() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1 sm:inline-flex sm:h-10 sm:w-auto sm:gap-0">
-          <TabsTrigger value="contato" data-testid="tab-contato" className="gap-1.5 py-2 text-xs sm:text-sm sm:py-1.5">
+          <TabsTrigger value="contato" data-testid="tab-contato" className="gap-1.5">
             <MessageSquare className="h-4 w-4 shrink-0" />
-            Abrir chamado
+            <span className="sm:hidden">Chamado</span>
+            <span className="hidden sm:inline">Abrir chamado</span>
           </TabsTrigger>
-          <TabsTrigger value="chamados" data-testid="tab-chamados" className="gap-1.5 py-2 text-xs sm:text-sm sm:py-1.5">
+          <TabsTrigger value="chamados" data-testid="tab-chamados" className="gap-1.5">
             <Inbox className="h-4 w-4 shrink-0" />
-            Meus chamados
+            <span className="sm:hidden">Chamados</span>
+            <span className="hidden sm:inline">Meus chamados</span>
           </TabsTrigger>
-          <TabsTrigger value="faq" data-testid="tab-faq" className="gap-1.5 py-2 text-xs sm:text-sm sm:py-1.5">
+          <TabsTrigger value="faq" data-testid="tab-faq" className="gap-1.5">
             <HelpCircle className="h-4 w-4 shrink-0" />
-            Perguntas frequentes
+            <span className="sm:hidden">FAQ</span>
+            <span className="hidden sm:inline">Perguntas frequentes</span>
           </TabsTrigger>
         </TabsList>
 
