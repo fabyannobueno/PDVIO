@@ -189,33 +189,28 @@ export default function Configuracoes() {
     return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   }
 
-  function resizeImageToBase64(file: File, targetW: number, targetH: number): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const canvas = document.createElement("canvas");
-        canvas.width = targetW;
-        canvas.height = targetH;
-        const ctx = canvas.getContext("2d")!;
-        // cover-fill: crop centre
-        const srcRatio = img.width / img.height;
-        const dstRatio = targetW / targetH;
-        let sx = 0, sy = 0, sw = img.width, sh = img.height;
-        if (srcRatio > dstRatio) {
-          sw = img.height * dstRatio;
-          sx = (img.width - sw) / 2;
-        } else {
-          sh = img.width / dstRatio;
-          sy = (img.height - sh) / 2;
-        }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = () => reject(new Error("Não foi possível carregar a imagem."));
-      img.src = url;
+  async function resizeImageToBase64(file: File, targetW: number, targetH: number): Promise<string> {
+    const bitmap = await createImageBitmap(file).catch(() => {
+      throw new Error("Não foi possível carregar a imagem.");
     });
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext("2d")!;
+    // cover-fill: crop centre
+    const srcRatio = bitmap.width / bitmap.height;
+    const dstRatio = targetW / targetH;
+    let sx = 0, sy = 0, sw = bitmap.width, sh = bitmap.height;
+    if (srcRatio > dstRatio) {
+      sw = bitmap.height * dstRatio;
+      sx = (bitmap.width - sw) / 2;
+    } else {
+      sh = bitmap.width / dstRatio;
+      sy = (bitmap.height - sh) / 2;
+    }
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, targetW, targetH);
+    bitmap.close();
+    return canvas.toDataURL("image/png");
   }
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
