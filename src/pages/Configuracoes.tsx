@@ -146,6 +146,10 @@ export default function Configuracoes() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   // ── Delivery / Cardápio digital state ─────────────────────────────────────
   interface DayHours { day: string; isOpen: boolean; openTime: string; closeTime: string; }
@@ -183,6 +187,65 @@ export default function Configuracoes() {
 
   function generateDeliverySlug(name: string) {
     return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  function resizeImageToBase64(file: File, targetW: number, targetH: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement("canvas");
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext("2d")!;
+        // cover-fill: crop centre
+        const srcRatio = img.width / img.height;
+        const dstRatio = targetW / targetH;
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+        if (srcRatio > dstRatio) {
+          sw = img.height * dstRatio;
+          sx = (img.width - sw) / 2;
+        } else {
+          sh = img.width / dstRatio;
+          sy = (img.height - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("Não foi possível carregar a imagem."));
+      img.src = url;
+    });
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const b64 = await resizeImageToBase64(file, 500, 500);
+      setDeliveryLogoUrl(b64);
+    } catch (err: any) {
+      toast.error(err.message ?? "Erro ao processar logo.");
+    } finally {
+      setLogoUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      const b64 = await resizeImageToBase64(file, 1200, 400);
+      setDeliveryCoverUrl(b64);
+    } catch (err: any) {
+      toast.error(err.message ?? "Erro ao processar banner.");
+    } finally {
+      setCoverUploading(false);
+      e.target.value = "";
+    }
   }
 
   // ── Fetch company ──────────────────────────────────────────────────────────
@@ -2139,37 +2202,139 @@ export default function Configuracoes() {
           <Card className="border-border/60">
             <CardHeader>
               <CardTitle className="text-base">Visual da loja</CardTitle>
-              <CardDescription>URLs públicas das imagens. Use serviços como Imgur, Cloudinary, etc.</CardDescription>
+              <CardDescription>
+                Imagens convertidas e salvas diretamente — sem precisar de link externo.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="del-logo">URL do logotipo</Label>
-                  <Input
-                    id="del-logo"
-                    value={deliveryLogoUrl}
-                    onChange={(e) => setDeliveryLogoUrl(e.target.value)}
-                    placeholder="https://..."
-                    disabled={!isOwner}
-                  />
-                  {deliveryLogoUrl && (
-                    <img src={deliveryLogoUrl} alt="logo" className="h-16 w-auto rounded border object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  )}
+            <CardContent className="space-y-6">
+              {/* Logo 500×500 */}
+              <div className="space-y-2">
+                <Label>Logotipo <span className="text-muted-foreground font-normal">(PNG 500×500 px)</span></Label>
+                <div className="flex items-center gap-4">
+                  {/* preview */}
+                  <div
+                    className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-muted cursor-pointer"
+                    onClick={() => isOwner && logoInputRef.current?.click()}
+                    title="Clique para trocar o logotipo"
+                  >
+                    {deliveryLogoUrl ? (
+                      <img src={deliveryLogoUrl} alt="Logo" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                        <Truck className="h-6 w-6 opacity-40" />
+                        <span className="text-[10px]">Logo</span>
+                      </div>
+                    )}
+                    {logoUploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!isOwner || logoUploading}
+                      onClick={() => logoInputRef.current?.click()}
+                    >
+                      {logoUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                      {deliveryLogoUrl ? "Trocar logotipo" : "Enviar logotipo"}
+                    </Button>
+                    {deliveryLogoUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={!isOwner}
+                        onClick={() => setDeliveryLogoUrl("")}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remover
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      JPG, PNG ou WebP. Recortado e salvo em 500×500 px.
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="del-cover">URL da capa / banner</Label>
-                  <Input
-                    id="del-cover"
-                    value={deliveryCoverUrl}
-                    onChange={(e) => setDeliveryCoverUrl(e.target.value)}
-                    placeholder="https://..."
-                    disabled={!isOwner}
-                  />
-                  {deliveryCoverUrl && (
-                    <img src={deliveryCoverUrl} alt="capa" className="h-16 w-full rounded border object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  )}
-                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
               </div>
+
+              <Separator />
+
+              {/* Banner 1200×400 */}
+              <div className="space-y-2">
+                <Label>Banner / capa <span className="text-muted-foreground font-normal">(PNG 1200×400 px)</span></Label>
+                <div
+                  className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-muted cursor-pointer"
+                  onClick={() => isOwner && coverInputRef.current?.click()}
+                  title="Clique para trocar o banner"
+                >
+                  {deliveryCoverUrl ? (
+                    <img src={deliveryCoverUrl} alt="Banner" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                      <Globe className="h-7 w-7 opacity-40" />
+                      <span className="text-xs">Clique para enviar o banner</span>
+                      <span className="text-[10px] opacity-60">1200×400 px</span>
+                    </div>
+                  )}
+                  {coverUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!isOwner || coverUploading}
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    {coverUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                    {deliveryCoverUrl ? "Trocar banner" : "Enviar banner"}
+                  </Button>
+                  {deliveryCoverUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={!isOwner}
+                      onClick={() => setDeliveryCoverUrl("")}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remover
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG ou WebP. Recortado e salvo em 1200×400 px.
+                </p>
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleCoverUpload}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Cor principal */}
               <div className="space-y-2">
                 <Label htmlFor="del-color">Cor principal da loja</Label>
                 <div className="flex items-center gap-3">
@@ -2225,30 +2390,52 @@ export default function Configuracoes() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="del-time">
-                    <Clock className="inline h-3.5 w-3.5 mr-1" />
+                  <Label className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
                     Tempo de entrega
                   </Label>
-                  <Input
-                    id="del-time"
+                  <Select
                     value={deliveryTime}
-                    onChange={(e) => setDeliveryTime(e.target.value)}
+                    onValueChange={setDeliveryTime}
                     disabled={!isOwner}
-                    placeholder="Ex.: 30-45 min"
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15-20 min">15 – 20 min</SelectItem>
+                      <SelectItem value="20-30 min">20 – 30 min</SelectItem>
+                      <SelectItem value="30-45 min">30 – 45 min</SelectItem>
+                      <SelectItem value="45-60 min">45 – 60 min</SelectItem>
+                      <SelectItem value="1h-1h30">1h – 1h30</SelectItem>
+                      <SelectItem value="1h30-2h">1h30 – 2h</SelectItem>
+                      <SelectItem value="Acima de 2h">Acima de 2h</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="del-pickup">
-                    <Clock className="inline h-3.5 w-3.5 mr-1" />
+                  <Label className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
                     Tempo para retirada
                   </Label>
-                  <Input
-                    id="del-pickup"
+                  <Select
                     value={deliveryPickupTime}
-                    onChange={(e) => setDeliveryPickupTime(e.target.value)}
+                    onValueChange={setDeliveryPickupTime}
                     disabled={!isOwner}
-                    placeholder="Ex.: 20 min"
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5-10 min">5 – 10 min</SelectItem>
+                      <SelectItem value="10-15 min">10 – 15 min</SelectItem>
+                      <SelectItem value="15-20 min">15 – 20 min</SelectItem>
+                      <SelectItem value="20-30 min">20 – 30 min</SelectItem>
+                      <SelectItem value="30-45 min">30 – 45 min</SelectItem>
+                      <SelectItem value="45-60 min">45 – 60 min</SelectItem>
+                      <SelectItem value="Acima de 1h">Acima de 1h</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
