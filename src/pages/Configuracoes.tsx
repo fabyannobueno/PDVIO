@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import QRCode from "qrcode";
+import html2canvas from "html2canvas";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -187,6 +189,39 @@ export default function Configuracoes() {
   const [deliveryWebsite, setDeliveryWebsite] = useState("");
   const [deliveryHours, setDeliveryHours] = useState<DayHours[]>(DEFAULT_HOURS);
   const [deliveryLoaded, setDeliveryLoaded] = useState(false);
+
+  // ── Placa QR ───────────────────────────────────────────────────────────────
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const plateRef = useRef<HTMLDivElement>(null);
+
+  const qrUrl = deliverySlug ? `https://pdvio.shop/${deliverySlug}` : "https://pdvio.shop";
+
+  useEffect(() => {
+    QRCode.toDataURL(qrUrl, {
+      width: 320,
+      margin: 1,
+      color: { dark: "#1a1a2e", light: "#ffffff" },
+      errorCorrectionLevel: "H",
+    }).then(setQrDataUrl).catch(() => {});
+  }, [qrUrl]);
+
+  const downloadPlate = useCallback(async () => {
+    if (!plateRef.current) return;
+    try {
+      const canvas = await html2canvas(plateRef.current, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = `placa-qr-${deliverySlug || "loja"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      toast.error("Erro ao exportar a placa.");
+    }
+  }, [deliverySlug]);
 
   // ── W-API / WhatsApp state ─────────────────────────────────────────────────
   const [wapiInstanceId, setWapiInstanceId] = useState("");
@@ -1125,6 +1160,10 @@ export default function Configuracoes() {
           <TabsTrigger value="whatsapp" className="gap-2" data-testid="tab-whatsapp">
             <MessageCircle className="h-4 w-4" />
             WhatsApp
+          </TabsTrigger>
+          <TabsTrigger value="placa-qr" className="gap-2" data-testid="tab-placa-qr">
+            <QrCode className="h-4 w-4" />
+            Placa QR
           </TabsTrigger>
         </TabsList>
 
@@ -2802,6 +2841,134 @@ export default function Configuracoes() {
                 </a>.
               </p>
               <p>• Em caso de desconexão, basta abrir o painel W-API, acessar sua instância e escanear o QR Code novamente.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Placa QR ─────────────────────────────────────────────────── */}
+        <TabsContent value="placa-qr" className="space-y-6">
+          <Card className="border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <QrCode className="h-4 w-4" />
+                Placa QR da loja
+              </CardTitle>
+              <CardDescription>
+                Gere uma placa profissional com o QR Code do seu cardápio digital para imprimir e exibir na loja.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-6">
+
+              {/* ── Plate Preview ── */}
+              <div
+                ref={plateRef}
+                style={{ background: deliveryPrimaryColor }}
+                className="relative w-80 overflow-hidden rounded-3xl shadow-2xl select-none"
+              >
+                {/* Decorative blurred shapes */}
+                <svg
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <filter id="blur-heavy"><feGaussianBlur stdDeviation="28" /></filter>
+                    <filter id="blur-mid"><feGaussianBlur stdDeviation="16" /></filter>
+                    <filter id="blur-light"><feGaussianBlur stdDeviation="8" /></filter>
+                  </defs>
+                  <circle cx="20%" cy="15%" r="90" fill="rgba(255,255,255,0.18)" filter="url(#blur-heavy)" />
+                  <circle cx="85%" cy="10%" r="60" fill="rgba(255,255,255,0.12)" filter="url(#blur-mid)" />
+                  <circle cx="75%" cy="85%" r="100" fill="rgba(0,0,0,0.18)" filter="url(#blur-heavy)" />
+                  <circle cx="10%" cy="80%" r="70" fill="rgba(255,255,255,0.10)" filter="url(#blur-mid)" />
+                  <polygon
+                    points="290,0 320,60 260,60"
+                    fill="rgba(255,255,255,0.08)"
+                    filter="url(#blur-light)"
+                  />
+                  <polygon
+                    points="0,280 50,340 -50,340"
+                    fill="rgba(255,255,255,0.07)"
+                    filter="url(#blur-light)"
+                  />
+                  <rect
+                    x="60" y="20" width="200" height="6" rx="3"
+                    fill="rgba(255,255,255,0.08)"
+                    transform="rotate(-30 160 60)"
+                    filter="url(#blur-light)"
+                  />
+                  <rect
+                    x="10" y="180" width="120" height="4" rx="2"
+                    fill="rgba(255,255,255,0.06)"
+                    transform="rotate(20 80 200)"
+                    filter="url(#blur-light)"
+                  />
+                  <circle cx="50%" cy="50%" r="130" fill="rgba(0,0,0,0.10)" filter="url(#blur-heavy)" />
+                </svg>
+
+                {/* Inner frosted glass card */}
+                <div className="relative z-10 flex flex-col items-center gap-4 px-8 py-10">
+                  {/* Logo */}
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white/20 shadow-lg ring-2 ring-white/30 backdrop-blur-sm">
+                    {deliveryLogoUrl ? (
+                      <img
+                        src={deliveryLogoUrl}
+                        alt="Logo"
+                        crossOrigin="anonymous"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <QrCode className="h-10 w-10 text-white/60" />
+                    )}
+                  </div>
+
+                  {/* Store name */}
+                  <p className="text-center text-2xl font-extrabold leading-tight tracking-tight text-white drop-shadow-lg">
+                    {companyName || "Nome da loja"}
+                  </p>
+
+                  {/* Divider */}
+                  <div className="h-px w-full bg-white/25" />
+
+                  {/* Call to action */}
+                  <p className="text-sm font-semibold uppercase tracking-widest text-white/80">
+                    Acesse nosso cardápio
+                  </p>
+
+                  {/* QR Code */}
+                  <div className="rounded-2xl bg-white p-3 shadow-xl ring-4 ring-white/40">
+                    {qrDataUrl ? (
+                      <img src={qrDataUrl} alt="QR Code" className="h-44 w-44" />
+                    ) : (
+                      <div className="flex h-44 w-44 items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* URL */}
+                  <p className="rounded-full bg-white/15 px-4 py-1.5 text-center font-mono text-xs font-semibold text-white backdrop-blur-sm">
+                    {deliverySlug ? `pdvio.shop/${deliverySlug}` : "pdvio.shop/sua-loja"}
+                  </p>
+
+                  {/* Bottom brand */}
+                  <p className="text-[10px] font-medium tracking-wider text-white/50">
+                    Powered by PDVIO
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Actions ── */}
+              <div className="flex flex-col items-center gap-2 text-center">
+                <Button onClick={downloadPlate} className="gap-2" disabled={!qrDataUrl}>
+                  <Download className="h-4 w-4" />
+                  Baixar Placa (PNG)
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  {deliverySlug
+                    ? `Link: pdvio.shop/${deliverySlug}`
+                    : "Configure o slug da loja na aba Delivery para personalizar o link."}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
