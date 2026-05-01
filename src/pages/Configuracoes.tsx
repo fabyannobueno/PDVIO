@@ -1795,17 +1795,18 @@ export default function Configuracoes() {
 
           {/* ── Operadores (cartão + PIN) ────────────────────────────── */}
           <Card className="border-border/60">
-            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+            <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="text-base">Operadores do caixa</CardTitle>
                 <CardDescription>
                   Cadastre os operadores que vão liberar sangrias e cancelamentos com cartão e senha.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2">
                 {!planLimits.loading && (
                   <Badge
                     variant={planLimits.canAddCashier ? "outline" : "destructive"}
+                    className="shrink-0"
                     data-testid="badge-staff-usage"
                   >
                     {planLimits.usage.cashiers}/{formatLimit(planLimits.limits.cashiers)}
@@ -1815,7 +1816,7 @@ export default function Configuracoes() {
                   size="sm"
                   onClick={openCreateStaff}
                   data-testid="button-new-staff"
-                  className="gap-1.5"
+                  className="flex-1 gap-1.5 sm:flex-none"
                   disabled={!planLimits.loading && !planLimits.canAddCashier}
                   title={
                     !planLimits.loading && !planLimits.canAddCashier
