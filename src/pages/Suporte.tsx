@@ -430,18 +430,21 @@ export default function Suporte() {
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-3">
-          <TabsTrigger value="contato" data-testid="tab-contato" className="shrink-0 whitespace-nowrap sm:shrink">
-            <MessageSquare className="mr-1.5 h-4 w-4" />
-            Abrir chamado
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="contato" data-testid="tab-contato">
+            <MessageSquare className="mr-1.5 h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Abrir chamado</span>
+            <span className="sm:hidden">Chamado</span>
           </TabsTrigger>
-          <TabsTrigger value="chamados" data-testid="tab-chamados" className="shrink-0 whitespace-nowrap sm:shrink">
-            <Inbox className="mr-1.5 h-4 w-4" />
-            Meus chamados
+          <TabsTrigger value="chamados" data-testid="tab-chamados">
+            <Inbox className="mr-1.5 h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Meus chamados</span>
+            <span className="sm:hidden">Chamados</span>
           </TabsTrigger>
-          <TabsTrigger value="faq" data-testid="tab-faq" className="shrink-0 whitespace-nowrap sm:shrink">
-            <HelpCircle className="mr-1.5 h-4 w-4" />
-            Perguntas frequentes
+          <TabsTrigger value="faq" data-testid="tab-faq">
+            <HelpCircle className="mr-1.5 h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Perguntas frequentes</span>
+            <span className="sm:hidden">FAQ</span>
           </TabsTrigger>
         </TabsList>
 
