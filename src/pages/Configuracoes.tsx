@@ -193,7 +193,7 @@ export default function Configuracoes() {
     const bitmap = await createImageBitmap(file).catch(() => {
       throw new Error("Não foi possível carregar a imagem.");
     });
-    const canvas = document.createElement("canvas");
+    const canvas = window.document.createElement("canvas");
     canvas.width = targetW;
     canvas.height = targetH;
     const ctx = canvas.getContext("2d")!;
