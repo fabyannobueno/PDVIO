@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import QRCode from "qrcode";
-import html2canvas from "html2canvas";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -206,22 +205,203 @@ export default function Configuracoes() {
   }, [qrUrl]);
 
   const downloadPlate = useCallback(async () => {
-    if (!plateRef.current) return;
+    if (!qrDataUrl) return;
     try {
-      const canvas = await html2canvas(plateRef.current, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: null,
-        logging: false,
-      });
+      const S = 3;
+      const W = 320, H = 560;
+      const canvas = document.createElement("canvas");
+      canvas.width = W * S;
+      canvas.height = H * S;
+      const ctx = canvas.getContext("2d")!;
+      ctx.scale(S, S);
+
+      const rr = (x: number, y: number, w: number, h: number, r: number) => {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      };
+
+      // 1 ── Background
+      ctx.fillStyle = deliveryPrimaryColor;
+      ctx.fillRect(0, 0, W, H);
+
+      // 2 ── Dot grid
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      for (let x = 10; x < W; x += 20)
+        for (let y = 10; y < H; y += 20) {
+          ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+
+      // 3 ── Diagonal stripes (top half)
+      ctx.save();
+      ctx.rect(0, 0, W, H / 2); ctx.clip();
+      ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+      for (let i = -H; i < W + H; i += 16) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke();
+      }
+      ctx.restore();
+
+      // 4 ── Hexagon outlines (bottom half)
+      ctx.save();
+      ctx.rect(0, H / 2, W, H / 2); ctx.clip();
+      ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+      const hR = 18;
+      for (let row = 0; row * hR * 1.5 < H / 2 + hR * 2; row++) {
+        for (let col = 0; col * hR * Math.sqrt(3) < W + hR * 2; col++) {
+          const cx2 = col * hR * Math.sqrt(3) + (row % 2 === 1 ? hR * Math.sqrt(3) / 2 : 0);
+          const cy2 = H / 2 + row * hR * 1.5;
+          ctx.beginPath();
+          for (let a = 0; a < 6; a++) {
+            const angle = (Math.PI / 180) * (60 * a - 30);
+            const px = cx2 + hR * Math.cos(angle);
+            const py = cy2 + hR * Math.sin(angle);
+            if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      // 5 ── Vignette
+      const vig = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+      vig.addColorStop(0, "rgba(0,0,0,0)");
+      vig.addColorStop(1, "rgba(0,0,0,0.38)");
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+
+      // 6 ── Corner arcs
+      const arc = (cx: number, cy: number, r: number, col: string, lw: number) => {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
+      };
+      arc(0, 0, 80, "rgba(255,255,255,0.20)", 2);
+      arc(0, 0, 120, "rgba(255,255,255,0.10)", 1.5);
+      arc(0, 0, 160, "rgba(255,255,255,0.06)", 1);
+      arc(W, H, 90, "rgba(255,255,255,0.18)", 2);
+      arc(W, H, 140, "rgba(255,255,255,0.09)", 1.5);
+      arc(W, H, 190, "rgba(255,255,255,0.05)", 1);
+
+      // 7 ── Horizontal rule lines
+      ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1;
+      [140, 420].forEach(y => { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); });
+
+      // 8 ── Diamond clusters
+      const diamond = (cx: number, cy: number, s: number, col: string) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - s); ctx.lineTo(cx + s, cy);
+        ctx.lineTo(cx, cy + s); ctx.lineTo(cx - s, cy); ctx.closePath();
+        ctx.fillStyle = col; ctx.fill();
+      };
+      diamond(290, 30, 12, "rgba(255,255,255,0.18)");
+      diamond(308, 12, 8, "rgba(255,255,255,0.12)");
+      diamond(270, 14, 6, "rgba(255,255,255,0.08)");
+      diamond(30, 530, 12, "rgba(255,255,255,0.15)");
+      diamond(10, 512, 8, "rgba(255,255,255,0.10)");
+      diamond(50, 542, 6, "rgba(255,255,255,0.07)");
+
+      // 9 ── Plus marks
+      const plus = (x: number, y: number) => {
+        ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x, y + 6); ctx.stroke();
+      };
+      [[40, 70], [280, 100], [20, 440], [300, 380], [160, 30], [155, 530]].forEach(([x, y]) => plus(x, y));
+
+      // 10 ── Logo white box
+      const logoSize = 80, logoX = W / 2 - logoSize / 2, logoY = 40, logoR = 16;
+      ctx.shadowColor = "rgba(0,0,0,0.30)"; ctx.shadowBlur = 20 * S;
+      rr(logoX, logoY, logoSize, logoSize, logoR);
+      ctx.fillStyle = "white"; ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Outer ring on logo
+      ctx.strokeStyle = "rgba(255,255,255,0.50)"; ctx.lineWidth = 4;
+      rr(logoX - 4, logoY - 4, logoSize + 8, logoSize + 8, logoR + 4); ctx.stroke();
+
+      // Logo image (optional, skip on error)
+      if (deliveryLogoUrl) {
+        try {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = deliveryLogoUrl; });
+          ctx.save();
+          rr(logoX, logoY, logoSize, logoSize, logoR); ctx.clip();
+          ctx.drawImage(img, logoX, logoY, logoSize, logoSize);
+          ctx.restore();
+        } catch { /* show white box without logo */ }
+      }
+
+      // 11 ── Store name
+      const name = companyName || "Nome da loja";
+      ctx.fillStyle = "white";
+      ctx.font = `bold 22px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 8;
+      ctx.fillText(name, W / 2, logoY + logoSize + 28, W - 40);
+      ctx.shadowBlur = 0;
+
+      // 12 ── Divider
+      ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(32, logoY + logoSize + 40); ctx.lineTo(W - 32, logoY + logoSize + 40); ctx.stroke();
+
+      // 13 ── "ACESSE NOSSO CARDÁPIO"
+      ctx.fillStyle = "rgba(255,255,255,0.80)";
+      ctx.font = `600 11px system-ui, sans-serif`;
+      ctx.letterSpacing = "4px";
+      ctx.fillText("ACESSE NOSSO CARDÁPIO", W / 2, logoY + logoSize + 60);
+      ctx.letterSpacing = "0px";
+
+      // 14 ── QR Code
+      const qrImg = new Image();
+      await new Promise<void>((res, rej) => { qrImg.onload = () => res(); qrImg.onerror = rej; qrImg.src = qrDataUrl; });
+      const qrSize = 176, qrX = W / 2 - qrSize / 2, qrY = logoY + logoSize + 72;
+      const qrPad = 12;
+      ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 16;
+      rr(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 16);
+      ctx.fillStyle = "white"; ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.save();
+      rr(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 16); ctx.clip();
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+      ctx.restore();
+
+      // 15 ── URL pill
+      const urlText = deliverySlug ? `pdvio.shop/${deliverySlug}` : "pdvio.shop/sua-loja";
+      const pillY = qrY + qrSize + qrPad * 2 + 16;
+      const pillH = 26, pillPad = 16;
+      ctx.font = `600 11px monospace`;
+      const tw = ctx.measureText(urlText).width;
+      const pillW = Math.max(tw + pillPad * 2, 140);
+      const pillX = W / 2 - pillW / 2;
+      rr(pillX, pillY, pillW, pillH, pillH / 2);
+      ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 1;
+      rr(pillX, pillY, pillW, pillH, pillH / 2); ctx.stroke();
+      ctx.fillStyle = "white"; ctx.textAlign = "center";
+      ctx.fillText(urlText, W / 2, pillY + pillH / 2 + 4);
+
+      // 16 ── Powered by PDVIO
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.font = `500 9px system-ui, sans-serif`;
+      ctx.fillText("Powered by PDVIO", W / 2, pillY + pillH + 20);
+
+      // 17 ── Download
       const link = document.createElement("a");
       link.download = `placa-qr-${deliverySlug || "loja"}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
-    } catch {
+    } catch (err) {
+      console.error("downloadPlate error:", err);
       toast.error("Erro ao exportar a placa.");
     }
-  }, [deliverySlug]);
+  }, [deliverySlug, deliveryPrimaryColor, deliveryLogoUrl, companyName, qrDataUrl]);
 
   // ── W-API / WhatsApp state ─────────────────────────────────────────────────
   const [wapiInstanceId, setWapiInstanceId] = useState("");
