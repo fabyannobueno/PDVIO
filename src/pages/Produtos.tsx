@@ -1677,7 +1677,7 @@ export default function Produtos() {
           <Button
             onClick={openCreate}
             data-testid="button-novo-produto"
-            className="w-full shrink-0 sm:w-auto"
+            className="flex-1 sm:flex-none sm:w-auto"
             disabled={!planLimits.loading && !planLimits.canAddProduct}
             title={
               !planLimits.loading && !planLimits.canAddProduct
