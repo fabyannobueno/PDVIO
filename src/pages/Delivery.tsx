@@ -88,6 +88,8 @@ interface DeliveryOrder {
   items: OrderItem[];
   subtotal: number;
   delivery_fee: number;
+  discount_amount: number;
+  coupon_code: string | null;
   total: number;
   payment_method: string;
   notes: string | null;
@@ -164,8 +166,6 @@ function buildWhatsAppMessage(
     return `• ${qtyLabel} ${item.name} — ${brl(subtotal)}`;
   };
 
-  const discount = Math.round((order.subtotal + order.delivery_fee - order.total) * 100) / 100;
-
   const confirmedLines: string[] = [
     `✅ *${store}*`,
     `Olá, ${order.customer_name}! Seu pedido ${orderId} foi *confirmado*. 😊`,
@@ -182,7 +182,9 @@ function buildWhatsAppMessage(
     ``,
     `Subtotal: ${brl(order.subtotal)}`,
     ...(isDelivery && order.delivery_fee > 0 ? [`Taxa de entrega: ${brl(order.delivery_fee)}`] : []),
-    ...(discount > 0 ? [`🎟️ Desconto: -${brl(discount)}`] : []),
+    ...(order.discount_amount > 0
+      ? [`🎟️ Desconto${order.coupon_code ? ` (${order.coupon_code})` : ""}: -${brl(order.discount_amount)}`]
+      : []),
     `*Total: ${brl(order.total)}*`,
   ];
 
