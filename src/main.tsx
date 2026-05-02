@@ -4,7 +4,7 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-const SPLASH_MIN_MS = 3000;
+const SPLASH_MIN_MS = import.meta.env.DEV ? 300 : 3000;
 const splashShownAt = (window as any).__APP_SPLASH_SHOWN_AT__ ?? performance.now();
 requestAnimationFrame(() => {
   const splash = document.getElementById("app-splash");
