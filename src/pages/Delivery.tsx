@@ -46,6 +46,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Tag,
+  Calendar,
 } from "lucide-react";
 import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } from "@/lib/printer";
 import type { Receipt } from "@/lib/printer";
@@ -140,6 +141,48 @@ const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const ACTIVE_STATUSES: DeliveryStatus[] = ["pending", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup"];
+
+type DateFilter = "today" | "yesterday" | "last_week" | "custom" | "all";
+
+const DATE_FILTER_OPTIONS: { value: DateFilter; label: string }[] = [
+  { value: "today",     label: "Hoje" },
+  { value: "yesterday", label: "Ontem" },
+  { value: "last_week", label: "Última semana" },
+  { value: "custom",    label: "Data personalizada" },
+  { value: "all",       label: "Todos os dias" },
+];
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getDateRange(filter: DateFilter, customDate: string): { gte: string; lte: string } | null {
+  if (filter === "all") return null;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (filter === "today") {
+    const end = new Date(todayStart); end.setDate(end.getDate() + 1);
+    return { gte: todayStart.toISOString(), lte: end.toISOString() };
+  }
+  if (filter === "yesterday") {
+    const start = new Date(todayStart); start.setDate(start.getDate() - 1);
+    return { gte: start.toISOString(), lte: todayStart.toISOString() };
+  }
+  if (filter === "last_week") {
+    const start = new Date(todayStart); start.setDate(start.getDate() - 6);
+    const end = new Date(todayStart); end.setDate(end.getDate() + 1);
+    return { gte: start.toISOString(), lte: end.toISOString() };
+  }
+  if (filter === "custom" && customDate) {
+    const [y, m, d] = customDate.split("-").map(Number);
+    const start = new Date(y, m - 1, d);
+    const end   = new Date(y, m - 1, d + 1);
+    return { gte: start.toISOString(), lte: end.toISOString() };
+  }
+  return null;
+}
 
 // ── WhatsApp message builder ──────────────────────────────────────────────────
 
@@ -562,6 +605,8 @@ export default function Delivery() {
   const PAGE_SIZE = 9;
 
   const [statusFilter, setStatusFilter] = useState("active");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
+  const [customDate, setCustomDate] = useState(todayStr);
   const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<DeliveryOrder | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
@@ -591,8 +636,10 @@ export default function Delivery() {
 
   // ── Query ──────────────────────────────────────────────────────────────────
 
+  const dateRange = getDateRange(dateFilter, customDate);
+
   const { data: queryResult, isLoading } = useQuery<{ orders: DeliveryOrder[]; total: number }>({
-    queryKey: ["/delivery-orders", cid, statusFilter, page],
+    queryKey: ["/delivery-orders", cid, statusFilter, dateFilter, dateFilter === "custom" ? customDate : null, page],
     enabled: !!cid,
     refetchInterval: 15000,
     refetchIntervalInBackground: true,
@@ -611,6 +658,10 @@ export default function Delivery() {
         q = q.in("status", ACTIVE_STATUSES);
       } else if (statusFilter !== "all") {
         q = q.eq("status", statusFilter as DeliveryStatus);
+      }
+
+      if (dateRange) {
+        q = q.gte("created_at", dateRange.gte).lt("created_at", dateRange.lte);
       }
 
       const { data, error, count } = await q;
@@ -662,10 +713,10 @@ export default function Delivery() {
     };
   }, [cid, qc]);
 
-  // Reset to page 1 when the filter changes
+  // Reset to page 1 when any filter changes
   useEffect(() => {
     setPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, dateFilter, customDate]);
 
   // Mark known IDs on first load
   useEffect(() => {
@@ -864,10 +915,10 @@ export default function Delivery() {
           </span>
         </div>
 
-        {/* Row 2: filter + refresh */}
-        <div className="flex items-center gap-2">
+        {/* Row 2: filters + refresh */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-44 text-xs">
+            <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-40 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -878,6 +929,29 @@ export default function Delivery() {
               ))}
             </SelectContent>
           </Select>
+
+          <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+            <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-40 text-xs gap-1">
+              <Calendar className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_FILTER_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {dateFilter === "custom" && (
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => setCustomDate(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring w-36 shrink-0"
+            />
+          )}
 
           <Button
             variant="ghost"
