@@ -619,6 +619,7 @@ export default function Delivery() {
       const receipt: Receipt = {
         title: order.delivery_type === "delivery" ? "PEDIDO DELIVERY" : "PEDIDO RETIRADA",
         saleNumber: String(order.numeric_id).padStart(6, "0"),
+        saleLabel: "ID DO PEDIDO",
         companyName: activeCompany?.name,
         customerName: order.customer_name,
         customerPhone: order.customer_phone,
@@ -631,6 +632,7 @@ export default function Delivery() {
           unit: "un",
         })),
         subtotal: order.subtotal,
+        deliveryFee: order.delivery_type === "delivery" && order.delivery_fee > 0 ? order.delivery_fee : undefined,
         total: order.total,
         payment: paymentLabel(order.payment_method),
         date: new Date(order.created_at),

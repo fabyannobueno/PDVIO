@@ -70,6 +70,10 @@ export interface Receipt {
   deliveryType?: "delivery" | "pickup";
   /** Endereço de entrega do cliente (apenas quando deliveryType = "delivery"). */
   customerAddress?: string;
+  /** Rótulo customizado para o identificador (padrão: "ID DA VENDA"). */
+  saleLabel?: string;
+  /** Taxa de entrega (exibida no delivery quando > 0). */
+  deliveryFee?: number;
 }
 
 // ─── Helpers públicos ───────────────────────────────────────────────────────
@@ -505,7 +509,8 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
   const date = receipt.date ?? new Date();
   chunks.push(line(date.toLocaleString("pt-BR"), { align: "center" }));
   if (receipt.saleNumber) {
-    chunks.push(line(`ID DA VENDA: ${receipt.saleNumber}`, { align: "center", bold: true }));
+    const idLabel = receipt.saleLabel ?? "ID DA VENDA";
+    chunks.push(line(`${idLabel}: ${receipt.saleNumber}`, { align: "center", bold: true }));
   }
 
   // ── Bloco do cliente (delivery) ─────────────────────────────────────────
@@ -551,6 +556,7 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
   chunks.push(divider(cols));
   if (receipt.subtotal != null) chunks.push(line(padCols("Subtotal", money(receipt.subtotal), cols)));
   if (receipt.discount) chunks.push(line(padCols("Desconto", `-${money(receipt.discount)}`, cols)));
+  if (receipt.deliveryFee != null && receipt.deliveryFee > 0) chunks.push(line(padCols("Taxa de entrega", money(receipt.deliveryFee), cols)));
   chunks.push(line(padCols("TOTAL", money(receipt.total), cols), { bold: true, double: false }));
   if (receipt.payment) chunks.push(line(padCols("Pagamento", receipt.payment, cols)));
   if (receipt.cashReceived != null) chunks.push(line(padCols("Valor recebido", money(receipt.cashReceived), cols)));
@@ -810,12 +816,13 @@ ${(() => {
 })()}
 ${receipt.title ? `<div class="center bold big" style="margin-top:6px">${escapeHtml(receipt.title)}</div>` : ""}
 <div class="center">${date.toLocaleString("pt-BR")}</div>
-${receipt.saleNumber ? `<div class="center bold">ID DA VENDA: ${escapeHtml(receipt.saleNumber)}</div>` : ""}
+${receipt.saleNumber ? `<div class="center bold">${escapeHtml(receipt.saleLabel ?? "ID DA VENDA")}: ${escapeHtml(receipt.saleNumber)}</div>` : ""}
 <div class="divider"></div>
 ${itemsHtml}
 <div class="divider"></div>
 ${receipt.subtotal != null ? `<div class="row"><span>Subtotal</span><span>${money(receipt.subtotal)}</span></div>` : ""}
 ${receipt.discount ? `<div class="row"><span>Desconto</span><span>-${money(receipt.discount)}</span></div>` : ""}
+${receipt.deliveryFee != null && receipt.deliveryFee > 0 ? `<div class="row"><span>Taxa de entrega</span><span>${money(receipt.deliveryFee)}</span></div>` : ""}
 <div class="row total"><span>TOTAL</span><span>${money(receipt.total)}</span></div>
 ${receipt.payment ? `<div class="row"><span>Pagamento</span><span>${escapeHtml(receipt.payment)}</span></div>` : ""}
 ${receipt.cashReceived != null ? `<div class="row"><span>Valor recebido</span><span>${money(receipt.cashReceived)}</span></div>` : ""}
