@@ -16,6 +16,8 @@ import {
   Undo2,
   RotateCcw,
   Utensils,
+  Bike,
+  ShoppingBag,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -44,6 +46,36 @@ interface KdsItem {
     company_id: string;
     status: string;
   } | null;
+}
+
+type DeliveryStatus = "pending" | "confirmed" | "preparing" | "out_for_delivery" | "ready_for_pickup" | "delivered" | "picked_up" | "cancelled";
+
+interface DeliveryOrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  subtotal?: number;
+  is_prepared?: boolean;
+  notes?: string;
+  addons?: { name: string; price: number }[];
+}
+
+interface KdsDeliveryOrder {
+  id: string;
+  numeric_id: number;
+  customer_name: string;
+  delivery_type: "delivery" | "pickup";
+  status: DeliveryStatus;
+  items: DeliveryOrderItem[];
+  created_at: string;
+}
+
+const DELIVERY_KDS_STATUSES: DeliveryStatus[] = ["pending", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup"];
+
+function deliveryToKdsColumn(status: DeliveryStatus): "pending" | "preparing" | "ready" {
+  if (status === "preparing") return "preparing";
+  if (status === "out_for_delivery" || status === "ready_for_pickup") return "ready";
+  return "pending";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -101,7 +133,40 @@ export default function KDS() {
     },
   });
 
-  // Realtime subscription — refresh on any change in comanda_items for this company
+  // ── Delivery orders with kitchen items ───────────────────────────────────────
+  const { data: deliveryOrders = [] } = useQuery<KdsDeliveryOrder[]>({
+    queryKey: ["/kds-delivery-orders", cid],
+    enabled: !!cid,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("delivery_orders")
+        .select("id, numeric_id, customer_name, delivery_type, status, items, created_at")
+        .eq("company_id", cid!)
+        .in("status", DELIVERY_KDS_STATUSES)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return ((data ?? []) as unknown as KdsDeliveryOrder[]).filter(
+        (o) => Array.isArray(o.items) && o.items.some((i) => i.is_prepared)
+      );
+    },
+  });
+
+  const setDeliveryStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: DeliveryStatus }) => {
+      const { error } = await supabase
+        .from("delivery_orders")
+        .update({ status })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/kds-delivery-orders", cid] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao atualizar pedido"),
+  });
+
+  // Realtime subscription — refresh on any change in comanda_items / delivery_orders
   useEffect(() => {
     if (!cid) return;
     const channel = supabase
@@ -111,6 +176,9 @@ export default function KDS() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "comandas" }, () => {
         queryClient.invalidateQueries({ queryKey: ["/kds-items", cid] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_orders" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["/kds-delivery-orders", cid] });
       })
       .subscribe();
     return () => {
@@ -148,6 +216,15 @@ export default function KDS() {
       ready: all.filter((i) => i.kds_status === "ready"),
     };
   }, [items]);
+
+  const deliveryGrouped = useMemo(() => {
+    const all = deliveryOrders ?? [];
+    return {
+      pending:   all.filter((o) => deliveryToKdsColumn(o.status) === "pending"),
+      preparing: all.filter((o) => deliveryToKdsColumn(o.status) === "preparing"),
+      ready:     all.filter((o) => deliveryToKdsColumn(o.status) === "ready"),
+    };
+  }, [deliveryOrders]);
 
   // ── Notification sound for new pending items ───────────────────────────────
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -233,6 +310,14 @@ export default function KDS() {
     setStatusMutation.mutate({ id, status });
   }
 
+  function changeDeliveryStatus(order: KdsDeliveryOrder, action: "start" | "ready" | "undo") {
+    let next: DeliveryStatus;
+    if (action === "start")  next = "preparing";
+    else if (action === "ready") next = order.delivery_type === "delivery" ? "out_for_delivery" : "ready_for_pickup";
+    else next = "pending";
+    setDeliveryStatusMutation.mutate({ id: order.id, status: next });
+  }
+
   if (!cid) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -258,13 +343,13 @@ export default function KDS() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" data-testid="kds-count-pending">
-            {grouped.pending.length} pendentes
+            {grouped.pending.length + deliveryGrouped.pending.length} pendentes
           </Badge>
           <Badge variant="outline" data-testid="kds-count-preparing">
-            {grouped.preparing.length} em preparo
+            {grouped.preparing.length + deliveryGrouped.preparing.length} em preparo
           </Badge>
           <Badge variant="outline" data-testid="kds-count-ready">
-            {grouped.ready.length} prontos
+            {grouped.ready.length + deliveryGrouped.ready.length} prontos
           </Badge>
           <Button
             variant="outline"
@@ -287,6 +372,7 @@ export default function KDS() {
           icon={<Clock className="h-4 w-4" />}
           isLoading={isLoading}
           items={grouped.pending}
+          deliveryOrders={deliveryGrouped.pending}
           now={now}
           renderActions={(item) => (
             <Button
@@ -294,6 +380,16 @@ export default function KDS() {
               className="w-full"
               onClick={() => changeStatus(item.id, "preparing")}
               data-testid={`button-start-${item.id}`}
+            >
+              <Play className="mr-1.5 h-3.5 w-3.5" />
+              Iniciar preparo
+            </Button>
+          )}
+          renderDeliveryActions={(order) => (
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => changeDeliveryStatus(order, "start")}
             >
               <Play className="mr-1.5 h-3.5 w-3.5" />
               Iniciar preparo
@@ -307,6 +403,7 @@ export default function KDS() {
           icon={<Utensils className="h-4 w-4" />}
           isLoading={isLoading}
           items={grouped.preparing}
+          deliveryOrders={deliveryGrouped.preparing}
           now={now}
           renderActions={(item) => (
             <div className="flex w-full gap-2">
@@ -329,6 +426,25 @@ export default function KDS() {
               </Button>
             </div>
           )}
+          renderDeliveryActions={(order) => (
+            <div className="flex w-full gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => changeDeliveryStatus(order, "undo")}
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={() => changeDeliveryStatus(order, "ready")}
+              >
+                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                Pronto
+              </Button>
+            </div>
+          )}
         />
 
         <Column
@@ -337,6 +453,7 @@ export default function KDS() {
           icon={<CheckCircle2 className="h-4 w-4" />}
           isLoading={isLoading}
           items={grouped.ready}
+          deliveryOrders={deliveryGrouped.ready}
           now={now}
           renderActions={(item) => (
             <div className="flex w-full gap-2">
@@ -358,6 +475,17 @@ export default function KDS() {
               </Button>
             </div>
           )}
+          renderDeliveryActions={(order) => (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={() => changeDeliveryStatus(order, "undo")}
+            >
+              <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+              Voltar a preparo
+            </Button>
+          )}
         />
       </div>
     </div>
@@ -372,17 +500,23 @@ function Column({
   icon,
   isLoading,
   items,
+  deliveryOrders,
   now,
   renderActions,
+  renderDeliveryActions,
 }: {
   title: string;
   accent: string;
   icon: React.ReactNode;
   isLoading: boolean;
   items: KdsItem[];
+  deliveryOrders: KdsDeliveryOrder[];
   now: number;
   renderActions: (item: KdsItem) => React.ReactNode;
+  renderDeliveryActions: (order: KdsDeliveryOrder) => React.ReactNode;
 }) {
+  const total = items.length + deliveryOrders.length;
+
   return (
     <div className="flex min-h-0 flex-col rounded-xl border border-border bg-card">
       <div className={`flex items-center justify-between rounded-t-xl px-4 py-2.5 ${accent}`}>
@@ -391,10 +525,10 @@ function Column({
           {title}
         </div>
         <span className="text-xs font-semibold text-muted-foreground" data-testid={`kds-col-count-${title}`}>
-          {items.length}
+          {total}
         </span>
       </div>
-      {!isLoading && items.length === 0 ? (
+      {!isLoading && total === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground/60">
             <span className="[&>svg]:h-6 [&>svg]:w-6">{icon}</span>
@@ -413,62 +547,108 @@ function Column({
               <Skeleton className="h-24 w-full" />
             </>
           ) : (
-            items.map((item) => {
-              const fromIso =
-                item.kds_status === "preparing" && item.kds_started_at
-                  ? item.kds_started_at
-                  : item.kds_status === "ready" && item.kds_ready_at
-                  ? item.kds_ready_at
-                  : item.created_at;
-              const seconds = Math.max(
-                0,
-                Math.floor((now - new Date(fromIso).getTime()) / 1000)
-              );
-              return (
-                <div
-                  key={item.id}
-                  className={`rounded-lg border p-3 transition-colors ${urgencyClass(seconds)}`}
-                  data-testid={`kds-item-${item.id}`}
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <Badge variant="secondary" className="font-bold" data-testid={`kds-comanda-${item.id}`}>
-                      {item.comandas?.identifier ?? "—"}
-                    </Badge>
-                    <span className="flex items-center gap-1 text-xs font-mono font-semibold text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {elapsedText(fromIso, now)}
-                    </span>
+            <>
+              {items.map((item) => {
+                const fromIso =
+                  item.kds_status === "preparing" && item.kds_started_at
+                    ? item.kds_started_at
+                    : item.kds_status === "ready" && item.kds_ready_at
+                    ? item.kds_ready_at
+                    : item.created_at;
+                const seconds = Math.max(
+                  0,
+                  Math.floor((now - new Date(fromIso).getTime()) / 1000)
+                );
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-lg border p-3 transition-colors ${urgencyClass(seconds)}`}
+                    data-testid={`kds-item-${item.id}`}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <Badge variant="secondary" className="font-bold" data-testid={`kds-comanda-${item.id}`}>
+                        {item.comandas?.identifier ?? "—"}
+                      </Badge>
+                      <span className="flex items-center gap-1 text-xs font-mono font-semibold text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {elapsedText(fromIso, now)}
+                      </span>
+                    </div>
+                    <div className="mb-1 flex items-baseline gap-2">
+                      <span className="font-mono text-base font-bold text-primary">
+                        {fmtQty(Number(item.quantity))}×
+                      </span>
+                      <span className="flex-1 text-sm font-semibold leading-tight" data-testid={`kds-name-${item.id}`}>
+                        {item.product_name}
+                      </span>
+                    </div>
+                    {item.addons && item.addons.length > 0 && (
+                      <ul className="mb-2 space-y-0.5 rounded bg-primary/5 px-2 py-1 text-xs">
+                        {item.addons.map((a, i) => (
+                          <li
+                            key={i}
+                            className="font-medium text-primary"
+                            data-testid={`kds-addon-${item.id}-${i}`}
+                          >
+                            + {a.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {item.notes && (
+                      <p className="mb-2 rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                        Obs: {item.notes}
+                      </p>
+                    )}
+                    <div className="mt-2">{renderActions(item)}</div>
                   </div>
-                  <div className="mb-1 flex items-baseline gap-2">
-                    <span className="font-mono text-base font-bold text-primary">
-                      {fmtQty(Number(item.quantity))}×
-                    </span>
-                    <span className="flex-1 text-sm font-semibold leading-tight" data-testid={`kds-name-${item.id}`}>
-                      {item.product_name}
-                    </span>
-                  </div>
-                  {item.addons && item.addons.length > 0 && (
-                    <ul className="mb-2 space-y-0.5 rounded bg-primary/5 px-2 py-1 text-xs">
-                      {item.addons.map((a, i) => (
-                        <li
-                          key={i}
-                          className="font-medium text-primary"
-                          data-testid={`kds-addon-${item.id}-${i}`}
-                        >
-                          + {a.name}
-                        </li>
+                );
+              })}
+
+              {deliveryOrders.map((order) => {
+                const kitchenItems = order.items.filter((i) => i.is_prepared);
+                const seconds = Math.max(0, Math.floor((now - new Date(order.created_at).getTime()) / 1000));
+                const TypeIcon = order.delivery_type === "delivery" ? Bike : ShoppingBag;
+                return (
+                  <div
+                    key={order.id}
+                    className={`rounded-lg border p-3 transition-colors ${urgencyClass(seconds)}`}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Badge className="gap-1 bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/20">
+                          <TypeIcon className="h-3 w-3" />
+                          #{order.numeric_id}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground truncate max-w-[90px]">{order.customer_name}</span>
+                      </div>
+                      <span className="flex items-center gap-1 text-xs font-mono font-semibold text-muted-foreground shrink-0">
+                        <Clock className="h-3 w-3" />
+                        {elapsedText(order.created_at, now)}
+                      </span>
+                    </div>
+                    <div className="mb-2 space-y-0.5">
+                      {kitchenItems.map((it, i) => (
+                        <div key={i} className="flex items-baseline gap-2">
+                          <span className="font-mono text-base font-bold text-primary">{fmtQty(it.quantity)}×</span>
+                          <span className="flex-1 text-sm font-semibold leading-tight">{it.name}</span>
+                        </div>
                       ))}
-                    </ul>
-                  )}
-                  {item.notes && (
-                    <p className="mb-2 rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                      Obs: {item.notes}
-                    </p>
-                  )}
-                  <div className="mt-2">{renderActions(item)}</div>
-                </div>
-              );
-            })
+                    </div>
+                    {kitchenItems.some((i) => i.notes) && (
+                      <div className="mb-2 space-y-0.5">
+                        {kitchenItems.filter((i) => i.notes).map((it, i) => (
+                          <p key={i} className="rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            Obs ({it.name}): {it.notes}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-2">{renderDeliveryActions(order)}</div>
+                  </div>
+                );
+              })}
+            </>
           )}
         </div>
       </ScrollArea>
