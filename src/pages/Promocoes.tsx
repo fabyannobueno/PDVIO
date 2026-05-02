@@ -63,6 +63,9 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
+  Bike,
+  ShoppingBag,
+  Info,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -161,6 +164,17 @@ export default function Promocoes() {
           Crie regras automáticas que aplicam desconto no PDV e cupons com código
           que o cliente digita ao finalizar a compra.
         </p>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-lg border border-blue-500/30 bg-blue-500/8 px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
+        <Info className="h-4 w-4 mt-0.5 shrink-0" />
+        <span>
+          As promoções automáticas e os cupons de desconto também são válidos no{" "}
+          <strong>cardápio digital</strong> — tanto para pedidos de{" "}
+          <span className="inline-flex items-center gap-1 font-medium"><Bike className="h-3.5 w-3.5" />delivery</span>{" "}
+          quanto para{" "}
+          <span className="inline-flex items-center gap-1 font-medium"><ShoppingBag className="h-3.5 w-3.5" />retirada no local</span>.
+        </span>
       </div>
 
       <Tabs defaultValue="promotions" className="w-full">
