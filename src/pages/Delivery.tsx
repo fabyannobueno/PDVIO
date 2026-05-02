@@ -73,6 +73,8 @@ interface OrderItem {
   is_prepared?: boolean;
   addons?: { name: string; price: number }[];
   notes?: string;
+  unit?: string;
+  weight?: number;
 }
 
 interface DeliveryOrder {
@@ -138,16 +140,63 @@ const ACTIVE_STATUSES: DeliveryStatus[] = ["pending", "confirmed", "preparing", 
 
 // ── WhatsApp message builder ──────────────────────────────────────────────────
 
-function buildWhatsAppMessage(order: DeliveryOrder, newStatus: DeliveryStatus, companyName?: string): string | null {
+function buildWhatsAppMessage(
+  order: DeliveryOrder,
+  newStatus: DeliveryStatus,
+  companyName?: string,
+  companyAddress?: string,
+): string | null {
   const store = companyName ?? "Nossa loja";
   const orderId = `#${order.numeric_id}`;
   const isDelivery = order.delivery_type === "delivery";
 
+  const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const itemLine = (item: OrderItem): string => {
+    let qtyLabel: string;
+    if (item.unit === "kg" || (item.weight && item.weight > 0)) {
+      const kg = item.weight ?? item.quantity;
+      qtyLabel = kg < 1
+        ? `${Math.round(kg * 1000)}g`
+        : `${kg.toFixed(3).replace(".", ",")}kg`;
+    } else {
+      qtyLabel = `${item.quantity}x`;
+    }
+    const subtotal = item.subtotal ?? item.price * item.quantity;
+    return `• ${qtyLabel} ${item.name} — ${brl(subtotal)}`;
+  };
+
+  const discount = Math.round((order.subtotal + order.delivery_fee - order.total) * 100) / 100;
+
+  const confirmedLines: string[] = [
+    `✅ *${store}*`,
+    `Olá, ${order.customer_name}! Seu pedido ${orderId} foi *confirmado*. 😊`,
+    ``,
+    `📋 *Dados do pedido:*`,
+    `👤 ${order.customer_name}`,
+    `📱 ${order.customer_phone}`,
+    isDelivery
+      ? `🚚 *Delivery*${order.address ? ` — ${order.address}` : ""}`
+      : `🏪 *Retirada no local*${companyAddress ? ` — ${companyAddress}` : ""}`,
+    ``,
+    `🛒 *Itens:*`,
+    ...order.items.map(itemLine),
+    ``,
+    `Subtotal: ${brl(order.subtotal)}`,
+    ...(isDelivery && order.delivery_fee > 0 ? [`Taxa de entrega: ${brl(order.delivery_fee)}`] : []),
+    ...(discount > 0 ? [`🎟️ Desconto: -${brl(discount)}`] : []),
+    `*Total: ${brl(order.total)}*`,
+  ];
+
   const messages: Partial<Record<DeliveryStatus, string>> = {
-    confirmed: `✅ *${store}*\nOlá, ${order.customer_name}! Seu pedido ${orderId} foi *confirmado* e logo entrará em preparo. 😊`,
+    confirmed: confirmedLines.join("\n"),
     preparing: `👨‍🍳 *${store}*\nSeu pedido ${orderId} está *sendo preparado* agora! Em breve estará pronto.`,
     out_for_delivery: `🛵 *${store}*\nSeu pedido ${orderId} *saiu para entrega*! Fique atento, o motoboy está a caminho. 📦`,
-    ready_for_pickup: `📦 *${store}*\nSeu pedido ${orderId} está *pronto para retirada*! Pode vir buscar quando quiser. 😊`,
+    ready_for_pickup: [
+      `📦 *${store}*`,
+      `Seu pedido ${orderId} está *pronto para retirada*! Pode vir buscar quando quiser. 😊`,
+      ...(companyAddress ? [``, `📍 *Endereço da loja:* ${companyAddress}`] : []),
+    ].join("\n"),
     delivered: `🎉 *${store}*\nSeu pedido ${orderId} foi *entregue*! Obrigado pela preferência. Bom apetite! 🍽️`,
     picked_up: `🎉 *${store}*\nSeu pedido ${orderId} foi *retirado*! Obrigado pela preferência. Bom apetite! 🍽️`,
     cancelled: `❌ *${store}*\nInfelizmente seu pedido ${orderId} foi *cancelado*. Entre em contato conosco para mais informações.`,
@@ -643,13 +692,13 @@ export default function Delivery() {
 
   const sendStatusNotification = useCallback(async (order: DeliveryOrder, newStatus: DeliveryStatus) => {
     if (!wapiCredentials || !order.customer_phone) return;
-    const message = buildWhatsAppMessage(order, newStatus, activeCompany?.name);
+    const message = buildWhatsAppMessage(order, newStatus, activeCompany?.name, activeCompany?.address ?? undefined);
     if (!message) return;
     const result = await sendWhatsAppMessage(wapiCredentials, order.customer_phone, message);
     if (!result.ok) {
       toast.warning(`Notificação WhatsApp não enviada: ${result.error}`, { duration: 4000 });
     }
-  }, [wapiCredentials, activeCompany?.name]);
+  }, [wapiCredentials, activeCompany?.name, activeCompany?.address]);
 
   const handleAdvance = useCallback((order: DeliveryOrder) => {
     const next = NEXT_STATUS[order.status];
