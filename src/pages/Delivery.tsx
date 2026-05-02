@@ -620,6 +620,10 @@ export default function Delivery() {
         title: order.delivery_type === "delivery" ? "PEDIDO DELIVERY" : "PEDIDO RETIRADA",
         saleNumber: String(order.numeric_id).padStart(6, "0"),
         companyName: activeCompany?.name,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        deliveryType: order.delivery_type as "delivery" | "pickup",
+        customerAddress: order.address ?? undefined,
         items: order.items.map((it) => ({
           name: it.name,
           qty: it.quantity,
@@ -647,6 +651,10 @@ export default function Delivery() {
       const receipt: Receipt = {
         title: `COZINHA — ${order.delivery_type === "delivery" ? "DELIVERY" : "RETIRADA"}`,
         saleNumber: String(order.numeric_id).padStart(6, "0"),
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        deliveryType: order.delivery_type as "delivery" | "pickup",
+        customerAddress: order.address ?? undefined,
         items: kitchenItems.map((it) => ({
           name: it.notes ? `${it.name} (${it.notes})` : it.name,
           qty: it.quantity,

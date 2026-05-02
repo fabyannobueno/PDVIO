@@ -62,6 +62,14 @@ export interface Receipt {
   companyAddress?: string;
   /** Identificador curto da venda (ex.: "012345"). */
   saleNumber?: string;
+  /** Nome do cliente (usado em cupons de delivery). */
+  customerName?: string;
+  /** Telefone do cliente. */
+  customerPhone?: string;
+  /** Tipo do pedido de delivery. */
+  deliveryType?: "delivery" | "pickup";
+  /** Endereço de entrega do cliente (apenas quando deliveryType = "delivery"). */
+  customerAddress?: string;
 }
 
 // ─── Helpers públicos ───────────────────────────────────────────────────────
@@ -499,6 +507,34 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
   if (receipt.saleNumber) {
     chunks.push(line(`ID DA VENDA: ${receipt.saleNumber}`, { align: "center", bold: true }));
   }
+
+  // ── Bloco do cliente (delivery) ─────────────────────────────────────────
+  const hasCustomerBlock = !!(receipt.customerName || receipt.customerPhone || receipt.deliveryType);
+  if (hasCustomerBlock) {
+    chunks.push(divider(cols));
+    if (receipt.deliveryType) {
+      const tipoLabel = receipt.deliveryType === "delivery" ? "ENTREGA" : "RETIRADA";
+      chunks.push(line(`TIPO: ${tipoLabel}`, { bold: true }));
+    }
+    if (receipt.customerName) chunks.push(line(`CLIENTE: ${receipt.customerName}`));
+    if (receipt.customerPhone) chunks.push(line(`TEL: ${receipt.customerPhone}`));
+    if (receipt.deliveryType === "delivery" && receipt.customerAddress) {
+      const addrWords = receipt.customerAddress.split(/\s+/);
+      const addrLines: string[] = [];
+      let cur = "ENDERECO: ";
+      for (const w of addrWords) {
+        if ((cur + w).length > cols) {
+          addrLines.push(cur.trimEnd());
+          cur = "  " + w + " ";
+        } else {
+          cur += w + " ";
+        }
+      }
+      if (cur.trim()) addrLines.push(cur.trimEnd());
+      for (const l of addrLines) chunks.push(line(l));
+    }
+  }
+
   chunks.push(divider(cols));
 
   for (const it of receipt.items) {
