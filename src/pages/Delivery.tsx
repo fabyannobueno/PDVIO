@@ -713,10 +713,21 @@ export default function Delivery() {
     };
   }, [cid, qc]);
 
-  // Reset to page 1 when any filter changes
+  // When switching to a historical date, auto-set status to "all" so finished orders appear.
+  // When switching back to "today", restore to "active".
+  useEffect(() => {
+    if (dateFilter === "today") {
+      setStatusFilter("active");
+    } else if (dateFilter !== "today") {
+      setStatusFilter("all");
+    }
+    setPage(1);
+  }, [dateFilter, customDate]);
+
+  // Reset to page 1 when status filter changes independently
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, dateFilter, customDate]);
+  }, [statusFilter]);
 
   // Mark known IDs on first load
   useEffect(() => {
