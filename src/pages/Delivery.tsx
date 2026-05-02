@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } from "@/lib/printer";
 import type { Receipt } from "@/lib/printer";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import notificationSoundUrl from "@assets/notification-pdvio_1776868318337.mp3";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -134,6 +135,26 @@ const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const ACTIVE_STATUSES: DeliveryStatus[] = ["pending", "confirmed", "preparing", "out_for_delivery", "ready_for_pickup"];
+
+// ── WhatsApp message builder ──────────────────────────────────────────────────
+
+function buildWhatsAppMessage(order: DeliveryOrder, newStatus: DeliveryStatus, companyName?: string): string | null {
+  const store = companyName ?? "Nossa loja";
+  const orderId = `#${order.numeric_id}`;
+  const isDelivery = order.delivery_type === "delivery";
+
+  const messages: Partial<Record<DeliveryStatus, string>> = {
+    confirmed: `✅ *${store}*\nOlá, ${order.customer_name}! Seu pedido ${orderId} foi *confirmado* e logo entrará em preparo. 😊`,
+    preparing: `👨‍🍳 *${store}*\nSeu pedido ${orderId} está *sendo preparado* agora! Em breve estará pronto.`,
+    out_for_delivery: `🛵 *${store}*\nSeu pedido ${orderId} *saiu para entrega*! Fique atento, o motoboy está a caminho. 📦`,
+    ready_for_pickup: `📦 *${store}*\nSeu pedido ${orderId} está *pronto para retirada*! Pode vir buscar quando quiser. 😊`,
+    delivered: `🎉 *${store}*\nSeu pedido ${orderId} foi *entregue*! Obrigado pela preferência. Bom apetite! 🍽️`,
+    picked_up: `🎉 *${store}*\nSeu pedido ${orderId} foi *retirado*! Obrigado pela preferência. Bom apetite! 🍽️`,
+    cancelled: `❌ *${store}*\nInfelizmente seu pedido ${orderId} foi *cancelado*. Entre em contato conosco para mais informações.`,
+  };
+
+  return messages[newStatus] ?? null;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -480,6 +501,23 @@ export default function Delivery() {
   const [printing, setPrinting] = useState(false);
   const [realtimeLive, setRealtimeLive] = useState(false);
 
+  // ── W-API credentials ──────────────────────────────────────────────────────
+
+  const { data: wapiCredentials } = useQuery<{ instanceId: string; token: string } | null>({
+    queryKey: ["/company-wapi", cid],
+    enabled: !!cid,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("wapi_instance_id, wapi_token")
+        .eq("id", cid!)
+        .single();
+      if (error || !data?.wapi_instance_id || !data?.wapi_token) return null;
+      return { instanceId: data.wapi_instance_id, token: data.wapi_token };
+    },
+  });
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIds = useRef<Set<string>>(new Set());
   const firstLoad = useRef(true);
@@ -603,6 +641,16 @@ export default function Delivery() {
     onSettled: () => setAdvancingId(null),
   });
 
+  const sendStatusNotification = useCallback(async (order: DeliveryOrder, newStatus: DeliveryStatus) => {
+    if (!wapiCredentials || !order.customer_phone) return;
+    const message = buildWhatsAppMessage(order, newStatus, activeCompany?.name);
+    if (!message) return;
+    const result = await sendWhatsAppMessage(wapiCredentials, order.customer_phone, message);
+    if (!result.ok) {
+      toast.warning(`Notificação WhatsApp não enviada: ${result.error}`, { duration: 4000 });
+    }
+  }, [wapiCredentials, activeCompany?.name]);
+
   const handleAdvance = useCallback((order: DeliveryOrder) => {
     const next = NEXT_STATUS[order.status];
     if (!next) return;
@@ -616,10 +664,11 @@ export default function Delivery() {
             prev?.id === order.id ? { ...prev, status: newStatus } : prev
           );
           toast.success(`Pedido #${order.numeric_id} → ${STATUS_CONFIG[newStatus].label}`);
+          sendStatusNotification(order, newStatus);
         },
       }
     );
-  }, [updateStatus]);
+  }, [updateStatus, sendStatusNotification]);
 
   const handleCancel = useCallback((order: DeliveryOrder) => {
     setAdvancingId(order.id);
@@ -631,10 +680,11 @@ export default function Delivery() {
             prev?.id === order.id ? { ...prev, status: "cancelled" } : prev
           );
           toast.success(`Pedido #${order.numeric_id} cancelado`);
+          sendStatusNotification(order, "cancelled");
         },
       }
     );
-  }, [updateStatus]);
+  }, [updateStatus, sendStatusNotification]);
 
   // ── Print ──────────────────────────────────────────────────────────────────
 
