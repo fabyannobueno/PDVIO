@@ -513,16 +513,15 @@ export default function Configuracoes() {
         setDeliveryWhatsapp(data.delivery_whatsapp ?? "");
         setDeliveryInstagram(data.delivery_instagram ?? "");
         setDeliveryFacebook(data.delivery_facebook ?? "");
-        const sl = (data.settings as any)?.social_links ?? {};
-        setDeliveryEmail(sl.email ?? "");
-        setDeliveryTwitter(sl.twitter ?? "");
-        setDeliveryTiktok(sl.tiktok ?? "");
-        setDeliveryYoutube(sl.youtube ?? "");
-        setDeliveryLinkedin(sl.linkedin ?? "");
-        setDeliveryThreads(sl.threads ?? "");
-        setDeliveryKwai(sl.kwai ?? "");
-        setDeliveryGoogleBusiness(sl.google_business ?? "");
-        setDeliveryWebsite(sl.website ?? "");
+        setDeliveryEmail((data as any).delivery_email ?? "");
+        setDeliveryWebsite((data as any).delivery_website ?? "");
+        setDeliveryTwitter((data as any).delivery_twitter ?? "");
+        setDeliveryTiktok((data as any).delivery_tiktok ?? "");
+        setDeliveryYoutube((data as any).delivery_youtube ?? "");
+        setDeliveryLinkedin((data as any).delivery_linkedin ?? "");
+        setDeliveryThreads((data as any).delivery_threads ?? "");
+        setDeliveryKwai((data as any).delivery_kwai ?? "");
+        setDeliveryGoogleBusiness((data as any).delivery_google_business ?? "");
         if (Array.isArray(data.delivery_operating_hours) && data.delivery_operating_hours.length === 7) {
           setDeliveryHours(data.delivery_operating_hours as DayHours[]);
         }
@@ -886,31 +885,21 @@ export default function Configuracoes() {
         delivery_whatsapp: deliveryWhatsapp.trim() || null,
         delivery_instagram: deliveryInstagram.trim() || null,
         delivery_facebook: deliveryFacebook.trim() || null,
+        delivery_email: deliveryEmail.trim() || null,
+        delivery_website: deliveryWebsite.trim() || null,
+        delivery_twitter: deliveryTwitter.trim() || null,
+        delivery_tiktok: deliveryTiktok.trim() || null,
+        delivery_youtube: deliveryYoutube.trim() || null,
+        delivery_linkedin: deliveryLinkedin.trim() || null,
+        delivery_threads: deliveryThreads.trim() || null,
+        delivery_kwai: deliveryKwai.trim() || null,
+        delivery_google_business: deliveryGoogleBusiness.trim() || null,
         delivery_operating_hours: deliveryHours as any,
       } as any).eq("id", activeCompany!.id);
       if (error) {
         if (error.message?.includes("delivery_slug")) throw new Error("Esse slug já está em uso. Escolha outro.");
         throw error;
       }
-      const currentCompany: any = queryClient.getQueryData(["/config/company", activeCompany!.id]);
-      const existingSettings = (currentCompany?.settings as any) ?? {};
-      const { error: err2 } = await supabase.from("companies").update({
-        settings: {
-          ...existingSettings,
-          social_links: {
-            email: deliveryEmail.trim() || null,
-            twitter: deliveryTwitter.trim() || null,
-            tiktok: deliveryTiktok.trim() || null,
-            youtube: deliveryYoutube.trim() || null,
-            linkedin: deliveryLinkedin.trim() || null,
-            threads: deliveryThreads.trim() || null,
-            kwai: deliveryKwai.trim() || null,
-            google_business: deliveryGoogleBusiness.trim() || null,
-            website: deliveryWebsite.trim() || null,
-          },
-        },
-      } as any).eq("id", activeCompany!.id);
-      if (err2) throw err2;
     },
     onSuccess: () => {
       toast.success("Configurações de delivery salvas!");
