@@ -303,6 +303,66 @@ export type Database = {
           },
         ]
       }
+      delivery_orders: {
+        Row: {
+          id: string
+          numeric_id: number
+          company_id: string
+          customer_name: string
+          customer_phone: string
+          address: string | null
+          delivery_type: "delivery" | "pickup"
+          items: Json
+          subtotal: number
+          delivery_fee: number
+          total: number
+          payment_method: string
+          notes: string | null
+          status: "pending" | "confirmed" | "preparing" | "cancelled" | "out_for_delivery" | "delivered" | "ready_for_pickup" | "picked_up"
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          customer_name: string
+          customer_phone: string
+          address?: string | null
+          delivery_type: "delivery" | "pickup"
+          items?: Json
+          subtotal?: number
+          delivery_fee?: number
+          total?: number
+          payment_method: string
+          notes?: string | null
+          status?: "pending" | "confirmed" | "preparing" | "cancelled" | "out_for_delivery" | "delivered" | "ready_for_pickup" | "picked_up"
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          customer_name?: string
+          customer_phone?: string
+          address?: string | null
+          delivery_type?: "delivery" | "pickup"
+          items?: Json
+          subtotal?: number
+          delivery_fee?: number
+          total?: number
+          payment_method?: string
+          notes?: string | null
+          status?: "pending" | "confirmed" | "preparing" | "cancelled" | "out_for_delivery" | "delivered" | "ready_for_pickup" | "picked_up"
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

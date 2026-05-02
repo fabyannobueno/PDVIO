@@ -61,6 +61,7 @@ Uses Supabase Cloud (PostgreSQL) with Row Level Security (RLS). Tables:
 - `cash_sessions` / `cash_movements` — Controle de caixa com sessões por operador
 - `comandas` / `comanda_items` — Sistema de mesas/comandas com KDS
 - `crediario_entries` — Fiado/crediário por cliente
+- `delivery_orders` — Pedidos do cardápio digital / delivery público (status: pending → confirmed → preparing → out_for_delivery / ready_for_pickup → delivered / picked_up; tipo: delivery ou pickup; realtime habilitado)
 - `staff_members` — Operadores com cartão + PIN (separados de company_members)
 - `cart_reservations` — Reservas de estoque em tempo real para PDV
 - `audit_logs` — Logs de auditoria para ações sensíveis
