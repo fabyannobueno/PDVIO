@@ -1,0 +1,26 @@
+-- Adiciona os tipos de negócio que estão no frontend mas faltavam no enum do banco
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'pizzeria';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'burger';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'cafe';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'bakery';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'confectionery';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'icecream';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'acai';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'bar';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'marmita';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'food_truck';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'grocery';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'greengrocer';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'butcher';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'fishmonger';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'winecellar';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'wholesale';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'clothing';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'shoes';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'cosmetics';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'pharmacy';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'petshop';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'stationery';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'electronics';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'florist';
+ALTER TYPE public.business_type ADD VALUE IF NOT EXISTS 'beauty';
