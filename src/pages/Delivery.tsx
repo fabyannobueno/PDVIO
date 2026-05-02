@@ -156,9 +156,7 @@ function buildWhatsAppMessage(
     let qtyLabel: string;
     if (item.unit === "kg" || (item.weight && item.weight > 0)) {
       const kg = item.weight ?? item.quantity;
-      qtyLabel = kg < 1
-        ? `${Math.round(kg * 1000)}g`
-        : `${kg.toFixed(3).replace(".", ",")}kg`;
+      qtyLabel = `${kg.toFixed(3).replace(".", ",")}kg`;
     } else {
       qtyLabel = `${item.quantity}x`;
     }
