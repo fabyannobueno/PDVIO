@@ -473,6 +473,7 @@ export default function Delivery() {
   const [selectedOrder, setSelectedOrder] = useState<DeliveryOrder | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  const [realtimeLive, setRealtimeLive] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIds = useRef<Set<string>>(new Set());
@@ -483,6 +484,8 @@ export default function Delivery() {
   const { data: orders = [], isLoading } = useQuery<DeliveryOrder[]>({
     queryKey: ["/delivery-orders", cid, statusFilter],
     enabled: !!cid,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       let q = supabase
         .from("delivery_orders")
@@ -531,9 +534,14 @@ export default function Delivery() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        setRealtimeLive(status === "SUBSCRIBED");
+      });
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      setRealtimeLive(false);
+      supabase.removeChannel(channel);
+    };
   }, [cid, qc]);
 
   // Mark known IDs on first load
@@ -701,6 +709,14 @@ export default function Delivery() {
         </div>
 
         <div className="flex items-center gap-2">
+          <span
+            title={realtimeLive ? "Tempo real ativo" : "Atualizando a cada 15s"}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          >
+            <span className={`h-2 w-2 rounded-full ${realtimeLive ? "bg-green-500 animate-pulse" : "bg-muted-foreground/40"}`} />
+            {realtimeLive ? "Ao vivo" : "Polling"}
+          </span>
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-8 w-44 text-xs">
               <SelectValue />
