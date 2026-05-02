@@ -696,29 +696,33 @@ export default function Delivery() {
       <audio ref={audioRef} src={notificationSoundUrl} preload="auto" />
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 px-6 py-4 border-b shrink-0">
-        <div className="flex items-center gap-3">
-          <Bike className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-bold">Pedidos de Delivery</h1>
-          {pendingCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500 text-white text-xs font-bold animate-pulse">
-              <Bell className="h-3 w-3" />
-              {pendingCount} novo{pendingCount > 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
+      <div className="flex flex-col gap-2 px-4 sm:px-6 py-3 border-b shrink-0">
+        {/* Row 1: title + live dot */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bike className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+            <h1 className="text-base sm:text-xl font-bold truncate">Pedidos de Delivery</h1>
+            {pendingCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500 text-white text-xs font-bold animate-pulse shrink-0">
+                <Bell className="h-3 w-3" />
+                {pendingCount}
+              </span>
+            )}
+          </div>
 
-        <div className="flex items-center gap-2">
           <span
             title={realtimeLive ? "Tempo real ativo" : "Atualizando a cada 15s"}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0"
           >
             <span className={`h-2 w-2 rounded-full ${realtimeLive ? "bg-green-500 animate-pulse" : "bg-muted-foreground/40"}`} />
-            {realtimeLive ? "Ao vivo" : "Polling"}
+            <span className="hidden sm:inline">{realtimeLive ? "Ao vivo" : "Polling"}</span>
           </span>
+        </div>
 
+        {/* Row 2: filter + refresh */}
+        <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-44 text-xs">
+            <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-44 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -733,7 +737,7 @@ export default function Delivery() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
             onClick={() => qc.invalidateQueries({ queryKey: ["/delivery-orders", cid] })}
           >
             <RefreshCw className="h-4 w-4" />
