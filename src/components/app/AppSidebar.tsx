@@ -23,6 +23,7 @@ import {
   Crown,
   Receipt,
   Lock,
+  Bike,
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,6 +53,7 @@ const operational: NavItem[] = [
   { title: "Caixa", url: "/caixa", icon: Wallet, perm: "view_caixa" },
   { title: "Comandas", url: "/comandas", icon: ClipboardList, perm: "view_comandas" },
   { title: "Cozinha", url: "/kds", icon: ChefHat, perm: "view_kds" },
+  { title: "Delivery", url: "/delivery", icon: Bike, perm: "view_delivery" },
 ];
 
 const management: NavItem[] = [

@@ -30,7 +30,8 @@ export type Permission =
   | "refund_sale"
   | "apply_discount"
   | "open_close_cash"
-  | "cash_movement";
+  | "cash_movement"
+  | "view_delivery";
 
 const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
   owner: [
@@ -39,6 +40,7 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_caixa",
     "view_comandas",
     "view_kds",
+    "view_delivery",
     "view_produtos",
     "view_clientes",
     "view_crediario",
@@ -71,6 +73,7 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_caixa",
     "view_comandas",
     "view_kds",
+    "view_delivery",
     "view_produtos",
     "view_clientes",
     "view_crediario",
@@ -98,6 +101,7 @@ const ROLE_PERMISSIONS: Record<CompanyRole, Permission[]> = {
     "view_pdv",
     "view_caixa",
     "view_comandas",
+    "view_delivery",
     "view_clientes",
     "view_crediario",
     "view_vendas",
@@ -150,6 +154,7 @@ export const PERMISSION_TO_ROUTE: Partial<Record<Permission, string>> = {
   view_contas: "/contas",
   view_balanca: "/balanca",
   view_promocoes: "/promocoes",
+  view_delivery: "/delivery",
 };
 
 export function defaultLandingForRole(role: CompanyRole): string {

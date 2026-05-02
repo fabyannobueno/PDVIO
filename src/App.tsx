@@ -44,6 +44,7 @@ import SuporteTicket from "./pages/SuporteTicket";
 import Planos from "./pages/Planos";
 import Checkout from "./pages/Checkout";
 import Faturas from "./pages/Faturas";
+import Delivery from "./pages/Delivery";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { PlanGuard } from "@/components/PlanGuard";
 
@@ -122,6 +123,7 @@ const App = () => (
                   <Route path="/pdv" element={<PermissionGuard permission="view_pdv"><PDV /></PermissionGuard>} />
                   <Route path="/comandas" element={<PermissionGuard permission="view_comandas"><PlanGuard><Comandas /></PlanGuard></PermissionGuard>} />
                   <Route path="/kds" element={<PermissionGuard permission="view_kds"><PlanGuard><KDS /></PlanGuard></PermissionGuard>} />
+                  <Route path="/delivery" element={<PermissionGuard permission="view_delivery"><PlanGuard><Delivery /></PlanGuard></PermissionGuard>} />
                   <Route path="/produtos" element={<PermissionGuard permission="view_produtos"><Produtos /></PermissionGuard>} />
                   <Route path="/clientes" element={<PermissionGuard permission="view_clientes"><PlanGuard><Clientes /></PlanGuard></PermissionGuard>} />
                   <Route path="/crediario" element={<PermissionGuard permission="view_crediario"><PlanGuard><Crediario /></PlanGuard></PermissionGuard>} />
