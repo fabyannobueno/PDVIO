@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import notificationSoundUrl from "@assets/notification-pdvio_1776868318337.mp3";
+import { preloadNotificationSound, playNotificationSound, unlockAudio } from "@/lib/notification-audio";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -227,30 +228,13 @@ export default function KDS() {
   }, [deliveryOrders]);
 
   // ── Notification sound for new pending items ───────────────────────────────
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(notificationSoundUrl);
-      audioRef.current.preload = "auto";
-    }
-    // Unlock audio playback on the first user interaction (browsers block autoplay)
-    const unlock = () => {
-      if (!audioRef.current) return;
-      const a = audioRef.current;
-      const prevVol = a.volume;
-      a.volume = 0;
-      a.play().then(() => {
-        a.pause();
-        a.currentTime = 0;
-        a.volume = prevVol;
-      }).catch(() => {});
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-    window.addEventListener("pointerdown", unlock);
-    window.addEventListener("keydown", unlock);
+    preloadNotificationSound(notificationSoundUrl);
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
     return () => {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
@@ -258,9 +242,7 @@ export default function KDS() {
   }, []);
 
   const playBeep = () => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(() => {});
+    playNotificationSound(notificationSoundUrl);
   };
 
   // Pending items the user has already "acknowledged" by acting on the queue

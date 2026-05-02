@@ -52,6 +52,7 @@ import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } fro
 import type { Receipt } from "@/lib/printer";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import notificationSoundUrl from "@assets/notification-pdvio_1776868318337.mp3";
+import { preloadNotificationSound, playNotificationSound, unlockAudio } from "@/lib/notification-audio";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -629,9 +630,20 @@ export default function Delivery() {
     },
   });
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIds = useRef<Set<string>>(new Set());
   const firstLoad = useRef(true);
+
+  // ── Audio preload + unlock ─────────────────────────────────────────────────
+  useEffect(() => {
+    preloadNotificationSound(notificationSoundUrl);
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   // ── Query ──────────────────────────────────────────────────────────────────
 
@@ -693,7 +705,7 @@ export default function Delivery() {
             const newOrder = payload.new as DeliveryOrder;
             if (!firstLoad.current && !knownIds.current.has(newOrder.id)) {
               knownIds.current.add(newOrder.id);
-              audioRef.current?.play().catch(() => {});
+              playNotificationSound(notificationSoundUrl);
               toast.info(`Novo pedido #${newOrder.numeric_id} — ${newOrder.customer_name}`, {
                 description: `${newOrder.delivery_type === "delivery" ? "Delivery" : "Retirada"} · ${fmtMoney(newOrder.total)}`,
                 duration: 6000,
@@ -899,8 +911,6 @@ export default function Delivery() {
 
   return (
     <div className="flex flex-col h-full">
-      <audio ref={audioRef} src={notificationSoundUrl} preload="auto" />
-
       {/* Header */}
       <div className="flex flex-col gap-2 px-4 sm:px-6 py-3 border-b shrink-0">
         {/* Row 1: title + live dot */}
