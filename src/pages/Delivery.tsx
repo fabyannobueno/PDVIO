@@ -548,19 +548,32 @@ export default function Delivery() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: DeliveryStatus }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("delivery_orders")
         .update({ status })
-        .eq("id", id);
+        .eq("id", id)
+        .select("id, status");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("sem_permissao");
+      return data[0] as { id: string; status: DeliveryStatus };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/delivery-orders", cid] });
-      if (selectedOrder) {
-        setSelectedOrder((prev) => prev ? { ...prev, status: advancingId ? prev.status : prev.status } : null);
+    },
+    onError: (err: unknown) => {
+      const pgErr = err as Record<string, unknown>;
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof pgErr?.message === "string"
+          ? pgErr.message
+          : "";
+      if (msg === "sem_permissao") {
+        toast.error("Sem permissão para atualizar este pedido");
+      } else {
+        toast.error("Erro ao atualizar status do pedido");
       }
     },
-    onError: () => toast.error("Erro ao atualizar status do pedido"),
     onSettled: () => setAdvancingId(null),
   });
 
@@ -569,22 +582,32 @@ export default function Delivery() {
     if (!next) return;
     const newStatus = order.delivery_type === "delivery" ? next.delivery : next.pickup;
     setAdvancingId(order.id);
-    updateStatus.mutate({ id: order.id, status: newStatus }, {
-      onSuccess: () => {
-        setSelectedOrder((prev) => prev?.id === order.id ? { ...prev, status: newStatus } : prev);
-        toast.success(`Pedido #${order.numeric_id} → ${STATUS_CONFIG[newStatus].label}`);
-      },
-    });
+    updateStatus.mutate(
+      { id: order.id, status: newStatus },
+      {
+        onSuccess: () => {
+          setSelectedOrder((prev) =>
+            prev?.id === order.id ? { ...prev, status: newStatus } : prev
+          );
+          toast.success(`Pedido #${order.numeric_id} → ${STATUS_CONFIG[newStatus].label}`);
+        },
+      }
+    );
   }, [updateStatus]);
 
   const handleCancel = useCallback((order: DeliveryOrder) => {
     setAdvancingId(order.id);
-    updateStatus.mutate({ id: order.id, status: "cancelled" }, {
-      onSuccess: () => {
-        setSelectedOrder((prev) => prev?.id === order.id ? { ...prev, status: "cancelled" } : prev);
-        toast.success(`Pedido #${order.numeric_id} cancelado`);
-      },
-    });
+    updateStatus.mutate(
+      { id: order.id, status: "cancelled" },
+      {
+        onSuccess: () => {
+          setSelectedOrder((prev) =>
+            prev?.id === order.id ? { ...prev, status: "cancelled" } : prev
+          );
+          toast.success(`Pedido #${order.numeric_id} cancelado`);
+        },
+      }
+    );
   }, [updateStatus]);
 
   // ── Print ──────────────────────────────────────────────────────────────────
