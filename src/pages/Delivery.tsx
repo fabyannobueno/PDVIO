@@ -43,6 +43,8 @@ import {
   Truck,
   Star,
   Bell,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } from "@/lib/printer";
 import type { Receipt } from "@/lib/printer";
@@ -469,7 +471,10 @@ export default function Delivery() {
   const qc = useQueryClient();
   const cid = activeCompany?.id;
 
+  const PAGE_SIZE = 20;
+
   const [statusFilter, setStatusFilter] = useState("active");
+  const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<DeliveryOrder | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
@@ -481,17 +486,21 @@ export default function Delivery() {
 
   // ── Query ──────────────────────────────────────────────────────────────────
 
-  const { data: orders = [], isLoading } = useQuery<DeliveryOrder[]>({
-    queryKey: ["/delivery-orders", cid, statusFilter],
+  const { data: queryResult, isLoading } = useQuery<{ orders: DeliveryOrder[]; total: number }>({
+    queryKey: ["/delivery-orders", cid, statusFilter, page],
     enabled: !!cid,
     refetchInterval: 15000,
     refetchIntervalInBackground: true,
     queryFn: async () => {
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       let q = supabase
         .from("delivery_orders")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("company_id", cid!)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
       if (statusFilter === "active") {
         q = q.in("status", ACTIVE_STATUSES);
@@ -499,14 +508,18 @@ export default function Delivery() {
         q = q.eq("status", statusFilter as DeliveryStatus);
       }
 
-      const { data, error } = await q.limit(200);
+      const { data, error, count } = await q;
       if (error) throw error;
-      return (data ?? []).map((r) => ({
-        ...r,
-        items: parseItems(r.items),
-      })) as DeliveryOrder[];
+      return {
+        orders: (data ?? []).map((r) => ({ ...r, items: parseItems(r.items) })) as DeliveryOrder[],
+        total: count ?? 0,
+      };
     },
   });
+
+  const orders = queryResult?.orders ?? [];
+  const totalOrders = queryResult?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalOrders / PAGE_SIZE));
 
   // ── Realtime ───────────────────────────────────────────────────────────────
 
@@ -543,6 +556,11 @@ export default function Delivery() {
       supabase.removeChannel(channel);
     };
   }, [cid, qc]);
+
+  // Reset to page 1 when the filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter]);
 
   // Mark known IDs on first load
   useEffect(() => {
@@ -682,12 +700,22 @@ export default function Delivery() {
     }
   }, []);
 
-  // ── Counts for header ──────────────────────────────────────────────────────
+  // ── Counts for header (separate query so it reflects ALL pages) ────────────
 
-  const pendingCount = useMemo(
-    () => orders.filter((o) => o.status === "pending").length,
-    [orders]
-  );
+  const { data: pendingCount = 0 } = useQuery<number>({
+    queryKey: ["/delivery-orders-pending-count", cid],
+    enabled: !!cid,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("delivery_orders")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", cid!)
+        .eq("status", "pending");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -780,6 +808,59 @@ export default function Delivery() {
                   advancing={advancingId === order.id}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-2 pt-6">
+              <span className="text-xs text-muted-foreground">
+                {totalOrders} pedido{totalOrders !== 1 ? "s" : ""} · página {page} de {totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push("…");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === "…" ? (
+                      <span key={`gap-${i}`} className="px-1 text-xs text-muted-foreground">…</span>
+                    ) : (
+                      <Button
+                        key={p}
+                        variant={p === page ? "default" : "outline"}
+                        size="icon"
+                        className="h-8 w-8 text-xs"
+                        onClick={() => setPage(p as number)}
+                      >
+                        {p}
+                      </Button>
+                    )
+                  )}
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </div>
