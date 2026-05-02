@@ -471,7 +471,7 @@ export default function Delivery() {
   const qc = useQueryClient();
   const cid = activeCompany?.id;
 
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 9;
 
   const [statusFilter, setStatusFilter] = useState("active");
   const [page, setPage] = useState(1);
