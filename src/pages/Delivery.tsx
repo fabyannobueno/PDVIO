@@ -45,6 +45,7 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  Tag,
 } from "lucide-react";
 import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } from "@/lib/printer";
 import type { Receipt } from "@/lib/printer";
@@ -318,7 +319,15 @@ function OrderCard({ order, onOpen, onAdvance, onCancel, advancing }: OrderCardP
 
       {/* Footer */}
       <div className="flex items-center justify-between gap-2 mt-1">
-        <span className="font-bold text-sm">{fmtMoney(order.total)}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm">{fmtMoney(order.total)}</span>
+          {order.discount_amount > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30 text-[10px] font-medium">
+              <Tag className="h-2.5 w-2.5" />
+              {order.coupon_code ? order.coupon_code : `-${fmtMoney(order.discount_amount)}`}
+            </span>
+          )}
+        </div>
         {!isFinished && (
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             {next && (
@@ -466,6 +475,15 @@ function OrderDetailDialog({
                 <div className="flex justify-between text-muted-foreground">
                   <span>Taxa de entrega</span>
                   <span>{fmtMoney(order.delivery_fee)}</span>
+                </div>
+              )}
+              {order.discount_amount > 0 && (
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span className="flex items-center gap-1">
+                    <Tag className="h-3.5 w-3.5" />
+                    Desconto{order.coupon_code ? ` (${order.coupon_code})` : ""}
+                  </span>
+                  <span>-{fmtMoney(order.discount_amount)}</span>
                 </div>
               )}
               <Separator />
