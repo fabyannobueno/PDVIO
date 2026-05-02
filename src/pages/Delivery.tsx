@@ -149,7 +149,6 @@ const DATE_FILTER_OPTIONS: { value: DateFilter; label: string }[] = [
   { value: "yesterday", label: "Ontem" },
   { value: "last_week", label: "Última semana" },
   { value: "custom",    label: "Data personalizada" },
-  { value: "all",       label: "Todos os dias" },
 ];
 
 function todayStr() {
