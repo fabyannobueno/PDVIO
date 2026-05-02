@@ -77,3 +77,4 @@ Uses Supabase Cloud (PostgreSQL) with Row Level Security (RLS). Tables:
 - Supabase is the sole backend — no Replit PostgreSQL is used by this app
 - Auth is Supabase Auth (email/password + magic links) — all RLS policies depend on Supabase JWTs
 - Realtime subscriptions (KDS, billing updates, cart reservations) go through Supabase Realtime WebSocket
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are stored as Replit Secrets (not plaintext env vars)
