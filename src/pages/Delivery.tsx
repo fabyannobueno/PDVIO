@@ -64,7 +64,7 @@ type DeliveryType = "delivery" | "pickup";
 
 interface OrderItem {
   name: string;
-  qty: number;
+  quantity: number;
   price: number;
   subtotal?: number;
   is_prepared?: boolean;
@@ -241,7 +241,7 @@ function OrderCard({ order, onOpen, onAdvance, onCancel, advancing }: OrderCardP
 
       {/* Items preview */}
       <div className="text-xs text-muted-foreground line-clamp-2">
-        {order.items.map((it, i) => `${it.qty}x ${it.name}`).join(" · ")}
+        {order.items.map((it, i) => `${it.quantity}x ${it.name}`).join(" · ")}
       </div>
 
       {/* Footer */}
@@ -355,9 +355,9 @@ function OrderDetailDialog({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {item.is_prepared && <ChefHat className="h-3.5 w-3.5 text-orange-500 shrink-0" />}
-                      <span className="font-medium">{item.qty}x {item.name}</span>
+                      <span className="font-medium">{item.quantity}x {item.name}</span>
                     </div>
-                    <span className="text-muted-foreground shrink-0">{fmtMoney((item.subtotal ?? item.price * item.qty))}</span>
+                    <span className="text-muted-foreground shrink-0">{fmtMoney((item.subtotal ?? item.price * item.quantity))}</span>
                   </div>
                   {item.addons && item.addons.length > 0 && (
                     <div className="pl-5 space-y-0.5 text-xs text-muted-foreground">
@@ -599,7 +599,7 @@ export default function Delivery() {
         companyName: activeCompany?.name,
         items: order.items.map((it) => ({
           name: it.name,
-          qty: it.qty,
+          qty: it.quantity,
           price: it.price,
           unit: "un",
         })),
@@ -626,11 +626,11 @@ export default function Delivery() {
         saleNumber: String(order.numeric_id).padStart(6, "0"),
         items: kitchenItems.map((it) => ({
           name: it.notes ? `${it.name} (${it.notes})` : it.name,
-          qty: it.qty,
+          qty: it.quantity,
           price: it.price,
           unit: "un",
         })),
-        total: kitchenItems.reduce((s, i) => s + (i.subtotal ?? i.price * i.qty), 0),
+        total: kitchenItems.reduce((s, i) => s + (i.subtotal ?? i.price * i.quantity), 0),
         date: new Date(order.created_at),
       };
       await printReceipt(receipt, settings);
