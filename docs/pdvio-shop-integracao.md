@@ -70,28 +70,47 @@ delivery_orders (
 
 ### Formato do array `items` (JSONB)
 
+Use exatamente este formato — é o mesmo que o cardápio já usa internamente:
+
 ```json
 [
   {
     "name": "Pizza Margherita",
-    "quantity": 2,
+    "unit": "un",
     "price": 45.00,
-    "subtotal": 90.00,
+    "quantity": 2,
+    "productId": "a437aab4-b7cf-4d58-ab35-611964ec9422",
+    "totalPrice": 90.00,
     "notes": "Sem cebola",
-    "addons": [
+    "selectedAddons": [
       { "name": "Borda recheada", "price": 8.00 }
     ]
   },
   {
     "name": "Coca-Cola 600ml",
-    "quantity": 1,
+    "unit": "un",
     "price": 9.00,
-    "subtotal": 9.00,
+    "quantity": 1,
+    "productId": "b123...",
+    "totalPrice": 9.00,
     "notes": null,
-    "addons": []
+    "selectedAddons": []
   }
 ]
 ```
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `name` | string | ✅ | Nome do produto |
+| `unit` | string | — | Unidade (`"un"`, `"kg"`, etc.) |
+| `price` | number | ✅ | Preço unitário |
+| `quantity` | number | ✅ | Quantidade |
+| `productId` | UUID | ✅ | `id` do produto na tabela `products` — necessário para o KDS saber se o item precisa de preparo na cozinha (`is_prepared = true`) |
+| `totalPrice` | number | ✅ | `price × quantity` (já com addons) |
+| `notes` | string\|null | — | Observação do cliente |
+| `selectedAddons` | array | ✅ | Lista de adicionais selecionados (vazia se nenhum) |
+
+> **Importante:** `productId` é obrigatório para que o KDS exiba o item na fila de preparo quando o produto tiver `is_prepared = true`. Sem ele, o item entra na comanda mas não aparece na cozinha.
 
 ---
 
@@ -263,7 +282,7 @@ const modeMesa = params.get("modo") === "mesa";
 
 // Insere pedido dine_in
 async function fazerPedidoNaMesa(cart, customer) {
-  const subtotal = cart.reduce((s, i) => s + i.subtotal, 0);
+  const subtotal = cart.reduce((s, i) => s + i.totalPrice, 0);
 
   const { data, error } = await supabase
     .from("delivery_orders")

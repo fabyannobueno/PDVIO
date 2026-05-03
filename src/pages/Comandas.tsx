@@ -770,7 +770,18 @@ export default function Comandas() {
             id: string;
             delivery_type: string;
             table_identifier: string | null;
-            items: Array<{ name: string; quantity: number; price: number; subtotal?: number; notes?: string; addons?: any[] }>;
+            items: Array<{
+              name: string;
+              unit?: string;
+              price: number;
+              quantity: number;
+              productId?: string | null;
+              totalPrice?: number;
+              subtotal?: number;
+              notes?: string;
+              selectedAddons?: any[];
+              addons?: any[];
+            }>;
             total: number;
           };
           if (order.delivery_type !== "dine_in") return;
@@ -794,16 +805,16 @@ export default function Comandas() {
             return;
           }
 
-          // Injeta os itens na comanda
+          // Injeta os itens na comanda mapeando os campos do cardápio
           const itemRows = order.items.map((item) => ({
-            comanda_id: comanda.id,
-            product_id: null,
+            comanda_id:   comanda.id,
+            product_id:   item.productId ?? null,
             product_name: item.name,
-            quantity: item.quantity,
-            unit_price: item.price,
-            subtotal: item.subtotal ?? Math.round(item.price * item.quantity * 100) / 100,
-            notes: item.notes ?? null,
-            addons: item.addons ?? [],
+            quantity:     item.quantity,
+            unit_price:   item.price,
+            subtotal:     item.totalPrice ?? item.subtotal ?? Math.round(item.price * item.quantity * 100) / 100,
+            notes:        item.notes ?? null,
+            addons:       item.selectedAddons ?? item.addons ?? [],
           }));
           await supabase.from("comanda_items").insert(itemRows as never);
 
