@@ -7,20 +7,14 @@ create table if not exists public.waiter_calls (
   created_at  timestamptz not null default now()
 );
 
--- Índice para busca por empresa
 create index if not exists waiter_calls_company_id_idx on public.waiter_calls(company_id);
 
--- Habilita RLS
 alter table public.waiter_calls enable row level security;
 
--- Membros da empresa podem ler
+-- Usuários autenticados da empresa podem ler (usa função já existente no schema)
 create policy "company members can read waiter_calls"
   on public.waiter_calls for select
-  using (
-    company_id in (
-      select company_id from public.company_members where user_id = auth.uid()
-    )
-  );
+  using (public.is_company_member(auth.uid(), company_id));
 
 -- Qualquer pessoa pode inserir (chamada pública da mesa do cliente)
 create policy "public insert waiter_calls"
