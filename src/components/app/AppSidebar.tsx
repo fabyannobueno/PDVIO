@@ -24,6 +24,7 @@ import {
   Receipt,
   Lock,
   Bike,
+  Star,
 } from "lucide-react";
 import {
   Sidebar,
@@ -69,6 +70,7 @@ const management: NavItem[] = [
   { title: "Contas", url: "/contas", icon: FileText, perm: "view_contas" },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, perm: "view_relatorios" },
   { title: "Auditoria", url: "/auditoria", icon: ScrollText, perm: "view_auditoria" },
+  { title: "Avaliações", url: "/avaliacoes", icon: Star, perm: "view_avaliacoes" },
 ];
 
 const settings: NavItem[] = [

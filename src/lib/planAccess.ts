@@ -36,6 +36,7 @@ const ROUTE_MIN_PLAN: Record<string, PlanId> = {
   "/contas": "essencial",
   "/promocoes": "essencial",
   "/delivery": "essencial",
+  "/avaliacoes": "essencial",
 };
 
 /** Nomes amigáveis dos planos para mostrar na UI. */

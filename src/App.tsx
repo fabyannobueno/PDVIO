@@ -46,6 +46,8 @@ import Checkout from "./pages/Checkout";
 import Faturas from "./pages/Faturas";
 import Delivery from "./pages/Delivery";
 import MesaCliente from "./pages/MesaCliente";
+import AvaliacaoPedido from "./pages/AvaliacaoPedido";
+import Avaliacoes from "./pages/Avaliacoes";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { PlanGuard } from "@/components/PlanGuard";
 
@@ -92,6 +94,7 @@ const App = () => (
               <OperatorProvider>
               <Routes>
                 <Route path="/mesa/:companyId/:tableLabel" element={<MesaCliente />} />
+                <Route path="/avaliacao/:companyId/:orderId" element={<AvaliacaoPedido />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/auth/confirm" element={<AuthConfirm />} />
@@ -146,6 +149,7 @@ const App = () => (
                   <Route path="/planos" element={<PermissionGuard permission="manage_billing"><Planos /></PermissionGuard>} />
                   <Route path="/checkout" element={<PermissionGuard permission="manage_billing"><Checkout /></PermissionGuard>} />
                   <Route path="/faturas" element={<PermissionGuard permission="view_billing"><Faturas /></PermissionGuard>} />
+                  <Route path="/avaliacoes" element={<PermissionGuard permission="view_avaliacoes"><PlanGuard><Avaliacoes /></PlanGuard></PermissionGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
