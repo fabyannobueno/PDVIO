@@ -1,6 +1,7 @@
 import { scrollAppToTop } from "@/lib/scrollToTop";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import QRCode from "qrcode";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -399,10 +400,216 @@ export default function Comandas() {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [qrTableCount, setQrTableCount] = useState(10);
   const [qrPrefix, setQrPrefix] = useState("Mesa");
+  const [qrCurrentIndex, setQrCurrentIndex] = useState(0);
+  const [qrGenerating, setQrGenerating] = useState(false);
+  interface QrCompanyExtra { logoUrl: string; primaryColor: string; }
+  const [qrCompanyExtra, setQrCompanyExtra] = useState<QrCompanyExtra>({ logoUrl: "", primaryColor: "#6d28d9" });
+
+  // Load delivery branding when QR dialog opens
+  useEffect(() => {
+    if (!qrDialogOpen || !cid) return;
+    supabase
+      .from("companies")
+      .select("delivery_logo_url, delivery_primary_color, logo_url")
+      .eq("id", cid)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setQrCompanyExtra({
+          logoUrl: (data as any).delivery_logo_url || (data as any).logo_url || "",
+          primaryColor: (data as any).delivery_primary_color || "#6d28d9",
+        });
+      });
+  }, [qrDialogOpen, cid]);
 
   // Dividir conta
   const [splitEnabled, setSplitEnabled] = useState(false);
   const [splitPeople, setSplitPeople] = useState(2);
+
+  // ── Generate mesa plate (same visual style as Configuracoes downloadPlate) ─
+  const generateMesaPlate = useCallback(async (tableLabel: string, tableUrl: string) => {
+    setQrGenerating(true);
+    try {
+      const qrDataUrl = await QRCode.toDataURL(tableUrl, {
+        width: 320, margin: 1,
+        color: { dark: "#1a1a2e", light: "#ffffff" },
+        errorCorrectionLevel: "H",
+      });
+
+      const S = 3, W = 320, H = 560;
+      const offscreen = new OffscreenCanvas(W * S, H * S);
+      const ctx = offscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
+      ctx.scale(S, S);
+
+      const rr = (x: number, y: number, w: number, h: number, r: number) => {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      };
+
+      // 1 – background
+      ctx.fillStyle = qrCompanyExtra.primaryColor;
+      ctx.fillRect(0, 0, W, H);
+
+      // 2 – dot grid
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      for (let x = 10; x < W; x += 20)
+        for (let y = 10; y < H; y += 20) {
+          ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+
+      // 3 – diagonal stripes (top half)
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, W, H / 2); ctx.clip();
+      ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+      for (let i = -H; i < W + H; i += 16) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke();
+      }
+      ctx.restore();
+
+      // 4 – hexagon outlines (bottom half)
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, H / 2, W, H / 2); ctx.clip();
+      ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+      const hR = 18;
+      for (let row = 0; row * hR * 1.5 < H / 2 + hR * 2; row++) {
+        for (let col = 0; col * hR * Math.sqrt(3) < W + hR * 2; col++) {
+          const cx2 = col * hR * Math.sqrt(3) + (row % 2 === 1 ? hR * Math.sqrt(3) / 2 : 0);
+          const cy2 = H / 2 + row * hR * 1.5;
+          ctx.beginPath();
+          for (let a = 0; a < 6; a++) {
+            const angle = (Math.PI / 180) * (60 * a - 30);
+            const px = cx2 + hR * Math.cos(angle);
+            const py = cy2 + hR * Math.sin(angle);
+            if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      // 5 – vignette
+      const vig = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+      vig.addColorStop(0, "rgba(0,0,0,0)");
+      vig.addColorStop(1, "rgba(0,0,0,0.38)");
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+
+      // 6 – corner arcs
+      const arc = (cx: number, cy: number, r: number, col: string, lw: number) => {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
+      };
+      arc(0, 0, 80, "rgba(255,255,255,0.20)", 2); arc(0, 0, 120, "rgba(255,255,255,0.10)", 1.5); arc(0, 0, 160, "rgba(255,255,255,0.06)", 1);
+      arc(W, H, 90, "rgba(255,255,255,0.18)", 2); arc(W, H, 140, "rgba(255,255,255,0.09)", 1.5); arc(W, H, 190, "rgba(255,255,255,0.05)", 1);
+
+      // 7 – h-rules
+      ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1;
+      [140, 420].forEach(y => { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); });
+
+      // 8 – diamonds
+      const diamond = (cx: number, cy: number, s: number, col: string) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - s); ctx.lineTo(cx + s, cy); ctx.lineTo(cx, cy + s); ctx.lineTo(cx - s, cy); ctx.closePath();
+        ctx.fillStyle = col; ctx.fill();
+      };
+      diamond(290, 30, 12, "rgba(255,255,255,0.18)"); diamond(308, 12, 8, "rgba(255,255,255,0.12)"); diamond(270, 14, 6, "rgba(255,255,255,0.08)");
+      diamond(30, 530, 12, "rgba(255,255,255,0.15)"); diamond(10, 512, 8, "rgba(255,255,255,0.10)"); diamond(50, 542, 6, "rgba(255,255,255,0.07)");
+
+      // 9 – plus marks
+      const plus = (x: number, y: number) => {
+        ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x, y + 6); ctx.stroke();
+      };
+      [[40, 70], [280, 100], [20, 440], [300, 380], [160, 30], [155, 530]].forEach(([x, y]) => plus(x, y));
+
+      // 10 – logo box
+      const logoSize = 80, logoX = W / 2 - logoSize / 2, logoY = 40, logoR = 16;
+      ctx.shadowColor = "rgba(0,0,0,0.30)"; ctx.shadowBlur = 20 * S;
+      rr(logoX, logoY, logoSize, logoSize, logoR); ctx.fillStyle = "white"; ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255,255,255,0.50)"; ctx.lineWidth = 4;
+      rr(logoX - 4, logoY - 4, logoSize + 8, logoSize + 8, logoR + 4); ctx.stroke();
+      if (qrCompanyExtra.logoUrl) {
+        try {
+          const img = new Image(); img.crossOrigin = "anonymous";
+          await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = qrCompanyExtra.logoUrl; });
+          ctx.save(); rr(logoX, logoY, logoSize, logoSize, logoR); ctx.clip();
+          ctx.drawImage(img, logoX, logoY, logoSize, logoSize); ctx.restore();
+        } catch { /* white box fallback */ }
+      }
+
+      // layout Y
+      const nameY    = logoY + logoSize + 32;
+      const dividerY = logoY + logoSize + 52;
+      const subY     = logoY + logoSize + 74;
+      const qrPad    = 14, qrSize = 180;
+      const qrY      = logoY + logoSize + 104;
+      const qrX      = W / 2 - qrSize / 2;
+
+      // 11 – store name
+      ctx.fillStyle = "white"; ctx.font = "bold 18px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 8;
+      ctx.fillText(activeCompany?.name || "Loja", W / 2, nameY, W - 48);
+      ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+
+      // 12 – divider
+      ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(40, dividerY); ctx.lineTo(W - 40, dividerY); ctx.stroke();
+
+      // 13 – subtitle
+      ctx.fillStyle = "rgba(255,255,255,0.82)"; ctx.font = "600 10px system-ui, sans-serif";
+      ctx.fillText("ESCANEIE PARA ABRIR A COMANDA", W / 2, subY);
+
+      // 14 – QR code
+      const qrBitmap = await createImageBitmap(await fetch(qrDataUrl).then(r => r.blob()));
+      ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 16;
+      rr(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 16);
+      ctx.fillStyle = "white"; ctx.fill(); ctx.shadowBlur = 0;
+      ctx.save(); rr(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 16); ctx.clip();
+      ctx.drawImage(qrBitmap, qrX, qrY, qrSize, qrSize); ctx.restore();
+
+      // 15 – mesa label pill
+      const pillY = qrY + qrSize + qrPad * 2 + 16;
+      const pillH = 30, pillPad = 20;
+      ctx.font = "bold 14px system-ui, sans-serif";
+      const tw = ctx.measureText(tableLabel).width;
+      const pillW = Math.max(tw + pillPad * 2, 120);
+      const pillX = W / 2 - pillW / 2;
+      rr(pillX, pillY, pillW, pillH, pillH / 2);
+      ctx.fillStyle = "rgba(255,255,255,0.20)"; ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.40)"; ctx.lineWidth = 1.5;
+      rr(pillX, pillY, pillW, pillH, pillH / 2); ctx.stroke();
+      ctx.fillStyle = "white"; ctx.textAlign = "center";
+      ctx.fillText(tableLabel, W / 2, pillY + pillH / 2 + 5);
+
+      // 16 – powered by
+      ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.font = "500 9px system-ui, sans-serif";
+      ctx.fillText("Powered by PDVIO", W / 2, pillY + pillH + 20);
+
+      // 17 – download
+      const blob = await offscreen.convertToBlob({ type: "image/png" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement("a"), {
+        href: blobUrl,
+        download: `placa-${tableLabel.toLowerCase().replace(/\s+/g, "-")}.png`,
+      });
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      toast.error("Erro ao gerar placa.");
+    } finally {
+      setQrGenerating(false);
+    }
+  }, [qrCompanyExtra, activeCompany?.name]);
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -2134,86 +2341,134 @@ export default function Comandas() {
       <PdvShortcutsHelp open={shortcutsOpen} onOpenChange={setShortcutsOpen} context="comanda" />
 
       {/* ── QR Code das Mesas dialog ─────────────────────────────────────── */}
-      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={qrDialogOpen} onOpenChange={(o) => { setQrDialogOpen(o); if (!o) setQrCurrentIndex(0); }}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <QrCode className="h-5 w-5 text-primary" />
               QR Code das Mesas
             </DialogTitle>
             <DialogDescription>
-              Gere e imprima QR Codes para as mesas. O cliente escaneia e a comanda abre automaticamente.
+              Configure e baixe a placa de cada mesa individualmente.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            {/* Config */}
-            <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-muted/30 p-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Prefixo</Label>
-                <input
-                  type="text"
-                  value={qrPrefix}
-                  onChange={(e) => setQrPrefix(e.target.value)}
-                  className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="Mesa"
-                />
+          {/* Config row */}
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-muted/30 p-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Prefixo</Label>
+              <input
+                type="text"
+                value={qrPrefix}
+                onChange={(e) => { setQrPrefix(e.target.value); setQrCurrentIndex(0); }}
+                className="h-8 w-24 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Mesa"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Quantidade</Label>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setQrTableCount((n) => Math.max(1, n - 1)); setQrCurrentIndex((i) => Math.min(i, Math.max(0, qrTableCount - 2))); }}>
+                  <Minus className="h-3 w-3" />
+                </Button>
+                <span className="w-8 text-center font-bold tabular-nums text-sm">{qrTableCount}</span>
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setQrTableCount((n) => Math.min(30, n + 1))}>
+                  <Plus className="h-3 w-3" />
+                </Button>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Quantidade de mesas</Label>
-                <div className="flex items-center gap-1">
-                  <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setQrTableCount((n) => Math.max(1, n - 1))}>
-                    <Minus className="h-3.5 w-3.5" />
+            </div>
+          </div>
+
+          {/* Plate preview */}
+          {(() => {
+            const tableLabel = `${qrPrefix.trim() || "Mesa"} ${qrCurrentIndex + 1}`;
+            const url = `${window.location.origin}/mesa/${cid}/${encodeURIComponent(tableLabel)}`;
+            return (
+              <div className="flex flex-col items-center gap-4">
+                {/* Visual plate */}
+                <div
+                  className="relative w-56 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-xl overflow-hidden select-none"
+                  style={{ background: qrCompanyExtra.primaryColor }}
+                >
+                  {/* dot grid */}
+                  <div className="pointer-events-none absolute inset-0" style={{
+                    backgroundImage: "radial-gradient(rgba(255,255,255,0.18) 1.5px, transparent 1.5px)",
+                    backgroundSize: "20px 20px",
+                  }} />
+                  {/* vignette */}
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl" style={{
+                    background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.35) 100%)",
+                  }} />
+
+                  {/* logo */}
+                  <div className="relative z-10 h-14 w-14 rounded-xl overflow-hidden bg-white shadow-lg ring-2 ring-white/50 flex items-center justify-center shrink-0">
+                    {qrCompanyExtra.logoUrl ? (
+                      <img src={qrCompanyExtra.logoUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-2xl font-black" style={{ color: qrCompanyExtra.primaryColor }}>
+                        {(activeCompany?.name ?? "L").charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* store name */}
+                  <div className="relative z-10 text-center">
+                    <p className="text-white font-bold text-sm leading-tight drop-shadow">{activeCompany?.name}</p>
+                    <div className="mt-1 h-px w-24 mx-auto bg-white/30" />
+                    <p className="mt-1 text-white/80 text-[9px] uppercase tracking-widest font-semibold">Escaneie para abrir a comanda</p>
+                  </div>
+
+                  {/* QR */}
+                  <div className="relative z-10 bg-white rounded-xl p-2.5 shadow-lg">
+                    <QRCodeSVG value={url} size={120} bgColor="#ffffff" fgColor="#1a1a2e" level="H" />
+                  </div>
+
+                  {/* mesa label pill */}
+                  <div className="relative z-10 px-5 py-1.5 rounded-full bg-white/20 border border-white/40">
+                    <p className="text-white font-bold text-sm tracking-wide">{tableLabel}</p>
+                  </div>
+
+                  {/* powered by */}
+                  <p className="relative z-10 text-white/40 text-[8px] font-medium">Powered by PDVIO</p>
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    disabled={qrCurrentIndex === 0}
+                    onClick={() => setQrCurrentIndex((i) => i - 1)}
+                  >
+                    <Minus className="h-3 w-3" />
                   </Button>
-                  <span className="w-10 text-center font-bold tabular-nums">{qrTableCount}</span>
-                  <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setQrTableCount((n) => Math.min(30, n + 1))}>
-                    <Plus className="h-3.5 w-3.5" />
+                  <span className="text-sm font-semibold tabular-nums text-muted-foreground min-w-[72px] text-center">
+                    {qrCurrentIndex + 1} / {qrTableCount}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    disabled={qrCurrentIndex === qrTableCount - 1}
+                    onClick={() => setQrCurrentIndex((i) => i + 1)}
+                  >
+                    <Plus className="h-3 w-3" />
                   </Button>
                 </div>
+
+                {/* Download button */}
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => generateMesaPlate(tableLabel, url)}
+                  disabled={qrGenerating}
+                >
+                  {qrGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+                  {qrGenerating ? "Gerando…" : `Baixar placa — ${tableLabel}`}
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => window.print()}
-                className="gap-2 ml-auto print:hidden"
-              >
-                <Printer className="h-4 w-4" />
-                Imprimir
-              </Button>
-            </div>
-
-            {/* QR grid */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 print:grid-cols-4">
-              {Array.from({ length: qrTableCount }).map((_, i) => {
-                const tableLabel = `${qrPrefix.trim() || "Mesa"} ${i + 1}`;
-                const url = `${window.location.origin}/mesa/${cid}/${encodeURIComponent(tableLabel)}`;
-                return (
-                  <div
-                    key={i}
-                    className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-3 text-center"
-                  >
-                    <QRCodeSVG
-                      value={url}
-                      size={120}
-                      bgColor="transparent"
-                      fgColor="currentColor"
-                      className="text-foreground"
-                      level="M"
-                    />
-                    <div>
-                      <p className="text-sm font-bold">{tableLabel}</p>
-                      <p className="text-[10px] text-muted-foreground break-all leading-tight mt-0.5">
-                        {activeCompany?.name}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <p className="text-xs text-muted-foreground text-center">
-              O cliente escaneia o QR Code → informa o nome → comanda abre automaticamente no sistema
-            </p>
-          </div>
+            );
+          })()}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setQrDialogOpen(false)}>Fechar</Button>
