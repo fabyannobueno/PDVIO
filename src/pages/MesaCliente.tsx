@@ -136,7 +136,7 @@ export default function MesaCliente() {
   const brandRgb    = hexToRgb(brandColor);
 
   const menuUrl = company?.delivery_slug
-    ? `https://pdvio.shop/${company.delivery_slug}?mesa=${encodeURIComponent(decodedTable)}&empresa=${encodeURIComponent(companyId ?? "")}&modo=mesa`
+    ? `https://pdvio.shop/${company.delivery_slug}?mesa=${encodeURIComponent(decodedTable)}&empresa=${encodeURIComponent(companyId ?? "")}&modo=mesa${comandaId ? `&comanda=${comandaId}` : ""}`
     : null;
 
   // ── Shared brand header ────────────────────────────────────────────────────

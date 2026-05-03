@@ -24,7 +24,7 @@ O PDVIO é o sistema de gestão do restaurante. O cardápio digital (`pdvio.shop
 Quando o cliente clica em **"Ver cardápio digital"** na página da mesa do PDVIO, ele é redirecionado para:
 
 ```
-https://pdvio.shop/{slug}?mesa=Mesa%203&empresa={company_uuid}&modo=mesa
+https://pdvio.shop/{slug}?mesa=Mesa%203&empresa={company_uuid}&modo=mesa&comanda={comanda_uuid}
 ```
 
 | Parâmetro | Tipo | Exemplo | Descrição |
@@ -32,12 +32,15 @@ https://pdvio.shop/{slug}?mesa=Mesa%203&empresa={company_uuid}&modo=mesa
 | `mesa` | string | `Mesa 3` | Label exato da mesa (URL-encoded) |
 | `empresa` | UUID | `3f8a1...` | `company_id` no Supabase |
 | `modo` | string | `mesa` | Sempre `"mesa"` quando vindo de uma mesa |
+| `comanda` | UUID | `a1b2c3...` | `id` da comanda já aberta para esta mesa — **deve ser incluído no INSERT** |
+
+> ⚠️ **Importante:** O parâmetro `comanda` é gerado automaticamente quando o cliente escaneia o QR Code e confirma o nome na página da mesa. O cardápio **deve** incluir esse UUID no campo `comanda_id` do INSERT em `delivery_orders` para que os itens sejam vinculados à comanda correta.
 
 **O cardápio deve:**
 1. Ler esses parâmetros na inicialização
 2. Quando `modo=mesa` estiver presente, pré-selecionar **"Comer aqui"** como tipo de pedido
 3. Bloquear troca de tipo para delivery/retirada enquanto `modo=mesa` (opcional, mas recomendado)
-4. Guardar `mesa` e `empresa` para usar no insert do pedido
+4. Guardar `mesa`, `empresa` e `comanda` para usar no insert do pedido
 
 ---
 

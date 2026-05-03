@@ -34,6 +34,7 @@ interface DineInOrder {
   id: string;
   delivery_type: string;
   table_identifier: string | null;
+  comanda_id?: string | null;
   customer_name: string;
   customer_phone?: string | null;
   items: DineInItem[];
@@ -76,16 +77,24 @@ export function DineInHandler() {
           if (order.delivery_type !== "dine_in") return;
           if (!order.table_identifier) return;
 
-          // 1. Busca comanda aberta da mesa
-          let { data: comanda } = await supabase
-            .from("comandas")
-            .select("id")
-            .eq("company_id", cid)
-            .eq("identifier", order.table_identifier)
-            .eq("status", "open")
-            .maybeSingle();
+          // 1. Usa comanda_id do payload se o cardápio já enviou (caminho ideal)
+          let comanda: { id: string } | null = null;
 
-          // 2. Se não existir, cria automaticamente
+          if (order.comanda_id) {
+            comanda = { id: order.comanda_id };
+          } else {
+            // Fallback: busca comanda aberta pela mesa
+            const { data } = await supabase
+              .from("comandas")
+              .select("id")
+              .eq("company_id", cid)
+              .eq("identifier", order.table_identifier)
+              .eq("status", "open")
+              .maybeSingle();
+            comanda = data ?? null;
+          }
+
+          // 2. Se não encontrou, cria automaticamente
           if (!comanda) {
             const { data: newComanda, error: createErr } = await supabase
               .from("comandas")
