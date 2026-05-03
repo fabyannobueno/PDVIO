@@ -6,3 +6,9 @@ id = "bBLZvVAv83p5ZSj7uZH9_"
 uri = "file://DELIVERY_INTEGRATION_PROMPT.md"
 type = "text"
 title = "Prompt de Integração — Delivery PDVIO"
+
+[[outputs]]
+id = "fqwpLq8sI-Rm4y1OVqY_b"
+uri = "file://docs/pdvio-shop-integracao.md"
+type = "text"
+title = "PDVIO × Cardápio Digital — Guia de Integração v2.0"
