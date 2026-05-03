@@ -9,7 +9,7 @@
  *  4. Vincula delivery_order.comanda_id e seta status='confirmed'
  *  5. Toca sino + mostra toast + envia WhatsApp se configurado
  */
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,7 @@ export function DineInHandler() {
   const { activeCompany } = useCompany();
   const qc = useQueryClient();
   const cid = activeCompany?.id;
+  const processedIds = useRef(new Set<string>());
 
   useEffect(() => {
     if (!cid) return;
@@ -76,6 +77,10 @@ export function DineInHandler() {
           const order = payload.new as DineInOrder;
           if (order.delivery_type !== "dine_in") return;
           if (!order.table_identifier) return;
+
+          // Deduplicação: ignora se esse pedido já foi processado
+          if (processedIds.current.has(order.id)) return;
+          processedIds.current.add(order.id);
 
           // 1. Usa comanda_id do payload se o cardápio já enviou (caminho ideal)
           let comanda: { id: string } | null = null;
