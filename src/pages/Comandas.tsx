@@ -425,21 +425,25 @@ export default function Comandas() {
   const [qrGenerating, setQrGenerating] = useState(false);
   interface QrCompanyExtra { logoUrl: string; primaryColor: string; }
   const [qrCompanyExtra, setQrCompanyExtra] = useState<QrCompanyExtra>({ logoUrl: "", primaryColor: "#6d28d9" });
+  const [qrBrandingLoading, setQrBrandingLoading] = useState(false);
 
   // Load delivery branding when QR dialog opens
   useEffect(() => {
     if (!qrDialogOpen || !cid) return;
+    setQrBrandingLoading(true);
     supabase
       .from("companies")
       .select("delivery_logo_url, delivery_primary_color, logo_url")
       .eq("id", cid)
       .maybeSingle()
       .then(({ data }) => {
-        if (!data) return;
-        setQrCompanyExtra({
-          logoUrl: (data as any).delivery_logo_url || (data as any).logo_url || "",
-          primaryColor: (data as any).delivery_primary_color || "#6d28d9",
-        });
+        if (data) {
+          setQrCompanyExtra({
+            logoUrl: (data as any).delivery_logo_url || (data as any).logo_url || "",
+            primaryColor: (data as any).delivery_primary_color || "#6d28d9",
+          });
+        }
+        setQrBrandingLoading(false);
       });
   }, [qrDialogOpen, cid]);
 
@@ -2640,7 +2644,25 @@ export default function Comandas() {
             const url = `${window.location.origin}/mesa/${cid}/${encodeURIComponent(tableLabel)}`;
             return (
               <div className="flex flex-col items-center gap-4">
-                {/* Visual plate */}
+                {/* Visual plate — skeleton while branding loads */}
+                {qrBrandingLoading ? (
+                  <div className="relative w-56 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-xl overflow-hidden bg-muted animate-pulse">
+                    {/* logo placeholder */}
+                    <Skeleton className="h-14 w-14 rounded-xl" />
+                    {/* name placeholder */}
+                    <div className="flex flex-col items-center gap-1.5 w-full">
+                      <Skeleton className="h-3.5 w-28 rounded" />
+                      <Skeleton className="h-px w-24 rounded" />
+                      <Skeleton className="h-2.5 w-36 rounded" />
+                    </div>
+                    {/* QR placeholder */}
+                    <Skeleton className="h-[145px] w-[145px] rounded-xl" />
+                    {/* label pill placeholder */}
+                    <Skeleton className="h-7 w-24 rounded-full" />
+                    {/* powered by placeholder */}
+                    <Skeleton className="h-2 w-20 rounded" />
+                  </div>
+                ) : (
                 <div
                   className="relative w-56 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-xl overflow-hidden select-none"
                   style={{ background: qrCompanyExtra.primaryColor }}
@@ -2686,6 +2708,7 @@ export default function Comandas() {
                   {/* powered by */}
                   <p className="relative z-10 text-white/40 text-[8px] font-medium">Powered by PDVIO</p>
                 </div>
+                )}
 
                 {/* Navigation */}
                 <div className="flex items-center gap-3">
