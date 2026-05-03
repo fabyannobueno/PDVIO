@@ -66,6 +66,9 @@ import {
   UserRound,
   SplitSquareVertical,
   Users,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BarcodeScanner } from "@/components/app/BarcodeScanner";
@@ -890,19 +893,46 @@ export default function Comandas() {
     () => comandas.filter((c) => c.status !== "open"),
     [comandas]
   );
+
+  // ── Filtro de data — Comandas recentes ─────────────────────────────────────
+  type ClosedDateFilter = "today" | "yesterday" | "custom";
+  const [closedDateFilter, setClosedDateFilter] = useState<ClosedDateFilter>("today");
+  const [closedCustomDate, setClosedCustomDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+
+  const filteredClosedComandas = useMemo(() => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const yest = new Date(now); yest.setDate(yest.getDate() - 1);
+    const yesterdayStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, "0")}-${String(yest.getDate()).padStart(2, "0")}`;
+    const target = closedDateFilter === "today" ? todayStr : closedDateFilter === "yesterday" ? yesterdayStr : closedCustomDate;
+    return allClosedComandas.filter((c) => {
+      const ref = c.closed_at ?? c.created_at;
+      if (!ref) return false;
+      const d = new Date(ref);
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return ds === target;
+    });
+  }, [allClosedComandas, closedDateFilter, closedCustomDate]);
+
   const CLOSED_PAGE_SIZE = 6;
   const [closedPage, setClosedPage] = useState(1);
-  const totalClosedPages = Math.max(1, Math.ceil(allClosedComandas.length / CLOSED_PAGE_SIZE));
+  const totalClosedPages = Math.max(1, Math.ceil(filteredClosedComandas.length / CLOSED_PAGE_SIZE));
+  useEffect(() => {
+    setClosedPage(1);
+  }, [closedDateFilter, closedCustomDate]);
   useEffect(() => {
     if (closedPage > totalClosedPages) setClosedPage(totalClosedPages);
   }, [closedPage, totalClosedPages]);
   const closedComandas = useMemo(
     () =>
-      allClosedComandas.slice(
+      filteredClosedComandas.slice(
         (closedPage - 1) * CLOSED_PAGE_SIZE,
         closedPage * CLOSED_PAGE_SIZE
       ),
-    [allClosedComandas, closedPage]
+    [filteredClosedComandas, closedPage]
   );
 
   const [consumptionComanda, setConsumptionComanda] = useState<Comanda | null>(null);
@@ -1514,7 +1544,7 @@ export default function Comandas() {
   return (
     <div className="space-y-6 p-6 md:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Comandas</h1>
           <p className="text-sm text-muted-foreground">
@@ -1526,13 +1556,14 @@ export default function Comandas() {
           <Button
             variant="outline"
             size="sm"
+            className="flex-1 sm:flex-none"
             onClick={() => setQrDialogOpen(true)}
             title="Gerar QR Codes das mesas"
           >
             <QrCode className="mr-2 h-4 w-4" />
             QR das Mesas
           </Button>
-          <Button onClick={() => setNewOpen(true)} data-testid="button-new-comanda">
+          <Button className="flex-1 sm:flex-none" onClick={() => setNewOpen(true)} data-testid="button-new-comanda">
             <Plus className="mr-2 h-4 w-4" />
             Nova comanda
           </Button>
@@ -1592,9 +1623,56 @@ export default function Comandas() {
       {/* Closed comandas */}
       {allClosedComandas.length > 0 && (
         <div>
-          <h2 className="mb-3 text-base font-semibold text-muted-foreground">
-            Comandas recentes
-          </h2>
+          <div className="mb-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-muted-foreground">
+                Comandas recentes
+              </h2>
+            </div>
+            <div className="flex gap-1.5">
+              <Button
+                size="sm"
+                variant={closedDateFilter === "today" ? "default" : "outline"}
+                className="h-8 flex-1 text-xs"
+                onClick={() => setClosedDateFilter("today")}
+              >
+                Hoje
+              </Button>
+              <Button
+                size="sm"
+                variant={closedDateFilter === "yesterday" ? "default" : "outline"}
+                className="h-8 flex-1 text-xs"
+                onClick={() => setClosedDateFilter("yesterday")}
+              >
+                Ontem
+              </Button>
+              <Button
+                size="sm"
+                variant={closedDateFilter === "custom" ? "default" : "outline"}
+                className="h-8 flex-1 text-xs gap-1.5"
+                onClick={() => setClosedDateFilter("custom")}
+              >
+                <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                {closedDateFilter === "custom"
+                  ? new Date(closedCustomDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+                  : "Data"}
+              </Button>
+            </div>
+            {closedDateFilter === "custom" && (
+              <input
+                type="date"
+                value={closedCustomDate}
+                onChange={(e) => setClosedCustomDate(e.target.value)}
+                className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            )}
+          </div>
+          {filteredClosedComandas.length === 0 ? (
+            <div className="rounded-xl border border-border px-4 py-8 text-center text-sm text-muted-foreground">
+              Nenhuma comanda encerrada neste dia.
+            </div>
+          ) : (
+          <>
           <div className="overflow-hidden rounded-xl border border-border">
             <div className="divide-y divide-border">
               {closedComandas.map((c) => (
@@ -1647,7 +1725,7 @@ export default function Comandas() {
           {totalClosedPages > 1 && (
             <div className="mt-3 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
               <span className="text-center sm:text-left" data-testid="text-closed-page-info">
-                Página {closedPage} de {totalClosedPages} · {allClosedComandas.length} comandas
+                Página {closedPage} de {totalClosedPages} · {filteredClosedComandas.length} comandas
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -1672,6 +1750,8 @@ export default function Comandas() {
                 </Button>
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       )}
