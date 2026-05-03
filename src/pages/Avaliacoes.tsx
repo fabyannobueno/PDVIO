@@ -63,7 +63,7 @@ export default function Avaliacoes() {
 
   const [filterRating, setFilterRating] = useState<number | null>(null);
   const [filterDate, setFilterDate]     = useState<"today" | "yesterday" | "custom" | null>("today");
-  const [customDate, setCustomDate]     = useState<string>("");
+  const [customDate, setCustomDate]     = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [page, setPage] = useState(1);
 
   // ── Date helpers ─────────────────────────────────────────────────────────
