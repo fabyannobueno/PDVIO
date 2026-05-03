@@ -714,6 +714,23 @@ export default function Comandas() {
     };
   }, []);
 
+  // Chamadas pendentes: id → table_label (persiste entre renders sem causar re-render)
+  const pendingWaiterCalls = useRef<Map<string, string>>(new Map());
+  const [pendingWaiterCount, setPendingWaiterCount] = useState(0);
+
+  function dismissWaiterCall(id: string) {
+    pendingWaiterCalls.current.delete(id);
+    toast.dismiss(`waiter-${id}`);
+    setPendingWaiterCount(pendingWaiterCalls.current.size);
+  }
+
+  // Repete o sino a cada 5s enquanto houver chamadas não confirmadas
+  useEffect(() => {
+    if (pendingWaiterCount === 0) return;
+    const t = setInterval(() => playWaiterCallSound(), 5000);
+    return () => clearInterval(t);
+  }, [pendingWaiterCount]);
+
   useEffect(() => {
     if (!cid) return;
     const channel = supabase
@@ -722,11 +739,17 @@ export default function Comandas() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "waiter_calls", filter: `company_id=eq.${cid}` },
         (payload) => {
-          const call = payload.new as { table_label: string };
+          const call = payload.new as { id: string; table_label: string };
+          pendingWaiterCalls.current.set(call.id, call.table_label);
+          setPendingWaiterCount(pendingWaiterCalls.current.size);
           playWaiterCallSound();
           toast(`🔔 Mesa ${call.table_label} chamou o garçom`, {
-            duration: 10000,
-            action: { label: "OK", onClick: () => {} },
+            id: `waiter-${call.id}`,
+            duration: Infinity,
+            action: {
+              label: "OK — Estou indo",
+              onClick: () => dismissWaiterCall(call.id),
+            },
           });
         },
       )
