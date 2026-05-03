@@ -138,7 +138,7 @@ export default function MesaCliente() {
   }
 
   const menuUrl = company?.delivery_slug
-    ? `https://pdvio.shop/${company.delivery_slug}`
+    ? `https://pdvio.shop/${company.delivery_slug}?mesa=${encodeURIComponent(decodedTable)}&empresa=${encodeURIComponent(companyId ?? "")}&modo=mesa`
     : null;
 
   // ── Shared header ──────────────────────────────────────────────────────────
