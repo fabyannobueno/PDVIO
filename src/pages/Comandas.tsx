@@ -9,6 +9,7 @@ import { useOperator } from "@/contexts/OperatorContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { playLowStockAlert } from "@/lib/beep";
 import { playWaiterCallSound, unlockPdvioAudio } from "@/lib/pdvio-sound";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -374,6 +375,22 @@ export default function Comandas() {
       return (data as any) ?? null;
     },
   });
+  // ── W-API credentials (WhatsApp) ───────────────────────────────────────────
+  const { data: wapiCredentials } = useQuery<{ instanceId: string; token: string } | null>({
+    queryKey: ["/company-wapi", cid],
+    enabled: !!cid,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("wapi_instance_id, wapi_token")
+        .eq("id", cid!)
+        .single();
+      if (error || !data?.wapi_instance_id || !data?.wapi_token) return null;
+      return { instanceId: data.wapi_instance_id, token: data.wapi_token };
+    },
+  });
+
   const [cashReceivedStr, setCashReceivedStr] = useState("");
   const [mixedSplits, setMixedSplits] = useState<MixedSplit[]>([
     { method: "pix", amountStr: "" },
@@ -826,6 +843,25 @@ export default function Comandas() {
 
           queryClient.invalidateQueries({ queryKey: ["/comanda-items"] });
           queryClient.invalidateQueries({ queryKey: ["/api/comandas", cid] });
+
+          // WhatsApp — só envia se a loja configurou credenciais W-API
+          if (wapiCredentials && order.customer_phone) {
+            const brl = (v: number) =>
+              v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+            const itemLines = order.items
+              .map((i) => `• ${i.quantity}× ${i.name} — ${brl(i.totalPrice ?? i.price * i.quantity)}`)
+              .join("\n");
+            const msg = [
+              `🍽️ *Pedido recebido — ${order.table_identifier}*`,
+              ``,
+              itemLines,
+              ``,
+              `*Total: ${brl(order.total)}*`,
+              ``,
+              `Seu pedido foi adicionado à comanda. Em breve será confirmado pela loja. 😊`,
+            ].join("\n");
+            sendWhatsAppMessage(wapiCredentials, order.customer_phone, msg).catch(() => {});
+          }
 
           playWaiterCallSound();
           toast.success(

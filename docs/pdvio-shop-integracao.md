@@ -159,10 +159,16 @@ SE encontrar comanda:
   → UPDATE delivery_orders SET comanda_id = comanda.id, status = 'confirmed'
   → PDVIO Bell toca 🔔
   → Toast: "🍽️ Mesa 3 — 2 item(ns) pelo cardápio · R$ 99,00"
+  → WhatsApp enviado ao cliente (se loja tiver W-API configurado):
+      "🍽️ Pedido recebido — Mesa 3
+       • 2× Pizza Margherita — R$ 90,00
+       Total: R$ 90,00
+       Seu pedido foi adicionado à comanda. Em breve será confirmado. 😊"
 
 SE não encontrar comanda:
   → Toast de alerta para o operador
   → Pedido fica como 'pending' para resolução manual
+  → WhatsApp NÃO é enviado (sem comanda = não confirmado)
 ```
 
 ---
