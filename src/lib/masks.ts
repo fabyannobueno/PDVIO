@@ -62,6 +62,12 @@ export function parseMoneyBR(value: string): number {
   return parseInt(digits, 10) / 100;
 }
 
+export function maskCep(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
 export function maskDocument(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 14);
   if (digits.length <= 3) return digits;

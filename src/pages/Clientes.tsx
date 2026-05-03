@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { maskPhone, maskDocument, maskMoneyBR } from "@/lib/masks";
+import { maskPhone, maskDocument, maskMoneyBR, maskCep } from "@/lib/masks";
 import { scrollAppToTop } from "@/lib/scrollToTop";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +48,7 @@ import {
   Phone,
   Mail,
   IdCard,
+  MapPin,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -61,6 +62,13 @@ interface Customer {
   document: string | null;
   notes: string | null;
   credit_limit: number | null;
+  address_cep: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_neighborhood: string | null;
+  address_city: string | null;
+  address_state: string | null;
   created_at: string;
 }
 
@@ -71,6 +79,13 @@ interface CustomerForm {
   document: string;
   notes: string;
   credit_limit: string;
+  address_cep: string;
+  address_street: string;
+  address_number: string;
+  address_complement: string;
+  address_neighborhood: string;
+  address_city: string;
+  address_state: string;
 }
 
 const EMPTY_FORM: CustomerForm = {
@@ -80,6 +95,13 @@ const EMPTY_FORM: CustomerForm = {
   document: "",
   notes: "",
   credit_limit: "",
+  address_cep: "",
+  address_street: "",
+  address_number: "",
+  address_complement: "",
+  address_neighborhood: "",
+  address_city: "",
+  address_state: "",
 };
 
 const PAGE_SIZE = 8;
@@ -170,6 +192,13 @@ export default function Clientes() {
         document,
         notes: values.notes.trim() || null,
         credit_limit,
+        address_cep: values.address_cep.trim() || null,
+        address_street: values.address_street.trim() || null,
+        address_number: values.address_number.trim() || null,
+        address_complement: values.address_complement.trim() || null,
+        address_neighborhood: values.address_neighborhood.trim() || null,
+        address_city: values.address_city.trim() || null,
+        address_state: values.address_state.trim().toUpperCase().slice(0, 2) || null,
       };
       if (editing) {
         const { error } = await supabase
@@ -239,6 +268,13 @@ export default function Clientes() {
       document: c.document ?? "",
       notes: c.notes ?? "",
       credit_limit: c.credit_limit != null ? Number(c.credit_limit).toFixed(2).replace(".", ",") : "",
+      address_cep: c.address_cep ?? "",
+      address_street: c.address_street ?? "",
+      address_number: c.address_number ?? "",
+      address_complement: c.address_complement ?? "",
+      address_neighborhood: c.address_neighborhood ?? "",
+      address_city: c.address_city ?? "",
+      address_state: c.address_state ?? "",
     });
     setFormErrors({});
     setDialogOpen(true);
@@ -349,6 +385,14 @@ export default function Clientes() {
                         <span className="truncate">{c.document}</span>
                       </p>
                     )}
+                    {(c.address_city || c.address_state) && (
+                      <p className="flex items-center gap-1.5">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">
+                          {[c.address_city, c.address_state].filter(Boolean).join(" - ")}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -386,6 +430,7 @@ export default function Clientes() {
               <TableHead>Telefone</TableHead>
               <TableHead>E-mail</TableHead>
               <TableHead>CPF / CNPJ</TableHead>
+              <TableHead>Cidade / UF</TableHead>
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -393,7 +438,7 @@ export default function Clientes() {
             {isLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 5 }).map((__, j) => (
+                  {Array.from({ length: 6 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -402,7 +447,7 @@ export default function Clientes() {
               ))
             ) : paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-16 text-center">
+                <TableCell colSpan={6} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3 text-muted-foreground">
                     <Users className="h-10 w-10 opacity-30" />
                     <p className="text-sm">
@@ -446,6 +491,16 @@ export default function Clientes() {
                       <span className="flex items-center gap-1.5">
                         <IdCard className="h-3.5 w-3.5" />
                         {c.document}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {(c.address_city || c.address_state) ? (
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        {[c.address_city, c.address_state].filter(Boolean).join(" - ")}
                       </span>
                     ) : (
                       <span className="text-muted-foreground/50">—</span>
@@ -517,7 +572,7 @@ export default function Clientes() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
           </DialogHeader>
@@ -600,6 +655,109 @@ export default function Clientes() {
               </p>
             </div>
 
+            {/* Address */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Endereço
+              </p>
+
+              {/* CEP */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="address_cep">CEP</Label>
+                  <Input
+                    id="address_cep"
+                    value={form.address_cep}
+                    onChange={async (e) => {
+                      const masked = maskCep(e.target.value);
+                      setForm((f) => ({ ...f, address_cep: masked }));
+                      const digits = masked.replace(/\D/g, "");
+                      if (digits.length === 8) {
+                        try {
+                          const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+                          const d = await res.json();
+                          if (!d.erro) {
+                            setForm((f) => ({
+                              ...f,
+                              address_street: d.logradouro ?? f.address_street,
+                              address_neighborhood: d.bairro ?? f.address_neighborhood,
+                              address_city: d.localidade ?? f.address_city,
+                              address_state: d.uf ?? f.address_state,
+                            }));
+                          }
+                        } catch {/* ignore */}
+                      }
+                    }}
+                    placeholder="00000-000"
+                    maxLength={9}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="address_number">Número</Label>
+                  <Input
+                    id="address_number"
+                    value={form.address_number}
+                    onChange={(e) => setForm((f) => ({ ...f, address_number: e.target.value }))}
+                    placeholder="Ex: 123"
+                  />
+                </div>
+              </div>
+
+              {/* Street + Complement */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="address_street">Rua / Logradouro</Label>
+                  <Input
+                    id="address_street"
+                    value={form.address_street}
+                    onChange={(e) => setForm((f) => ({ ...f, address_street: e.target.value }))}
+                    placeholder="Nome da rua"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="address_complement">Complemento</Label>
+                  <Input
+                    id="address_complement"
+                    value={form.address_complement}
+                    onChange={(e) => setForm((f) => ({ ...f, address_complement: e.target.value }))}
+                    placeholder="Apto, bloco, etc."
+                  />
+                </div>
+              </div>
+
+              {/* Neighborhood + City + State */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="address_neighborhood">Bairro</Label>
+                  <Input
+                    id="address_neighborhood"
+                    value={form.address_neighborhood}
+                    onChange={(e) => setForm((f) => ({ ...f, address_neighborhood: e.target.value }))}
+                    placeholder="Bairro"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="address_city">Cidade</Label>
+                  <Input
+                    id="address_city"
+                    value={form.address_city}
+                    onChange={(e) => setForm((f) => ({ ...f, address_city: e.target.value }))}
+                    placeholder="Cidade"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="address_state">UF</Label>
+                  <Input
+                    id="address_state"
+                    value={form.address_state}
+                    onChange={(e) => setForm((f) => ({ ...f, address_state: e.target.value.toUpperCase().slice(0, 2) }))}
+                    placeholder="SP"
+                    maxLength={2}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Notes */}
             <div className="space-y-1.5">
               <Label htmlFor="notes">Observações</Label>
@@ -608,7 +766,7 @@ export default function Clientes() {
                 data-testid="input-customer-notes"
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Alergias, preferências, endereço de entrega..."
+                placeholder="Alergias, preferências..."
                 rows={3}
               />
             </div>
