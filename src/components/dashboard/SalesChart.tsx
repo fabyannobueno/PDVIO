@@ -35,12 +35,13 @@ function last7Days() {
     const d = new Date();
     d.setDate(d.getDate() - i);
     d.setHours(0, 0, 0, 0);
+    const localDate = d.toLocaleDateString("sv"); // "sv" locale → "YYYY-MM-DD" in local tz
+    const dayOfWeek = d.getDay();
     const start = d.toISOString();
     d.setHours(23, 59, 59, 999);
     const end = d.toISOString();
-    const iso = start.slice(0, 10);
-    const label = i === 0 ? "Hoje" : i === 1 ? "Ontem" : DAYS_PT[new Date(start).getDay()];
-    days.push({ label, date: iso, start, end });
+    const label = i === 0 ? "Hoje" : i === 1 ? "Ontem" : DAYS_PT[dayOfWeek];
+    days.push({ label, date: localDate, start, end });
   }
   return days;
 }
@@ -79,8 +80,10 @@ export default function SalesChart({ companyId }: Props) {
   const chartData = useMemo(() => {
     const byDate: Record<string, number> = {};
     for (const s of sales) {
-      const date = s.created_at.slice(0, 10);
-      byDate[date] = (byDate[date] ?? 0) + Number(s.total);
+      // usar data local (não UTC) para evitar desvio de fuso — ex: UTC-3 faz vendas das 22h
+      // aparecerem como dia seguinte em UTC
+      const localDate = new Date(s.created_at).toLocaleDateString("sv");
+      byDate[localDate] = (byDate[localDate] ?? 0) + Number(s.total);
     }
     return days.map((d) => ({ label: d.label, total: byDate[d.date] ?? 0 }));
   }, [sales, days]);
