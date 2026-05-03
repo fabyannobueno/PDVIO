@@ -5,11 +5,12 @@ import { useCompany } from "@/contexts/CompanyContext";
 import {
   Star, MessageSquare, TrendingUp,
   ThumbsUp, ThumbsDown, Filter,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell,
   TableHead, TableHeader, TableRow,
@@ -61,7 +62,13 @@ export default function Avaliacoes() {
   const topRef = useRef<HTMLDivElement>(null);
 
   const [filterRating, setFilterRating] = useState<number | null>(null);
+  const [filterDate, setFilterDate]     = useState<"today" | "yesterday" | "custom" | null>(null);
+  const [customDate, setCustomDate]     = useState<string>("");
   const [page, setPage] = useState(1);
+
+  // ── Date helpers ─────────────────────────────────────────────────────────
+  function dayStart(d: Date) { const r = new Date(d); r.setHours(0,0,0,0); return r; }
+  function dayEnd(d: Date)   { const r = new Date(d); r.setHours(23,59,59,999); return r; }
 
   const { data: reviews = [], isLoading } = useQuery<Review[]>({
     queryKey: ["/avaliacoes", cid],
@@ -85,7 +92,26 @@ export default function Avaliacoes() {
   const pctFive = total ? Math.round((five / total) * 100) : 0;
   const pctLow  = total ? Math.round((oneLow / total) * 100) : 0;
 
-  const filtered   = filterRating ? reviews.filter((r) => r.rating === filterRating) : reviews;
+  const dateFiltered = (() => {
+    if (!filterDate) return reviews;
+    const now = new Date();
+    const today = new Date(); today.setDate(today.getDate());
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    let from: Date, to: Date;
+    if (filterDate === "today")     { from = dayStart(today);     to = dayEnd(today);     }
+    else if (filterDate === "yesterday") { from = dayStart(yesterday); to = dayEnd(yesterday); }
+    else {
+      if (!customDate) return reviews;
+      const d = new Date(customDate + "T00:00:00");
+      from = dayStart(d); to = dayEnd(d);
+    }
+    return reviews.filter((r) => {
+      const t = new Date(r.created_at);
+      return t >= from && t <= to;
+    });
+  })();
+
+  const filtered   = filterRating ? dateFiltered.filter((r) => r.rating === filterRating) : dateFiltered;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages);
   const pageItems  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -97,6 +123,11 @@ export default function Avaliacoes() {
 
   function changeFilter(r: number | null) {
     setFilterRating(r);
+    setPage(1);
+  }
+
+  function changeDateFilter(d: "today" | "yesterday" | "custom" | null) {
+    setFilterDate(filterDate === d ? null : d);
     setPage(1);
   }
 
@@ -138,27 +169,63 @@ export default function Avaliacoes() {
         </div>
       )}
 
-      {/* Filter */}
+      {/* Filters */}
       {!isLoading && total > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Button size="sm" variant={filterRating === null ? "default" : "outline"}
-            onClick={() => changeFilter(null)} className="h-7 px-3 text-xs">
-            Todas
-          </Button>
-          {[5,4,3,2,1].map((n) => {
-            const count = reviews.filter((r) => r.rating === n).length;
-            if (!count) return null;
-            return (
-              <Button key={n} size="sm"
-                variant={filterRating === n ? "default" : "outline"}
-                onClick={() => changeFilter(filterRating === n ? null : n)}
-                className="h-7 px-3 text-xs gap-1">
-                <Star className="h-3 w-3 fill-amber-400 stroke-amber-400" />
-                {n} <span className="text-muted-foreground">({count})</span>
-              </Button>
-            );
-          })}
+        <div className="flex flex-col gap-3">
+          {/* Date filter row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Button size="sm" variant={filterDate === "today" ? "default" : "outline"}
+              onClick={() => changeDateFilter("today")} className="h-7 px-3 text-xs">
+              Hoje
+            </Button>
+            <Button size="sm" variant={filterDate === "yesterday" ? "default" : "outline"}
+              onClick={() => changeDateFilter("yesterday")} className="h-7 px-3 text-xs">
+              Ontem
+            </Button>
+            <Button size="sm" variant={filterDate === "custom" ? "default" : "outline"}
+              onClick={() => changeDateFilter("custom")} className="h-7 px-3 text-xs">
+              Personalizada
+            </Button>
+            {filterDate === "custom" && (
+              <Input
+                type="date"
+                value={customDate}
+                onChange={(e) => { setCustomDate(e.target.value); setPage(1); }}
+                className="h-7 w-36 text-xs px-2 bg-background border-white/15 text-white [color-scheme:dark]"
+              />
+            )}
+            {filterDate && (
+              <button
+                onClick={() => { setFilterDate(null); setCustomDate(""); setPage(1); }}
+                className="text-xs text-muted-foreground hover:text-white underline underline-offset-2 ml-1"
+              >
+                limpar
+              </button>
+            )}
+          </div>
+
+          {/* Rating filter row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Button size="sm" variant={filterRating === null ? "default" : "outline"}
+              onClick={() => changeFilter(null)} className="h-7 px-3 text-xs">
+              Todas
+            </Button>
+            {[5,4,3,2,1].map((n) => {
+              const count = reviews.filter((r) => r.rating === n).length;
+              if (!count) return null;
+              return (
+                <Button key={n} size="sm"
+                  variant={filterRating === n ? "default" : "outline"}
+                  onClick={() => changeFilter(filterRating === n ? null : n)}
+                  className="h-7 px-3 text-xs gap-1">
+                  <Star className="h-3 w-3 fill-amber-400 stroke-amber-400" />
+                  {n} <span className="text-muted-foreground">({count})</span>
+                </Button>
+              );
+            })}
+          </div>
         </div>
       )}
 
