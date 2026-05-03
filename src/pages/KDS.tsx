@@ -114,7 +114,7 @@ export default function KDS() {
     return () => clearInterval(t);
   }, []);
 
-  const { data: items, isFetching: isLoading, refetch } = useQuery<KdsItem[]>({
+  const { data: items, isLoading, refetch } = useQuery<KdsItem[]>({
     queryKey: ["/kds-items", cid],
     enabled: !!cid,
     queryFn: async () => {
