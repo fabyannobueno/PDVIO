@@ -45,6 +45,7 @@ import Planos from "./pages/Planos";
 import Checkout from "./pages/Checkout";
 import Faturas from "./pages/Faturas";
 import Delivery from "./pages/Delivery";
+import MesaCliente from "./pages/MesaCliente";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { PlanGuard } from "@/components/PlanGuard";
 
@@ -90,6 +91,7 @@ const App = () => (
             <CompanyProvider>
               <OperatorProvider>
               <Routes>
+                <Route path="/mesa/:companyId/:tableLabel" element={<MesaCliente />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/auth/confirm" element={<AuthConfirm />} />

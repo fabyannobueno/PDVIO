@@ -1,5 +1,6 @@
 import { scrollAppToTop } from "@/lib/scrollToTop";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -60,6 +61,8 @@ import {
   Wallet,
   BookOpen,
   UserRound,
+  SplitSquareVertical,
+  Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BarcodeScanner } from "@/components/app/BarcodeScanner";
@@ -391,6 +394,15 @@ export default function Comandas() {
 
   // Camera barcode scanner
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  // QR Code das Mesas
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [qrTableCount, setQrTableCount] = useState(10);
+  const [qrPrefix, setQrPrefix] = useState("Mesa");
+
+  // Dividir conta
+  const [splitEnabled, setSplitEnabled] = useState(false);
+  const [splitPeople, setSplitPeople] = useState(2);
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -1128,10 +1140,21 @@ export default function Comandas() {
             {openComandas.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={() => setNewOpen(true)} data-testid="button-new-comanda">
-          <Plus className="mr-2 h-4 w-4" />
-          Nova comanda
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setQrDialogOpen(true)}
+            title="Gerar QR Codes das mesas"
+          >
+            <QrCode className="mr-2 h-4 w-4" />
+            QR das Mesas
+          </Button>
+          <Button onClick={() => setNewOpen(true)} data-testid="button-new-comanda">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova comanda
+          </Button>
+        </div>
       </div>
 
       {/* Open comandas grid */}
@@ -1613,6 +1636,8 @@ export default function Comandas() {
           setCashReceivedStr("");
           setMixedSplits([{ method: "pix", amountStr: "" }]);
           setCrediarioCustomerId(null);
+          setSplitEnabled(false);
+          setSplitPeople(2);
         }
       }}>
         {closeDialogOpen && <CloseDialogHotkeys
@@ -1649,6 +1674,64 @@ export default function Comandas() {
               <span className="text-sm text-muted-foreground">Total a receber</span>
               <span className="text-xl font-bold">{fmtBRL(detailTotal)}</span>
             </div>
+
+            {/* Dividir conta */}
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+              <button
+                type="button"
+                onClick={() => { setSplitEnabled((v) => !v); if (splitEnabled) setSplitPeople(2); }}
+                className="flex w-full items-center justify-between gap-2 text-sm font-medium"
+              >
+                <span className="flex items-center gap-2">
+                  <SplitSquareVertical className="h-4 w-4 text-primary" />
+                  Dividir conta
+                </span>
+                <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${splitEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                  {splitEnabled ? "Ativado" : "Desativado"}
+                </span>
+              </button>
+              {splitEnabled && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center gap-3">
+                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Nº de pessoas</Label>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => setSplitPeople((n) => Math.max(2, n - 1))}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center font-bold tabular-nums">{splitPeople}</span>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => setSplitPeople((n) => Math.min(20, n + 1))}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {Array.from({ length: splitPeople }).map((_, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-md bg-background px-2.5 py-1.5 text-xs border border-border">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Users className="h-3 w-3" />
+                          Pessoa {i + 1}
+                        </span>
+                        <span className="font-semibold tabular-nums">{fmtBRL(Math.ceil((detailTotal / splitPeople) * 100) / 100)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Selecione a forma de pagamento de cada pessoa abaixo
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Forma de pagamento</Label>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -2049,6 +2132,94 @@ export default function Comandas() {
       </Dialog>
 
       <PdvShortcutsHelp open={shortcutsOpen} onOpenChange={setShortcutsOpen} context="comanda" />
+
+      {/* ── QR Code das Mesas dialog ─────────────────────────────────────── */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-primary" />
+              QR Code das Mesas
+            </DialogTitle>
+            <DialogDescription>
+              Gere e imprima QR Codes para as mesas. O cliente escaneia e a comanda abre automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Config */}
+            <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Prefixo</Label>
+                <input
+                  type="text"
+                  value={qrPrefix}
+                  onChange={(e) => setQrPrefix(e.target.value)}
+                  className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="Mesa"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Quantidade de mesas</Label>
+                <div className="flex items-center gap-1">
+                  <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setQrTableCount((n) => Math.max(1, n - 1))}>
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="w-10 text-center font-bold tabular-nums">{qrTableCount}</span>
+                  <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => setQrTableCount((n) => Math.min(30, n + 1))}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => window.print()}
+                className="gap-2 ml-auto print:hidden"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimir
+              </Button>
+            </div>
+
+            {/* QR grid */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 print:grid-cols-4">
+              {Array.from({ length: qrTableCount }).map((_, i) => {
+                const tableLabel = `${qrPrefix.trim() || "Mesa"} ${i + 1}`;
+                const url = `${window.location.origin}/mesa/${cid}/${encodeURIComponent(tableLabel)}`;
+                return (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-3 text-center"
+                  >
+                    <QRCodeSVG
+                      value={url}
+                      size={120}
+                      bgColor="transparent"
+                      fgColor="currentColor"
+                      className="text-foreground"
+                      level="M"
+                    />
+                    <div>
+                      <p className="text-sm font-bold">{tableLabel}</p>
+                      <p className="text-[10px] text-muted-foreground break-all leading-tight mt-0.5">
+                        {activeCompany?.name}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              O cliente escaneia o QR Code → informa o nome → comanda abre automaticamente no sistema
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQrDialogOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
