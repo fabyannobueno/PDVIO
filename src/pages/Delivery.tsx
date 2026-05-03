@@ -551,6 +551,12 @@ function OrderDetailDialog({
                   <span>-{fmtMoney(order.discount_amount)}</span>
                 </div>
               )}
+              {order.coupon_code && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Cupom</span>
+                  <span className="font-medium">{order.coupon_code}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between font-bold">
                 <span>Total</span>
@@ -660,9 +666,11 @@ export default function Delivery() {
     const unlock = () => unlockPdvioAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
+    window.addEventListener("focus", unlock);
     return () => {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
+      window.removeEventListener("focus", unlock);
     };
   }, []);
 
@@ -727,7 +735,8 @@ export default function Delivery() {
             const newOrder = { ...payload.new, items: parseItems(payload.new.items) } as DeliveryOrder;
             if (!firstLoad.current && !knownIds.current.has(newOrder.id)) {
               knownIds.current.add(newOrder.id);
-              playWaiterCallSound();
+              unlockPdvioAudio();
+              setTimeout(() => playWaiterCallSound(), 80);
               const typeLabel = newOrder.delivery_type === "delivery" ? "Delivery"
                 : newOrder.delivery_type === "dine_in" ? `Mesa · ${newOrder.table_identifier ?? ""}`
                 : "Retirada";

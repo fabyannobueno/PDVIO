@@ -1,0 +1,55 @@
+create table public.delivery_orders (
+  id uuid not null default gen_random_uuid (),
+  numeric_id bigint generated always as identity not null,
+  company_id uuid not null,
+  customer_name text not null,
+  customer_phone text null default ''::text,
+  address text null,
+  delivery_type text not null,
+  items jsonb not null default '[]'::jsonb,
+  subtotal numeric(10, 2) not null default 0,
+  delivery_fee numeric(10, 2) not null default 0,
+  total numeric(10, 2) not null default 0,
+  payment_method text null default ''::text,
+  notes text null,
+  status text not null default 'pending'::text,
+  created_at timestamp with time zone not null default now(),
+  discount_amount numeric(10, 2) not null default 0,
+  coupon_code text null,
+  table_identifier text null,
+  comanda_id uuid null,
+  change_for numeric null,
+  change_amount numeric null,
+  constraint delivery_orders_pkey primary key (id),
+  constraint delivery_orders_comanda_id_fkey foreign KEY (comanda_id) references comandas (id) on delete set null,
+  constraint delivery_orders_company_id_fkey foreign KEY (company_id) references companies (id) on delete CASCADE,
+  constraint delivery_orders_delivery_type_check check (
+    (
+      delivery_type = any (
+        array['delivery'::text, 'pickup'::text, 'dine_in'::text]
+      )
+    )
+  ),
+  constraint delivery_orders_status_check check (
+    (
+      status = any (
+        array[
+          'pending'::text,
+          'confirmed'::text,
+          'preparing'::text,
+          'cancelled'::text,
+          'out_for_delivery'::text,
+          'delivered'::text,
+          'ready_for_pickup'::text,
+          'picked_up'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists delivery_orders_company_id_idx on public.delivery_orders using btree (company_id) TABLESPACE pg_default;
+
+create index IF not exists delivery_orders_status_idx on public.delivery_orders using btree (status) TABLESPACE pg_default;
+
+create index IF not exists delivery_orders_created_at_idx on public.delivery_orders using btree (created_at desc) TABLESPACE pg_default;
