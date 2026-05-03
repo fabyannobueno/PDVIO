@@ -46,7 +46,6 @@ import Checkout from "./pages/Checkout";
 import Faturas from "./pages/Faturas";
 import Delivery from "./pages/Delivery";
 import MesaCliente from "./pages/MesaCliente";
-import AvaliacaoPedido from "./pages/AvaliacaoPedido";
 import Avaliacoes from "./pages/Avaliacoes";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { PlanGuard } from "@/components/PlanGuard";
@@ -94,7 +93,6 @@ const App = () => (
               <OperatorProvider>
               <Routes>
                 <Route path="/mesa/:companyId/:tableLabel" element={<MesaCliente />} />
-                <Route path="/avaliacao/:companyId/:orderId" element={<AvaliacaoPedido />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/auth/confirm" element={<AuthConfirm />} />
