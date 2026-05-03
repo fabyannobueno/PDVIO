@@ -134,11 +134,11 @@ export default function Avaliacoes() {
 
       {/* Stats */}
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(4)].map((_,i) => <Skeleton key={i} className="h-20 sm:h-24 rounded-xl" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <StatCard label="Total" value={String(total)} sub="avaliações" valueClass="text-white" />
           <StatCard
             label="Média"
