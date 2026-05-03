@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import DashboardInsights from "@/components/dashboard/DashboardInsights";
+import SalesChart from "@/components/dashboard/SalesChart";
 import { PlanBanner } from "@/components/billing/PlanBanner";
 import {
   ShoppingCart,
@@ -359,6 +360,9 @@ export default function Dashboard() {
 
       {/* Comparativos do mês: receita, top movers, horário de pico */}
       <DashboardInsights companyId={cid ?? null} />
+
+      {/* Sales chart — últimos 7 dias */}
+      <SalesChart companyId={cid ?? null} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
