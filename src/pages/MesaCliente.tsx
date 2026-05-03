@@ -158,8 +158,7 @@ export default function MesaCliente() {
 
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-8 pt-10 text-center">
           {/* logo */}
-          <div className="h-20 w-20 rounded-2xl overflow-hidden shadow-xl ring-4 ring-white/20 flex items-center justify-center"
-            style={{ background: "rgba(255,255,255,0.15)" }}>
+          <div className="h-20 w-20 rounded-2xl overflow-hidden shadow-xl ring-4 ring-white/20 flex items-center justify-center bg-white">
             {logoUrl ? (
               <img src={logoUrl} alt={company?.name} className="h-full w-full object-cover" />
             ) : (
