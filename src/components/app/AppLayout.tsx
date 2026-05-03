@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBillingRealtime } from "@/hooks/useBillingRealtime";
 import { useAutoDowngrade } from "@/hooks/useAutoDowngrade";
 import { BillingModals } from "@/components/billing/BillingModals";
+import { DineInHandler } from "./DineInHandler";
 import { Loader2 } from "lucide-react";
 
 export function AppLayout() {
@@ -76,6 +77,7 @@ export function AppLayout() {
       </div>
       {isLocked && <OperatorLockScreen />}
       <BillingModals />
+      <DineInHandler />
     </SidebarProvider>
   );
 }
