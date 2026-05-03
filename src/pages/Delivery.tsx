@@ -209,9 +209,8 @@ function buildWhatsAppMessage(
     return `• ${qtyLabel} ${item.name} — ${brl(subtotal)}`;
   };
 
-  const confirmedLines: string[] = [
-    `✅ *${store}*`,
-    `Olá, ${order.customer_name}! Seu pedido ${orderId} foi *confirmado*. 😊`,
+  const orderDetailLines = (intro: string[]): string[] => [
+    ...intro,
     ``,
     `📋 *Dados do pedido:*`,
     `👤 ${order.customer_name}`,
@@ -229,9 +228,22 @@ function buildWhatsAppMessage(
       ? [`🎟️ Desconto${order.coupon_code ? ` (${order.coupon_code})` : ""}: -${brl(order.discount_amount)}`]
       : []),
     `*Total: ${brl(order.total)}*`,
+    `💳 Pagamento: ${paymentLabel(order.payment_method)}`,
+    ...(order.notes ? [``, `📝 *Obs:* ${order.notes}`] : []),
   ];
 
-  const messages: Partial<Record<DeliveryStatus, string>> = {
+  const receivedLines = orderDetailLines([
+    `🛍️ *${store}*`,
+    `Olá, ${order.customer_name}! Recebemos seu pedido ${orderId} e em breve será confirmado pela loja. 😊`,
+  ]);
+
+  const confirmedLines = orderDetailLines([
+    `✅ *${store}*`,
+    `Olá, ${order.customer_name}! Seu pedido ${orderId} foi *confirmado*. 😊`,
+  ]);
+
+  const messages: Partial<Record<DeliveryStatus | "pending", string>> = {
+    pending: receivedLines.join("\n"),
     confirmed: confirmedLines.join("\n"),
     preparing: `👨‍🍳 *${store}*\nSeu pedido ${orderId} está *sendo preparado* agora! Em breve estará pronto.`,
     out_for_delivery: `🛵 *${store}*\nSeu pedido ${orderId} *saiu para entrega*! Fique atento, o motoboy está a caminho. 📦`,
@@ -701,7 +713,7 @@ export default function Delivery() {
           qc.invalidateQueries({ queryKey: ["/delivery-orders", cid] });
 
           if (payload.eventType === "INSERT") {
-            const newOrder = payload.new as DeliveryOrder;
+            const newOrder = { ...payload.new, items: parseItems(payload.new.items) } as DeliveryOrder;
             if (newOrder.delivery_type === "dine_in") return;
             if (!firstLoad.current && !knownIds.current.has(newOrder.id)) {
               knownIds.current.add(newOrder.id);
@@ -710,6 +722,11 @@ export default function Delivery() {
                 description: `${newOrder.delivery_type === "delivery" ? "Delivery" : "Retirada"} · ${fmtMoney(newOrder.total)}`,
                 duration: 6000,
               });
+              // WhatsApp — notifica o cliente que o pedido foi recebido
+              if (wapiCredentials && newOrder.customer_phone) {
+                const msg = buildWhatsAppMessage(newOrder, "pending", activeCompany?.name, activeCompany?.address ?? undefined);
+                if (msg) sendWhatsAppMessage(wapiCredentials, newOrder.customer_phone, msg).catch(() => {});
+              }
             }
           }
         }
