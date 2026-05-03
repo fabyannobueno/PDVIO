@@ -8,6 +8,7 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { useOperator } from "@/contexts/OperatorContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { playLowStockAlert } from "@/lib/beep";
+import { playWaiterCallSound, unlockPdvioAudio } from "@/lib/pdvio-sound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -701,6 +702,37 @@ export default function Comandas() {
       supabase.removeChannel(channel);
     };
   }, [cid, queryClient]);
+
+  // ── Waiter calls realtime ──────────────────────────────────────────────────
+  useEffect(() => {
+    const unlock = () => unlockPdvioAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!cid) return;
+    const channel = supabase
+      .channel(`waiter-calls-${cid}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "waiter_calls", filter: `company_id=eq.${cid}` },
+        (payload) => {
+          const call = payload.new as { table_label: string };
+          playWaiterCallSound();
+          toast(`🔔 Mesa ${call.table_label} chamou o garçom`, {
+            duration: 10000,
+            action: { label: "OK", onClick: () => {} },
+          });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [cid]);
 
   // ── Computed ───────────────────────────────────────────────────────────────
 

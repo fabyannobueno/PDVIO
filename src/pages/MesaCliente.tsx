@@ -42,6 +42,7 @@ export default function MesaCliente() {
   const [customerName, setCustomerName] = useState("");
   const [creating, setCreating] = useState(false);
   const [garcomChamado, setGarcomChamado] = useState(false);
+  const [comandaId, setComandaId] = useState<string | null>(null);
 
   const [company, setCompany] = useState<Company | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -71,7 +72,7 @@ export default function MesaCliente() {
       setCompany(compRes.data as Company);
 
       if (comandaRes.data) {
-        // Mesa já tem comanda aberta
+        setComandaId(comandaRes.data.id);
         setStep("occupied");
       } else {
         setStep("name");
@@ -103,7 +104,7 @@ export default function MesaCliente() {
         return;
       }
 
-      const { error } = await supabase
+      const { data: newComanda, error } = await supabase
         .from("comandas")
         .insert({
           company_id: companyId,
@@ -114,6 +115,7 @@ export default function MesaCliente() {
         .single();
 
       if (error) throw error;
+      setComandaId((newComanda as any)?.id ?? null);
       setStep("done");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao abrir comanda. Chame o atendente.");
@@ -122,9 +124,17 @@ export default function MesaCliente() {
     }
   }
 
-  function handleChamarGarcom() {
+  async function handleChamarGarcom() {
+    if (!companyId) return;
     setGarcomChamado(true);
     toast.success("Garçom chamado! Aguarde um momento.");
+    try {
+      await supabase.from("waiter_calls" as never).insert({
+        company_id: companyId,
+        table_label: decodedTable,
+        comanda_id: comandaId ?? undefined,
+      } as never);
+    } catch {}
   }
 
   const menuUrl = company?.delivery_slug

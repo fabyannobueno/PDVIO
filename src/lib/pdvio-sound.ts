@@ -1,99 +1,130 @@
 /**
- * PDVIO — Sons de notificação sintetizados via Web Audio API.
- * Totalmente procedurais, sem arquivos MP3.
+ * PDVIO — Notificação sonora sintetizada via Web Audio API.
+ * Zero dependências externas, zero arquivos MP3.
+ *
+ * playWaiterCallSound() — sino premium (parciais reais de sino metálico)
+ * playNewComandaSound() — dois bips rápidos ascendentes
+ * unlockPdvioAudio()    — chame em qualquer interação do usuário para
+ *                         pré-desbloquear o AudioContext (política do browser)
  */
 
 let _ctx: AudioContext | null = null;
 
-function ctx(): AudioContext {
+function getCtx(): AudioContext {
   if (!_ctx) _ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
   return _ctx;
 }
 
 export function unlockPdvioAudio() {
   try {
-    const c = ctx();
+    const c = getCtx();
     if (c.state === "suspended") c.resume().catch(() => {});
   } catch {}
 }
 
-/** Toca um único tom sintético com envelope ADSR. */
-function tone(
+/** Toca um parcial sintético com envelope attack → exponential decay. */
+function partial(
   ac: AudioContext,
   freq: number,
   startAt: number,
-  duration: number,
-  gain: number,
+  dur: number,
+  peakGain: number,
   type: OscillatorType = "sine",
+  attackMs = 6,
 ) {
   const osc = ac.createOscillator();
   const env = ac.createGain();
-
   osc.type = type;
-  osc.frequency.setValueAtTime(freq, startAt);
-
-  const attack  = 0.008;
-  const decay   = 0.06;
-  const sustain = gain * 0.55;
-  const release = duration * 0.6;
-
+  osc.frequency.value = freq;
+  const a = attackMs / 1000;
   env.gain.setValueAtTime(0, startAt);
-  env.gain.linearRampToValueAtTime(gain, startAt + attack);
-  env.gain.linearRampToValueAtTime(sustain, startAt + attack + decay);
-  env.gain.setValueAtTime(sustain, startAt + duration - release);
-  env.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-
+  env.gain.linearRampToValueAtTime(peakGain, startAt + a);
+  env.gain.exponentialRampToValueAtTime(0.0001, startAt + dur);
   osc.connect(env);
   env.connect(ac.destination);
   osc.start(startAt);
-  osc.stop(startAt + duration + 0.05);
+  osc.stop(startAt + dur + 0.05);
 }
 
 /**
- * Som de "garçom chamado" — acorde em Lá maior (A-C#-E) em arpegio ascendente.
- * Três notas suaves com timbre de sino + harmônico triângulo.
- * Duração total ~0.9 s.
+ * PDVIO Premium Bell — sino metálico com série de parciais reais:
+ *   Hum 0.5× · Prime 1× · Tierce 1.2× · Quint 1.5× · Nominal 2× · Superquint 2.75×
+ * + transiente brilhante + shimmer duplo (80ms / 160ms echo)
+ * Ressonância natural de ~1.4 s.
  */
-export function playWaiterCallSound() {
-  try {
-    const ac = ctx();
-    if (ac.state === "suspended") {
-      ac.resume().then(() => _playWaiterCall(ac)).catch(() => {});
-    } else {
-      _playWaiterCall(ac);
-    }
-  } catch {}
-}
+function _playBell(ac: AudioContext) {
+  const root = 880; // A5
+  const now  = ac.currentTime;
 
-function _playWaiterCall(ac: AudioContext) {
-  const now = ac.currentTime;
-  const notes = [
-    { freq: 880,  delay: 0,    dur: 0.50, g: 0.22 },  // A5
-    { freq: 1109, delay: 0.13, dur: 0.55, g: 0.20 },  // C#6
-    { freq: 1320, delay: 0.26, dur: 0.70, g: 0.18 },  // E6
-  ];
-  for (const n of notes) {
-    tone(ac, n.freq, now + n.delay, n.dur, n.g, "sine");
-    tone(ac, n.freq * 2, now + n.delay, n.dur * 0.4, n.g * 0.08, "triangle");
+  const master = ac.createGain();
+  master.gain.value = 0.82;
+  master.connect(ac.destination);
+
+  function p(
+    freq: number, startAt: number, dur: number, gain: number,
+    type: OscillatorType = "sine", atkMs = 6,
+  ) {
+    const osc = ac.createOscillator();
+    const env = ac.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const a = atkMs / 1000;
+    env.gain.setValueAtTime(0, startAt);
+    env.gain.linearRampToValueAtTime(gain, startAt + a);
+    env.gain.exponentialRampToValueAtTime(0.0001, startAt + dur);
+    osc.connect(env);
+    env.connect(master);
+    osc.start(startAt);
+    osc.stop(startAt + dur + 0.05);
+  }
+
+  // Parciais da campânula
+  p(root * 0.50, now, 0.25, 0.10);
+  p(root * 1.00, now, 1.40, 0.30);
+  p(root * 1.20, now, 1.10, 0.14);
+  p(root * 1.50, now, 0.90, 0.18);
+  p(root * 2.00, now, 0.65, 0.10);
+  p(root * 2.75, now, 0.35, 0.04);
+
+  // Transiente brilhante
+  p(root * 4.0, now, 0.055, 0.12, "triangle", 2);
+
+  // Shimmer duplo (eco leve)
+  const delays = [0.080, 0.160];
+  const gains  = [0.18,  0.10];
+  for (let i = 0; i < 2; i++) {
+    const d = delays[i], g = gains[i], f = 1 - i * 0.3;
+    p(root,        now + d, 1.20 * f, g * 0.30);
+    p(root * 1.50, now + d, 0.80 * f, g * 0.18);
+    p(root * 2.00, now + d, 0.50 * f, g * 0.10);
   }
 }
 
-/**
- * Som curto de "nova comanda" — dois bips ascendentes.
- */
-export function playNewComandaSound() {
+export function playWaiterCallSound() {
   try {
-    const ac = ctx();
+    const ac = getCtx();
     if (ac.state === "suspended") {
-      ac.resume().then(() => _playNewComanda(ac)).catch(() => {});
+      ac.resume().then(() => _playBell(ac)).catch(() => {});
     } else {
-      _playNewComanda(ac);
+      _playBell(ac);
     }
   } catch {}
 }
 
-function _playNewComanda(ac: AudioContext) {
+/** Dois bips rápidos ascendentes — nova comanda / novo pedido. */
+function _playTwoBips(ac: AudioContext) {
   const now = ac.currentTime;
-  tone(ac, 660, now,        0.18, 0.25, "sine");
-  tone(ac, 880, now + 0.20, 0.25, 0.22, "sine");
+  partial(ac, 660, now,        0.18, 0.25, "sine");
+  partial(ac, 880, now + 0.20, 0.25, 0.22, "sine");
+}
+
+export function playNewComandaSound() {
+  try {
+    const ac = getCtx();
+    if (ac.state === "suspended") {
+      ac.resume().then(() => _playTwoBips(ac)).catch(() => {});
+    } else {
+      _playTwoBips(ac);
+    }
+  } catch {}
 }

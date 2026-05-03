@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import notificationSoundUrl from "@assets/notification-pdvio_1776868318337.mp3";
-import { preloadNotificationSound, playNotificationSound, unlockAudio } from "@/lib/notification-audio";
+import { playWaiterCallSound, unlockPdvioAudio } from "@/lib/pdvio-sound";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -231,8 +230,7 @@ export default function KDS() {
   const knownIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
-    preloadNotificationSound(notificationSoundUrl);
-    const unlock = () => unlockAudio();
+    const unlock = () => unlockPdvioAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     return () => {
@@ -242,7 +240,7 @@ export default function KDS() {
   }, []);
 
   const playBeep = () => {
-    playNotificationSound(notificationSoundUrl);
+    playWaiterCallSound();
   };
 
   // Pending items the user has already "acknowledged" by acting on the queue

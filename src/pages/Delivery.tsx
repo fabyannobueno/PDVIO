@@ -51,8 +51,7 @@ import {
 import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } from "@/lib/printer";
 import type { Receipt } from "@/lib/printer";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import notificationSoundUrl from "@assets/notification-pdvio_1776868318337.mp3";
-import { preloadNotificationSound, playNotificationSound, unlockAudio } from "@/lib/notification-audio";
+import { playWaiterCallSound, unlockPdvioAudio } from "@/lib/pdvio-sound";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -633,10 +632,9 @@ export default function Delivery() {
   const knownIds = useRef<Set<string>>(new Set());
   const firstLoad = useRef(true);
 
-  // ── Audio preload + unlock ─────────────────────────────────────────────────
+  // ── Audio unlock ───────────────────────────────────────────────────────────
   useEffect(() => {
-    preloadNotificationSound(notificationSoundUrl);
-    const unlock = () => unlockAudio();
+    const unlock = () => unlockPdvioAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     return () => {
@@ -705,7 +703,7 @@ export default function Delivery() {
             const newOrder = payload.new as DeliveryOrder;
             if (!firstLoad.current && !knownIds.current.has(newOrder.id)) {
               knownIds.current.add(newOrder.id);
-              playNotificationSound(notificationSoundUrl);
+              playWaiterCallSound();
               toast.info(`Novo pedido #${newOrder.numeric_id} — ${newOrder.customer_name}`, {
                 description: `${newOrder.delivery_type === "delivery" ? "Delivery" : "Retirada"} · ${fmtMoney(newOrder.total)}`,
                 duration: 6000,
