@@ -47,6 +47,7 @@ import {
   ChevronRight,
   Tag,
   Calendar,
+  UtensilsCrossed,
 } from "lucide-react";
 import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } from "@/lib/printer";
 import type { Receipt } from "@/lib/printer";
@@ -87,6 +88,7 @@ interface DeliveryOrder {
   customer_phone: string;
   address: string | null;
   delivery_type: DeliveryType;
+  table_identifier: string | null;
   items: OrderItem[];
   subtotal: number;
   delivery_fee: number;
@@ -335,7 +337,9 @@ function OrderCard({ order, onOpen, onAdvance, onCancel, advancing }: OrderCardP
   const next = NEXT_STATUS[order.status];
   const isFinished = order.status === "delivered" || order.status === "picked_up" || order.status === "cancelled";
   const kitchen = hasKitchenItems(order.items);
-  const Icon = order.delivery_type === "delivery" ? Bike : ShoppingBag;
+  const Icon = order.delivery_type === "delivery" ? Bike
+    : order.delivery_type === "dine_in" ? UtensilsCrossed
+    : ShoppingBag;
 
   return (
     <div
@@ -347,6 +351,11 @@ function OrderCard({ order, onOpen, onAdvance, onCancel, advancing }: OrderCardP
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="font-semibold text-sm truncate">{order.customer_name}</span>
+          {order.delivery_type === "dine_in" && order.table_identifier && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-700 dark:text-violet-400 border border-violet-500/30 text-[10px] font-medium shrink-0">
+              {order.table_identifier}
+            </span>
+          )}
           {kitchen && (
             <span title="Tem itens de cozinha" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[10px] font-medium">
               <ChefHat className="h-2.5 w-2.5" /> Cozinha
@@ -445,7 +454,9 @@ function OrderDetailDialog({
   const isFinished = order.status === "delivered" || order.status === "picked_up" || order.status === "cancelled";
   const kitchen = hasKitchenItems(order.items);
   const kitchenItems = order.items.filter((i) => i.is_prepared === true);
-  const TypeIcon = order.delivery_type === "delivery" ? Bike : ShoppingBag;
+  const TypeIcon = order.delivery_type === "delivery" ? Bike
+    : order.delivery_type === "dine_in" ? UtensilsCrossed
+    : ShoppingBag;
 
   return (
     <Dialog open={!!order} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -672,7 +683,7 @@ export default function Delivery() {
         .from("delivery_orders")
         .select("*", { count: "exact" })
         .eq("company_id", cid!)
-        .neq("delivery_type", "dine_in")
+
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -714,12 +725,14 @@ export default function Delivery() {
 
           if (payload.eventType === "INSERT") {
             const newOrder = { ...payload.new, items: parseItems(payload.new.items) } as DeliveryOrder;
-            if (newOrder.delivery_type === "dine_in") return;
             if (!firstLoad.current && !knownIds.current.has(newOrder.id)) {
               knownIds.current.add(newOrder.id);
               playWaiterCallSound();
+              const typeLabel = newOrder.delivery_type === "delivery" ? "Delivery"
+                : newOrder.delivery_type === "dine_in" ? `Mesa · ${newOrder.table_identifier ?? ""}`
+                : "Retirada";
               toast.info(`Novo pedido #${newOrder.numeric_id} — ${newOrder.customer_name}`, {
-                description: `${newOrder.delivery_type === "delivery" ? "Delivery" : "Retirada"} · ${fmtMoney(newOrder.total)}`,
+                description: `${typeLabel} · ${fmtMoney(newOrder.total)}`,
                 duration: 6000,
               });
               // WhatsApp — notifica o cliente que o pedido foi recebido
@@ -811,7 +824,7 @@ export default function Delivery() {
   const handleAdvance = useCallback((order: DeliveryOrder) => {
     const next = NEXT_STATUS[order.status];
     if (!next) return;
-    const newStatus = order.delivery_type === "delivery" ? next.delivery : next.pickup;
+    const newStatus = order.delivery_type === "delivery" ? next.delivery : next.pickup; // dine_in uses pickup flow
     setAdvancingId(order.id);
     updateStatus.mutate(
       { id: order.id, status: newStatus },
@@ -850,7 +863,7 @@ export default function Delivery() {
     try {
       const settings = getPrinterSettings();
       const receipt: Receipt = {
-        title: order.delivery_type === "delivery" ? "PEDIDO DELIVERY" : "PEDIDO RETIRADA",
+        title: order.delivery_type === "delivery" ? "PEDIDO DELIVERY" : order.delivery_type === "dine_in" ? "PEDIDO MESA" : "PEDIDO RETIRADA",
         saleNumber: String(order.numeric_id).padStart(6, "0"),
         saleLabel: "ID DO PEDIDO",
         companyName: activeCompany?.name,
