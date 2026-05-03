@@ -361,9 +361,6 @@ export default function Dashboard() {
       {/* Comparativos do mês: receita, top movers, horário de pico */}
       <DashboardInsights companyId={cid ?? null} />
 
-      {/* Sales chart — últimos 7 dias */}
-      <SalesChart companyId={cid ?? null} />
-
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -390,6 +387,9 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Sales chart — últimos 7 dias */}
+      <SalesChart companyId={cid ?? null} />
 
       <div className={`grid gap-6 ${!allStepsDone ? "lg:grid-cols-3" : "lg:grid-cols-1"}`}>
         {/* Quick actions */}
