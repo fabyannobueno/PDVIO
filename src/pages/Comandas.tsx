@@ -757,6 +757,79 @@ export default function Comandas() {
     return () => { supabase.removeChannel(channel); };
   }, [cid]);
 
+  // ── Pedidos "comer aqui" do cardápio digital ──────────────────────────────
+  useEffect(() => {
+    if (!cid) return;
+    const channel = supabase
+      .channel(`dine-in-orders-${cid}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "delivery_orders", filter: `company_id=eq.${cid}` },
+        async (payload) => {
+          const order = payload.new as {
+            id: string;
+            delivery_type: string;
+            table_identifier: string | null;
+            items: Array<{ name: string; quantity: number; price: number; subtotal?: number; notes?: string; addons?: any[] }>;
+            total: number;
+          };
+          if (order.delivery_type !== "dine_in") return;
+          if (!order.table_identifier) return;
+
+          // Busca a comanda aberta da mesa
+          const { data: comanda } = await supabase
+            .from("comandas")
+            .select("id")
+            .eq("company_id", cid)
+            .eq("identifier", order.table_identifier)
+            .eq("status", "open")
+            .maybeSingle();
+
+          if (!comanda) {
+            playWaiterCallSound();
+            toast.warning(
+              `📋 Mesa ${order.table_identifier} fez um pedido pelo cardápio, mas não tem comanda aberta`,
+              { duration: 15000 },
+            );
+            return;
+          }
+
+          // Injeta os itens na comanda
+          const itemRows = order.items.map((item) => ({
+            comanda_id: comanda.id,
+            product_id: null,
+            product_name: item.name,
+            quantity: item.quantity,
+            unit_price: item.price,
+            subtotal: item.subtotal ?? Math.round(item.price * item.quantity * 100) / 100,
+            notes: item.notes ?? null,
+            addons: item.addons ?? [],
+          }));
+          await supabase.from("comanda_items").insert(itemRows as never);
+
+          // Vincula o delivery_order à comanda e confirma
+          await (supabase as any)
+            .from("delivery_orders")
+            .update({ comanda_id: comanda.id, status: "confirmed" })
+            .eq("id", order.id);
+
+          queryClient.invalidateQueries({ queryKey: ["/comanda-items"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/comandas", cid] });
+
+          playWaiterCallSound();
+          toast.success(
+            `🍽️ Mesa ${order.table_identifier} — ${order.items.length} item(ns) pelo cardápio`,
+            {
+              description: `Adicionado à comanda · R$ ${order.total.toFixed(2).replace(".", ",")}`,
+              duration: 10000,
+            },
+          );
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [cid, queryClient]);
+
   // ── Computed ───────────────────────────────────────────────────────────────
 
   const productUnitById = useMemo(() => {

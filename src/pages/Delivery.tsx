@@ -65,7 +65,7 @@ type DeliveryStatus =
   | "ready_for_pickup"
   | "picked_up";
 
-type DeliveryType = "delivery" | "pickup";
+type DeliveryType = "delivery" | "pickup" | "dine_in";
 
 interface OrderItem {
   name: string;
@@ -660,6 +660,7 @@ export default function Delivery() {
         .from("delivery_orders")
         .select("*", { count: "exact" })
         .eq("company_id", cid!)
+        .neq("delivery_type", "dine_in")
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -701,6 +702,7 @@ export default function Delivery() {
 
           if (payload.eventType === "INSERT") {
             const newOrder = payload.new as DeliveryOrder;
+            if (newOrder.delivery_type === "dine_in") return;
             if (!firstLoad.current && !knownIds.current.has(newOrder.id)) {
               knownIds.current.add(newOrder.id);
               playWaiterCallSound();

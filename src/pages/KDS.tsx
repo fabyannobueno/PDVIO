@@ -64,7 +64,7 @@ interface KdsDeliveryOrder {
   id: string;
   numeric_id: number;
   customer_name: string;
-  delivery_type: "delivery" | "pickup";
+  delivery_type: "delivery" | "pickup" | "dine_in";
   status: DeliveryStatus;
   items: DeliveryOrderItem[];
   created_at: string;
