@@ -1,6 +1,6 @@
 # PDVIO × Cardápio Digital — Guia de Integração
 
-Versão: **2.0** · Atualizado em: maio/2026
+Versão: **2.1** · Atualizado em: maio/2026
 
 ---
 
@@ -15,6 +15,7 @@ O PDVIO é o sistema de gestão do restaurante. O cardápio digital (`pdvio.shop
 | **Comer aqui (dine_in)** | Cliente no cardápio escolhe "Comer aqui", o pedido entra direto na comanda da mesa dele no PDVIO |
 | **Chamar garçom** | Cliente na página da mesa clica "Chamar garçom" → PDVIO toca sino e exibe alerta até o garçom confirmar |
 | **Parâmetros de mesa na URL** | PDVIO passa `?mesa=&empresa=&modo=mesa` ao redirecionar para o cardápio — cardápio deve ler e usar |
+| **WhatsApp automático** | Cliente recebe notificação no WhatsApp a cada mudança de status do pedido (se loja tiver W-API configurado) |
 
 ---
 
@@ -173,7 +174,61 @@ SE não encontrar comanda:
 
 ---
 
-## 4. Tabela `waiter_calls` — chamar garçom
+## 4. Notificações WhatsApp automáticas (W-API)
+
+O PDVIO envia mensagens WhatsApp ao cliente automaticamente via **W-API**, sem nenhuma ação do cardápio. O cardápio só precisa garantir que `customer_phone` está sempre preenchido no pedido.
+
+### Condição para o envio
+
+Funciona apenas se a loja configurou as credenciais W-API em **Configurações → WhatsApp** (`wapi_instance_id` + `wapi_token`). Se não configurou, os pedidos funcionam normalmente, apenas sem notificação.
+
+### Fluxo de notificações — Delivery e Retirada
+
+| Evento | Quem dispara | Mensagem enviada ao cliente |
+|---|---|---|
+| Pedido recebido | Realtime INSERT | Todos os detalhes do pedido + "em breve será confirmado" |
+| Confirmado | Operador clica "Confirmar" | Todos os detalhes do pedido + "foi confirmado" |
+| Preparando | Operador clica "Iniciar preparo" | "está sendo preparado" |
+| Saiu p/ entrega | Operador clica "Pronto" (delivery) | "saiu para entrega" |
+| Pronto p/ retirada | Operador clica "Pronto" (pickup) | "pronto para retirada" + endereço da loja |
+| Entregue / Retirado | Operador clica "Entregue"/"Retirado" | "obrigado pela preferência" |
+| Cancelado | Operador cancela | "pedido cancelado" |
+
+### Exemplo — mensagem de pedido recebido
+
+```
+🛍️ *Pizzaria do João*
+Olá, Maria! Recebemos seu pedido #42 e em breve será confirmado pela loja. 😊
+
+📋 *Dados do pedido:*
+👤 Maria Silva
+📱 11999990000
+🚚 *Delivery* — Rua das Flores, 100
+
+🛒 *Itens:*
+• 1x Pizza Margherita — R$ 45,00
+• 2x Coca-Cola 600ml — R$ 18,00
+
+Subtotal: R$ 63,00
+Taxa de entrega: R$ 5,00
+*Total: R$ 68,00*
+💳 Pagamento: PIX
+
+📝 *Obs:* sem cebola
+```
+
+### Fluxo de notificações — Comer aqui (dine_in)
+
+| Evento | Mensagem enviada ao cliente |
+|---|---|
+| Pedido mergeado na comanda | Itens + total + "adicionado à comanda, em breve confirmado" |
+| Mesa sem comanda aberta | Nenhuma (operador resolve manualmente) |
+
+> **O cardápio não precisa fazer nada para as notificações.** Basta enviar `customer_phone` preenchido e o PDVIO cuida do resto.
+
+---
+
+## 5. Tabela `waiter_calls` — chamar garçom
 
 O cliente pode chamar o garçom direto pelo celular. Isso é feito na **página da mesa** (`/mesa/:companyId/:tableLabel`), mas o cardápio também pode oferecer esse botão.
 
@@ -205,7 +260,7 @@ waiter_calls (
 
 ---
 
-## 5. Leitura de dados da empresa
+## 6. Leitura de dados da empresa
 
 Para montar o cardápio (logo, cor, horários, etc.), consulte a tabela `companies`:
 
@@ -245,7 +300,7 @@ O campo `delivery_operating_hours` é um array JSONB:
 
 ---
 
-## 6. RLS — Permissões de acesso
+## 7. RLS — Permissões de acesso
 
 | Tabela | Leitura | Escrita (INSERT) |
 |---|---|---|
@@ -257,14 +312,15 @@ Use a **chave anônima (anon key)** do Supabase no cardápio para inserir pedido
 
 ---
 
-## 7. Checklist de implementação
+## 8. Checklist de implementação
 
-### Novidades obrigatórias
+### Obrigatório
 
 - [ ] Ler `?mesa=`, `?empresa=` e `?modo=` da URL ao carregar o cardápio
 - [ ] Quando `modo=mesa`: mostrar "Comer aqui" como opção de entrega
 - [ ] Ao confirmar pedido `dine_in`: enviar `delivery_type: "dine_in"` e `table_identifier: <valor de ?mesa>`
 - [ ] Incluir `company_id` (valor de `?empresa=`) no insert
+- [ ] **Sempre preencher `customer_phone`** — necessário para as notificações WhatsApp automáticas (delivery, retirada e dine_in)
 
 ### Opcional mas recomendado
 
@@ -273,7 +329,7 @@ Use a **chave anônima (anon key)** do Supabase no cardápio para inserir pedido
 
 ---
 
-## 8. Exemplo completo em JavaScript (Supabase JS v2)
+## 9. Exemplo completo em JavaScript (Supabase JS v2)
 
 ```javascript
 import { createClient } from "@supabase/supabase-js";
@@ -324,6 +380,6 @@ async function chamarGarcom() {
 
 ---
 
-## 9. Contato e suporte
+## 10. Contato e suporte
 
 Dúvidas sobre a integração → time PDVIO.
