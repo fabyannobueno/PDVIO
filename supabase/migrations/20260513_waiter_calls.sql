@@ -13,12 +13,12 @@ create index if not exists waiter_calls_company_id_idx on public.waiter_calls(co
 -- Habilita RLS
 alter table public.waiter_calls enable row level security;
 
--- Garçons/admin da empresa podem ler
+-- Membros da empresa podem ler
 create policy "company members can read waiter_calls"
   on public.waiter_calls for select
   using (
     company_id in (
-      select company_id from public.company_users where user_id = auth.uid()
+      select company_id from public.company_members where user_id = auth.uid()
     )
   );
 
