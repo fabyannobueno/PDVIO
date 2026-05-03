@@ -2646,21 +2646,31 @@ export default function Comandas() {
               <div className="flex flex-col items-center gap-4">
                 {/* Visual plate — skeleton while branding loads */}
                 {qrBrandingLoading ? (
-                  <div className="relative w-56 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-xl overflow-hidden bg-muted animate-pulse">
-                    {/* logo placeholder */}
-                    <Skeleton className="h-14 w-14 rounded-xl" />
-                    {/* name placeholder */}
-                    <div className="flex flex-col items-center gap-1.5 w-full">
-                      <Skeleton className="h-3.5 w-28 rounded" />
-                      <Skeleton className="h-px w-24 rounded" />
-                      <Skeleton className="h-2.5 w-36 rounded" />
+                  <div className="relative w-56 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-xl overflow-hidden select-none bg-muted/60">
+                    {/* shimmer sweep */}
+                    <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_1.4s_infinite]"
+                      style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.07) 50%, transparent 100%)" }} />
+                    {/* logo */}
+                    <div className="h-14 w-14 rounded-xl bg-muted-foreground/10" />
+                    {/* name block */}
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      <div className="h-3 w-28 rounded-full bg-muted-foreground/10" />
+                      <div className="h-px w-20 bg-muted-foreground/10" />
+                      <div className="h-2 w-36 rounded-full bg-muted-foreground/10" />
                     </div>
-                    {/* QR placeholder */}
-                    <Skeleton className="h-[145px] w-[145px] rounded-xl" />
-                    {/* label pill placeholder */}
-                    <Skeleton className="h-7 w-24 rounded-full" />
-                    {/* powered by placeholder */}
-                    <Skeleton className="h-2 w-20 rounded" />
+                    {/* QR box */}
+                    <div className="h-[145px] w-[145px] rounded-xl bg-muted-foreground/10 flex items-center justify-center">
+                      {/* inner grid to mimic QR pattern */}
+                      <div className="grid grid-cols-5 gap-1 p-3 opacity-30">
+                        {Array.from({ length: 25 }).map((_, i) => (
+                          <div key={i} className="h-4 w-4 rounded-sm bg-muted-foreground" style={{ opacity: Math.random() > 0.4 ? 1 : 0 }} />
+                        ))}
+                      </div>
+                    </div>
+                    {/* mesa pill */}
+                    <div className="h-7 w-24 rounded-full bg-muted-foreground/10" />
+                    {/* powered by */}
+                    <div className="h-2 w-16 rounded-full bg-muted-foreground/10" />
                   </div>
                 ) : (
                 <div
