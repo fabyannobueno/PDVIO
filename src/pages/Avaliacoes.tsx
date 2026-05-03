@@ -62,7 +62,7 @@ export default function Avaliacoes() {
   const topRef = useRef<HTMLDivElement>(null);
 
   const [filterRating, setFilterRating] = useState<number | null>(null);
-  const [filterDate, setFilterDate]     = useState<"today" | "yesterday" | "custom" | null>(null);
+  const [filterDate, setFilterDate]     = useState<"today" | "yesterday" | "custom" | null>("today");
   const [customDate, setCustomDate]     = useState<string>("");
   const [page, setPage] = useState(1);
 
