@@ -1,21 +1,15 @@
 import { useState, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
-import { toast } from "sonner";
 import {
-  Star, Trash2, Loader2, MessageSquare,
-  TrendingUp, ThumbsUp, ThumbsDown, Filter,
+  Star, MessageSquare, TrendingUp,
+  ThumbsUp, ThumbsDown, Filter,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel,
-  AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Table, TableBody, TableCell,
   TableHead, TableHeader, TableRow,
@@ -64,12 +58,10 @@ function fmt(iso: string) {
 export default function Avaliacoes() {
   const { activeCompany } = useCompany();
   const cid = activeCompany?.id;
-  const qc  = useQueryClient();
   const topRef = useRef<HTMLDivElement>(null);
 
   const [filterRating, setFilterRating] = useState<number | null>(null);
-  const [page, setPage]   = useState(1);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data: reviews = [], isLoading } = useQuery<Review[]>({
     queryKey: ["/avaliacoes", cid],
@@ -86,18 +78,6 @@ export default function Avaliacoes() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("order_reviews" as never).delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Avaliação removida");
-      qc.invalidateQueries({ queryKey: ["/avaliacoes", cid] });
-    },
-    onError: () => toast.error("Erro ao remover avaliação"),
-  });
-
   const total   = reviews.length;
   const avgRaw  = total ? reviews.reduce((s, r) => s + r.rating, 0) / total : 0;
   const five    = reviews.filter((r) => r.rating === 5).length;
@@ -105,7 +85,7 @@ export default function Avaliacoes() {
   const pctFive = total ? Math.round((five / total) * 100) : 0;
   const pctLow  = total ? Math.round((oneLow / total) * 100) : 0;
 
-  const filtered = filterRating ? reviews.filter((r) => r.rating === filterRating) : reviews;
+  const filtered   = filterRating ? reviews.filter((r) => r.rating === filterRating) : reviews;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages);
   const pageItems  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -214,11 +194,6 @@ export default function Avaliacoes() {
                   </div>
                   <span className="text-muted-foreground text-xs">{fmt(r.created_at)}</span>
                 </div>
-                <Button size="icon" variant="ghost"
-                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-400"
-                  onClick={() => setDeleteId(r.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
               </div>
               <Stars value={r.rating} size={5} />
               {r.comment && (
@@ -238,7 +213,6 @@ export default function Avaliacoes() {
                 <TableHead className="text-muted-foreground">Tipo</TableHead>
                 <TableHead className="text-muted-foreground">Nota</TableHead>
                 <TableHead className="text-muted-foreground">Comentário</TableHead>
-                <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -257,13 +231,6 @@ export default function Avaliacoes() {
                     {r.comment
                       ? <span className="line-clamp-2">{r.comment}</span>
                       : <span className="text-muted-foreground/40 text-xs italic">sem comentário</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Button size="icon" variant="ghost"
-                      className="h-7 w-7 text-muted-foreground hover:text-red-400"
-                      onClick={() => setDeleteId(r.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -306,28 +273,10 @@ export default function Avaliacoes() {
           </div>
         )}
       </>)}
-
-      {/* Delete confirm */}
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover avaliação?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700"
-              onClick={() => { if (deleteId) { deleteMutation.mutate(deleteId); setDeleteId(null); } }}>
-              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remover"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
 
-// ── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({
   label, value, sub, valueClass, icon,
 }: {
