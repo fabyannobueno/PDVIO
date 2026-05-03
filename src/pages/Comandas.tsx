@@ -1633,11 +1633,11 @@ export default function Comandas() {
                 Comandas recentes
               </h2>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 sm:w-fit">
               <Button
                 size="sm"
                 variant={closedDateFilter === "today" ? "default" : "outline"}
-                className="h-8 flex-1 text-xs"
+                className="h-8 flex-1 sm:flex-none sm:px-5 text-xs"
                 onClick={() => setClosedDateFilter("today")}
               >
                 Hoje
@@ -1645,7 +1645,7 @@ export default function Comandas() {
               <Button
                 size="sm"
                 variant={closedDateFilter === "yesterday" ? "default" : "outline"}
-                className="h-8 flex-1 text-xs"
+                className="h-8 flex-1 sm:flex-none sm:px-5 text-xs"
                 onClick={() => setClosedDateFilter("yesterday")}
               >
                 Ontem
@@ -1653,7 +1653,7 @@ export default function Comandas() {
               <Button
                 size="sm"
                 variant={closedDateFilter === "custom" ? "default" : "outline"}
-                className="h-8 flex-1 text-xs gap-1.5"
+                className="h-8 flex-1 sm:flex-none sm:px-5 text-xs gap-1.5"
                 onClick={() => setClosedDateFilter("custom")}
               >
                 <CalendarDays className="h-3.5 w-3.5 shrink-0" />
