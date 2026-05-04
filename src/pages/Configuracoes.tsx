@@ -3004,6 +3004,8 @@ export default function Configuracoes() {
                   onChange={(e) => setWapiInstanceId(e.target.value.trim())}
                   placeholder="Ex.: A1B2C3D4E5F6"
                   disabled={!isOwner}
+                  autoComplete="off"
+                  data-form-type="other"
                 />
               </div>
 
@@ -3018,6 +3020,8 @@ export default function Configuracoes() {
                     placeholder="Cole seu token aqui"
                     disabled={!isOwner}
                     className="font-mono"
+                    autoComplete="new-password"
+                    data-form-type="other"
                   />
                   <Button
                     type="button"
