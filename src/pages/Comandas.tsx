@@ -727,6 +727,29 @@ export default function Comandas() {
     };
   }, [cid, queryClient]);
 
+  // ── Comandas realtime: refresh list when clients open new comandas via QR ─
+  useEffect(() => {
+    if (!cid) return;
+    const channel = supabase
+      .channel(`comandas-list-${cid}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "comandas", filter: `company_id=eq.${cid}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["/comandas", cid] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "comandas", filter: `company_id=eq.${cid}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["/comandas", cid] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [cid, queryClient]);
+
   // ── Waiter calls realtime ──────────────────────────────────────────────────
   useEffect(() => {
     const unlock = () => unlockPdvioAudio();
@@ -2458,11 +2481,37 @@ export default function Comandas() {
       />
 
       <Dialog open={!!pendingReceipt} onOpenChange={(o) => { if (!o) setPendingReceipt(null); }}>
-        <DialogContent data-testid="dialog-print-receipt-comanda">
+        <DialogContent
+          data-testid="dialog-print-receipt-comanda"
+          onKeyDown={async (e) => {
+            if (printingReceipt) return;
+            if (e.key === "Enter" || e.key === "y" || e.key === "Y" || e.key === "s" || e.key === "S") {
+              e.preventDefault();
+              if (!pendingReceipt) return;
+              setPrintingReceipt(true);
+              try {
+                await printReceipt(pendingReceipt);
+                setPendingReceipt(null);
+              } catch (err: any) {
+                toast.error(`Falha ao imprimir: ${err?.message ?? "erro desconhecido"}`);
+              } finally {
+                setPrintingReceipt(false);
+              }
+            } else if (e.key === "n" || e.key === "N") {
+              e.preventDefault();
+              setPendingReceipt(null);
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Imprimir cupom?</DialogTitle>
             <DialogDescription>
               A comanda foi fechada. Deseja imprimir o cupom não fiscal para o cliente?
+              <span className="hidden md:inline">
+                <br />
+                Pressione <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">Enter</kbd> para imprimir
+                ou <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">Esc</kbd> para pular.
+              </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
@@ -2471,9 +2520,10 @@ export default function Comandas() {
               onClick={() => setPendingReceipt(null)}
               data-testid="button-skip-print-comanda"
             >
-              Não imprimir
+              Não imprimir<span className="hidden md:inline"> (N)</span>
             </Button>
             <Button
+              autoFocus
               onClick={async () => {
                 if (!pendingReceipt) return;
                 setPrintingReceipt(true);
@@ -2490,7 +2540,7 @@ export default function Comandas() {
               data-testid="button-confirm-print-comanda"
             >
               {printingReceipt ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
-              Imprimir cupom
+              Imprimir cupom<span className="hidden md:inline"> (Enter)</span>
             </Button>
           </DialogFooter>
         </DialogContent>
