@@ -99,6 +99,7 @@ interface DeliveryOrder {
   notes: string | null;
   status: DeliveryStatus;
   created_at: string;
+  sale_id?: string | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -788,8 +789,102 @@ export default function Delivery() {
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
+  // ── Sales integration helpers ──────────────────────────────────────────────
+
+  const createSaleForOrder = useCallback(async (order: DeliveryOrder): Promise<string | null> => {
+    try {
+      const { data: saleData, error: saleError } = await supabase
+        .from("sales")
+        .insert({
+          company_id: order.company_id,
+          subtotal: order.subtotal,
+          discount_amount: order.discount_amount,
+          total: order.total,
+          payment_method: order.payment_method || "other",
+          payment_amount: order.total,
+          change_amount: 0,
+          notes: `Delivery #${String(order.numeric_id).padStart(6, "0")} — ${order.customer_name} | ref:${order.id}`,
+          status: "pending",
+          ...(order.coupon_code ? { coupon_code: order.coupon_code, coupon_discount: order.discount_amount } : {}),
+        })
+        .select("id")
+        .single();
+
+      if (saleError || !saleData) {
+        console.error("[delivery→sale] erro ao criar venda:", saleError);
+        return null;
+      }
+
+      const saleId = saleData.id as string;
+
+      const saleItems = order.items.map((item) => ({
+        sale_id: saleId,
+        product_name: item.name,
+        quantity: item.quantity,
+        unit_price: item.price,
+        discount_amount: 0,
+        subtotal: item.subtotal ?? item.price * item.quantity,
+        addons: item.addons ?? [],
+        notes: item.notes ?? null,
+      }));
+
+      if (order.delivery_fee > 0) {
+        saleItems.push({
+          sale_id: saleId,
+          product_name: "Taxa de entrega",
+          quantity: 1,
+          unit_price: order.delivery_fee,
+          discount_amount: 0,
+          subtotal: order.delivery_fee,
+          addons: [],
+          notes: null,
+        });
+      }
+
+      const { error: itemsError } = await supabase.from("sale_items").insert(saleItems);
+      if (itemsError) {
+        console.error("[delivery→sale] erro ao criar itens da venda:", itemsError);
+      }
+
+      return saleId;
+    } catch (err) {
+      console.error("[delivery→sale] erro inesperado:", err);
+      return null;
+    }
+  }, []);
+
+  const findSaleByOrderId = useCallback(async (orderId: string, companyId: string): Promise<string | null> => {
+    const { data } = await supabase
+      .from("sales")
+      .select("id")
+      .eq("company_id", companyId)
+      .ilike("notes", `%ref:${orderId}%`)
+      .limit(1)
+      .maybeSingle();
+    return (data?.id as string) ?? null;
+  }, []);
+
+  const applySaleStatusChange = useCallback(async (orderId: string, companyId: string, completed: boolean) => {
+    const saleId = await findSaleByOrderId(orderId, companyId);
+    if (!saleId) return;
+    if (completed) {
+      await supabase.from("sales").update({ status: "completed" }).eq("id", saleId);
+    } else {
+      await supabase.from("sales").update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: "Pedido de delivery cancelado",
+      }).eq("id", saleId);
+    }
+  }, [findSaleByOrderId]);
+
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: DeliveryStatus }) => {
+    mutationFn: async ({ id, status, order }: { id: string; status: DeliveryStatus; order: DeliveryOrder }) => {
+      const isConfirming = order.status === "pending" && status === "confirmed";
+      const isCompleting = status === "delivered" || status === "picked_up";
+      const isCancelling = status === "cancelled";
+
+      // Update delivery order status first
       const { data, error } = await supabase
         .from("delivery_orders")
         .update({ status })
@@ -797,6 +892,16 @@ export default function Delivery() {
         .select("id, status");
       if (error) throw error;
       if (!data || data.length === 0) throw new Error("sem_permissao");
+
+      // Sales side-effects (fire-and-forget — don't block the status update)
+      if (isConfirming) {
+        createSaleForOrder(order).catch(console.error);
+      } else if (isCompleting) {
+        applySaleStatusChange(order.id, order.company_id, true).catch(console.error);
+      } else if (isCancelling) {
+        applySaleStatusChange(order.id, order.company_id, false).catch(console.error);
+      }
+
       return data[0] as { id: string; status: DeliveryStatus };
     },
     onSuccess: () => {
@@ -832,10 +937,10 @@ export default function Delivery() {
   const handleAdvance = useCallback((order: DeliveryOrder) => {
     const next = NEXT_STATUS[order.status];
     if (!next) return;
-    const newStatus = order.delivery_type === "delivery" ? next.delivery : next.pickup; // dine_in uses pickup flow
+    const newStatus = order.delivery_type === "delivery" ? next.delivery : next.pickup;
     setAdvancingId(order.id);
     updateStatus.mutate(
-      { id: order.id, status: newStatus },
+      { id: order.id, status: newStatus, order },
       {
         onSuccess: () => {
           setSelectedOrder((prev) =>
@@ -851,7 +956,7 @@ export default function Delivery() {
   const handleCancel = useCallback((order: DeliveryOrder) => {
     setAdvancingId(order.id);
     updateStatus.mutate(
-      { id: order.id, status: "cancelled" },
+      { id: order.id, status: "cancelled", order },
       {
         onSuccess: () => {
           setSelectedOrder((prev) =>
