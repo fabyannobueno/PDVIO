@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -1059,6 +1060,7 @@ export default function Configuracoes() {
   });
 
   const isOwner = activeCompany?.role === "owner";
+  const navigate = useNavigate();
 
   // Abas premium: bloqueadas para plano iniciante ou sem plano
   const isPremiumLocked = !planLimits.loading && (
@@ -2395,7 +2397,7 @@ export default function Configuracoes() {
                     Faça upgrade para o plano Essencial ou superior para configurar o Delivery e o cardápio digital.
                   </p>
                 </div>
-                <Button onClick={() => { window.location.href = "/planos"; }} className="mt-2">
+                <Button onClick={() => navigate("/planos")} className="mt-2">
                   <Crown className="mr-2 h-4 w-4" />
                   Ver planos
                 </Button>
@@ -2933,7 +2935,7 @@ export default function Configuracoes() {
                     Faça upgrade para o plano Essencial ou superior para integrar o envio automático pelo WhatsApp.
                   </p>
                 </div>
-                <Button onClick={() => { window.location.href = "/planos"; }} className="mt-2">
+                <Button onClick={() => navigate("/planos")} className="mt-2">
                   <Crown className="mr-2 h-4 w-4" />
                   Ver planos
                 </Button>
@@ -3088,7 +3090,7 @@ export default function Configuracoes() {
                     Faça upgrade para o plano Essencial ou superior para gerar a Placa QR da sua loja.
                   </p>
                 </div>
-                <Button onClick={() => { window.location.href = "/planos"; }} className="mt-2">
+                <Button onClick={() => navigate("/planos")} className="mt-2">
                   <Crown className="mr-2 h-4 w-4" />
                   Ver planos
                 </Button>
