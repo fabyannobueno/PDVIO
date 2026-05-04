@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff } from "lucide-react";
+import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff, Lock } from "lucide-react";
 import { MoneyInput, parseMoney } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
 import { testWApiConnection } from "@/lib/whatsapp";
@@ -1060,6 +1060,11 @@ export default function Configuracoes() {
 
   const isOwner = activeCompany?.role === "owner";
 
+  // Abas premium: bloqueadas para plano iniciante ou sem plano
+  const isPremiumLocked = !planLimits.loading && (
+    !planLimits.planId || planLimits.planId === "iniciante"
+  );
+
   // ── Payment settings ──────────────────────────────────────────────────────
   const [paymentSettings, setPaymentSettingsState] = useState<PaymentSettings>(defaultPaymentSettings);
   const [savingPayment, setSavingPayment] = useState(false);
@@ -1336,14 +1341,17 @@ export default function Configuracoes() {
           <TabsTrigger value="delivery" className="gap-2" data-testid="tab-delivery">
             <Truck className="h-4 w-4" />
             Delivery
+            {isPremiumLocked && <Lock className="h-3 w-3 text-muted-foreground/70 shrink-0" />}
           </TabsTrigger>
           <TabsTrigger value="whatsapp" className="gap-2" data-testid="tab-whatsapp">
             <MessageCircle className="h-4 w-4" />
             WhatsApp
+            {isPremiumLocked && <Lock className="h-3 w-3 text-muted-foreground/70 shrink-0" />}
           </TabsTrigger>
           <TabsTrigger value="placa-qr" className="gap-2" data-testid="tab-placa-qr">
             <QrCode className="h-4 w-4" />
             Placa QR
+            {isPremiumLocked && <Lock className="h-3 w-3 text-muted-foreground/70 shrink-0" />}
           </TabsTrigger>
         </TabsList>
 
@@ -2375,6 +2383,25 @@ export default function Configuracoes() {
 
         {/* ── Delivery / Cardápio digital ──────────────────────────────── */}
         <TabsContent value="delivery" className="space-y-6">
+          {isPremiumLocked ? (
+            <Card className="border-border/60">
+              <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+                <div className="rounded-full bg-primary/10 p-4">
+                  <Crown className="h-8 w-8 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">Recurso do plano Essencial</p>
+                  <p className="text-sm text-muted-foreground">
+                    Faça upgrade para o plano Essencial ou superior para configurar o Delivery e o cardápio digital.
+                  </p>
+                </div>
+                <Button onClick={() => { window.location.href = "/planos"; }} className="mt-2">
+                  <Crown className="mr-2 h-4 w-4" />
+                  Ver planos
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (<>
           {/* Ativar delivery */}
           <Card className="border-border/60">
             <CardHeader>
@@ -2889,10 +2916,30 @@ export default function Configuracoes() {
               </Button>
             </div>
           )}
+          </>)}
         </TabsContent>
 
         {/* ── WhatsApp / W-API ─────────────────────────────────────────── */}
         <TabsContent value="whatsapp" className="space-y-6">
+          {isPremiumLocked ? (
+            <Card className="border-border/60">
+              <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+                <div className="rounded-full bg-primary/10 p-4">
+                  <Crown className="h-8 w-8 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">Recurso do plano Essencial</p>
+                  <p className="text-sm text-muted-foreground">
+                    Faça upgrade para o plano Essencial ou superior para integrar o envio automático pelo WhatsApp.
+                  </p>
+                </div>
+                <Button onClick={() => { window.location.href = "/planos"; }} className="mt-2">
+                  <Crown className="mr-2 h-4 w-4" />
+                  Ver planos
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (<>
           {/* Tutorial */}
           <Card className="border-border/60 bg-[#075e54]/5 border-[#25d366]/30">
             <CardHeader className="pb-3">
@@ -3024,10 +3071,30 @@ export default function Configuracoes() {
               <p>• Em caso de desconexão, basta abrir o painel W-API, acessar sua instância e escanear o QR Code novamente.</p>
             </CardContent>
           </Card>
+          </>)}
         </TabsContent>
 
         {/* ── Placa QR ─────────────────────────────────────────────────── */}
         <TabsContent value="placa-qr" className="space-y-6">
+          {isPremiumLocked ? (
+            <Card className="border-border/60">
+              <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+                <div className="rounded-full bg-primary/10 p-4">
+                  <Crown className="h-8 w-8 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">Recurso do plano Essencial</p>
+                  <p className="text-sm text-muted-foreground">
+                    Faça upgrade para o plano Essencial ou superior para gerar a Placa QR da sua loja.
+                  </p>
+                </div>
+                <Button onClick={() => { window.location.href = "/planos"; }} className="mt-2">
+                  <Crown className="mr-2 h-4 w-4" />
+                  Ver planos
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (<>
           <Card className="border-border/60">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -3213,6 +3280,7 @@ export default function Configuracoes() {
               </div>
             </CardContent>
           </Card>
+          </>)}
         </TabsContent>
       </Tabs>
 
