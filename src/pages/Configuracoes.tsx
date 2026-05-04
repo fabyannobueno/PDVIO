@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff, Lock } from "lucide-react";
+import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff, Lock, AlertTriangle } from "lucide-react";
 import { MoneyInput, parseMoney } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
 import { testWApiConnection } from "@/lib/whatsapp";
@@ -3109,7 +3109,36 @@ export default function Configuracoes() {
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
 
+              {/* ── Incomplete delivery config warning ── */}
+              {(!deliveryEnabled || !deliverySlug) && (
+                <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                      Cardápio digital não configurado
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {!deliveryEnabled && !deliverySlug
+                        ? "Ative o cardápio digital e defina um link personalizado (slug) na aba Delivery para gerar a Placa QR."
+                        : !deliveryEnabled
+                        ? "Ative o cardápio digital na aba Delivery para gerar a Placa QR."
+                        : "Defina um link personalizado (slug) na aba Delivery para gerar a Placa QR."}
+                    </p>
+                    <button
+                      className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:opacity-80 transition-opacity"
+                      onClick={() => {
+                        const el = document.querySelector('[data-testid="tab-delivery"]') as HTMLElement | null;
+                        el?.click();
+                      }}
+                    >
+                      Ir para Delivery →
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* ── Plate Preview ── */}
+              {(deliveryEnabled && deliverySlug) && (
               <div
                 ref={plateRef}
                 style={{ background: deliveryPrimaryColor }}
@@ -3256,18 +3285,19 @@ export default function Configuracoes() {
                   </p>
                 </div>
               </div>
+              )}
 
               {/* ── Actions ── */}
               <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button onClick={downloadPlate} className="gap-2" disabled={!qrDataUrl}>
+                  <Button onClick={downloadPlate} className="gap-2" disabled={!qrDataUrl || !deliveryEnabled || !deliverySlug}>
                     <Download className="h-4 w-4" />
                     Baixar Placa (PNG)
                   </Button>
                   <Button
                     variant="outline"
                     className="gap-2"
-                    disabled={!deliverySlug}
+                    disabled={!deliverySlug || !deliveryEnabled}
                     onClick={() => window.open(`https://pdvio.shop/${deliverySlug}`, "_blank")}
                   >
                     <ExternalLink className="h-4 w-4" />
