@@ -382,7 +382,7 @@ export default function Clientes() {
                     {c.document && (
                       <p className="flex items-center gap-1.5">
                         <IdCard className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{c.document}</span>
+                        <span className="truncate">{maskDocument(c.document)}</span>
                       </p>
                     )}
                     {(c.address_city || c.address_state) && (
@@ -486,7 +486,7 @@ export default function Clientes() {
                     {c.document && (
                       <span className="flex items-center gap-1.5">
                         <IdCard className="h-3.5 w-3.5" />
-                        {c.document}
+                        {maskDocument(c.document)}
                       </span>
                     )}
                   </TableCell>
