@@ -3023,7 +3023,7 @@ export default function Configuracoes() {
                 <div className="flex gap-2">
                   <Input
                     id="wapi-token"
-                    type={wapiShowToken ? "text" : "password"}
+                    type="text"
                     value={wapiToken}
                     onChange={(e) => setWapiToken(e.target.value.trim())}
                     onFocus={() => setWapiTokenFocused(true)}
@@ -3031,8 +3031,9 @@ export default function Configuracoes() {
                     disabled={!isOwner}
                     readOnly={!wapiTokenFocused}
                     className="font-mono"
-                    autoComplete="new-password"
+                    autoComplete="off"
                     data-form-type="other"
+                    style={!wapiShowToken && wapiToken ? { WebkitTextSecurity: "disc" } as React.CSSProperties : undefined}
                   />
                   <Button
                     type="button"
