@@ -994,12 +994,15 @@ export default function Delivery() {
         customerPhone: order.customer_phone,
         deliveryType: order.delivery_type as "delivery" | "pickup",
         customerAddress: order.address ?? undefined,
-        items: order.items.map((it) => ({
-          name: it.name,
-          qty: it.quantity,
-          price: it.price,
-          unit: "un",
-        })),
+        items: order.items.map((it) => {
+          const isKg = it.unit === "kg" || (it.weight != null && it.weight > 0);
+          return {
+            name: it.name,
+            qty: isKg ? (it.weight ?? it.quantity) : it.quantity,
+            price: it.price,
+            unit: isKg ? "kg" : "un",
+          };
+        }),
         subtotal: order.subtotal,
         deliveryFee: order.delivery_type === "delivery" && order.delivery_fee > 0 ? order.delivery_fee : undefined,
         total: order.total,
