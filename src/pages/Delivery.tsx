@@ -378,7 +378,12 @@ function OrderCard({ order, onOpen, onAdvance, onCancel, advancing }: OrderCardP
 
       {/* Items preview */}
       <div className="text-xs text-muted-foreground line-clamp-2">
-        {order.items.map((it, i) => `${it.quantity}x ${it.name}`).join(" · ")}
+        {order.items.map((it) => {
+          const qty = (it.unit === "kg" || (it.weight && it.weight > 0))
+            ? `${(it.weight ?? it.quantity).toFixed(3).replace(".", ",")}kg`
+            : `${it.quantity}x`;
+          return `${qty} ${it.name}`;
+        }).join(" · ")}
       </div>
 
       {/* Footer */}
@@ -502,7 +507,12 @@ function OrderDetailDialog({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {item.is_prepared && <ChefHat className="h-3.5 w-3.5 text-orange-500 shrink-0" />}
-                      <span className="font-medium">{item.quantity}x {item.name}</span>
+                      <span className="font-medium">
+                        {(item.unit === "kg" || (item.weight && item.weight > 0))
+                          ? `${(item.weight ?? item.quantity).toFixed(3).replace(".", ",")}kg`
+                          : `${item.quantity}x`
+                        } {item.name}
+                      </span>
                     </div>
                     <span className="text-muted-foreground shrink-0">{fmtMoney((item.subtotal ?? item.price * item.quantity))}</span>
                   </div>
