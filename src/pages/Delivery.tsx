@@ -779,13 +779,12 @@ export default function Delivery() {
     setPage(1);
   }, [statusFilter]);
 
-  // Mark known IDs on first load
+  // Mark known IDs on first load (even if the list is empty)
   useEffect(() => {
-    if (orders.length > 0 && firstLoad.current) {
-      orders.forEach((o) => knownIds.current.add(o.id));
-      firstLoad.current = false;
-    }
-  }, [orders]);
+    if (isLoading || !firstLoad.current) return;
+    orders.forEach((o) => knownIds.current.add(o.id));
+    firstLoad.current = false;
+  }, [orders, isLoading]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
