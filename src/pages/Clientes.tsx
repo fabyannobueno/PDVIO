@@ -467,43 +467,35 @@ export default function Clientes() {
                 <TableRow key={c.id} data-testid={`row-customer-${c.id}`}>
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {c.phone ? (
+                    {c.phone && (
                       <span className="flex items-center gap-1.5">
                         <Phone className="h-3.5 w-3.5" />
                         {c.phone}
                       </span>
-                    ) : (
-                      <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {c.email ? (
+                    {c.email && (
                       <span className="flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5" />
                         {c.email}
                       </span>
-                    ) : (
-                      <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {c.document ? (
+                    {c.document && (
                       <span className="flex items-center gap-1.5">
                         <IdCard className="h-3.5 w-3.5" />
                         {c.document}
                       </span>
-                    ) : (
-                      <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {(c.address_city || c.address_state) ? (
+                    {(c.address_city || c.address_state) && (
                       <span className="flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5 shrink-0" />
                         {[c.address_city, c.address_state].filter(Boolean).join(" - ")}
                       </span>
-                    ) : (
-                      <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
