@@ -2998,6 +2998,11 @@ export default function Configuracoes() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Honeypot: absorbs browser credential autofill before it reaches real fields */}
+              <div aria-hidden="true" style={{ display: "none" }}>
+                <input type="text" name="wapi-fake-user" tabIndex={-1} />
+                <input type="password" name="wapi-fake-pass" tabIndex={-1} />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="wapi-instance">Instance ID</Label>
                 <Input
