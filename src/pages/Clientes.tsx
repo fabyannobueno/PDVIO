@@ -70,6 +70,8 @@ interface Customer {
   address_city: string | null;
   address_state: string | null;
   created_at: string;
+  avatar_url: string | null;
+  delivery_signup: boolean | null;
 }
 
 interface CustomerForm {
@@ -207,7 +209,7 @@ export default function Clientes() {
           .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("customers").insert(payload);
+        const { error } = await supabase.from("customers").insert({ ...payload, delivery_signup: false });
         if (error) throw error;
       }
     },
@@ -364,8 +366,28 @@ export default function Clientes() {
               data-testid={`card-customer-${c.id}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{c.name}</p>
+                <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                  {c.avatar_url ? (
+                    <img
+                      src={c.avatar_url}
+                      alt={c.name}
+                      className="h-8 w-8 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                      {c.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate font-medium">{c.name}</p>
+                    {c.delivery_signup === true && (
+                      <Badge variant="secondary" className="shrink-0 text-xs">Delivery</Badge>
+                    )}
+                    {c.delivery_signup === false && (
+                      <Badge variant="outline" className="shrink-0 text-xs">PDV</Badge>
+                    )}
+                  </div>
                   <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                     {c.phone && (
                       <p className="flex items-center gap-1.5">
@@ -393,6 +415,7 @@ export default function Clientes() {
                         </span>
                       </p>
                     )}
+                  </div>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -426,11 +449,13 @@ export default function Clientes() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10"></TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>E-mail</TableHead>
               <TableHead>CPF / CNPJ</TableHead>
               <TableHead>Cidade / UF</TableHead>
+              <TableHead>Origem</TableHead>
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -447,7 +472,7 @@ export default function Clientes() {
               ))
             ) : paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-16 text-center">
+                <TableCell colSpan={8} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3 text-muted-foreground">
                     <Users className="h-10 w-10 opacity-30" />
                     <p className="text-sm">
@@ -465,6 +490,19 @@ export default function Clientes() {
             ) : (
               paginated.map((c) => (
                 <TableRow key={c.id} data-testid={`row-customer-${c.id}`}>
+                  <TableCell className="pr-0">
+                    {c.avatar_url ? (
+                      <img
+                        src={c.avatar_url}
+                        alt={c.name}
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                        {c.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {c.phone && (
@@ -497,6 +535,13 @@ export default function Clientes() {
                         {[c.address_city, c.address_state].filter(Boolean).join(" - ")}
                       </span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    {c.delivery_signup === true ? (
+                      <Badge variant="secondary" className="text-xs">Delivery</Badge>
+                    ) : c.delivery_signup === false ? (
+                      <Badge variant="outline" className="text-xs">PDV</Badge>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
