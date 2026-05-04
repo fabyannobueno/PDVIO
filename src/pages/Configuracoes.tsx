@@ -420,6 +420,8 @@ export default function Configuracoes() {
   const [wapiToken, setWapiToken] = useState("");
   const [wapiShowToken, setWapiShowToken] = useState(false);
   const [wapiTesting, setWapiTesting] = useState(false);
+  const [wapiInstanceFocused, setWapiInstanceFocused] = useState(false);
+  const [wapiTokenFocused, setWapiTokenFocused] = useState(false);
 
   function generateDeliverySlug(name: string) {
     return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -3002,8 +3004,10 @@ export default function Configuracoes() {
                   id="wapi-instance"
                   value={wapiInstanceId}
                   onChange={(e) => setWapiInstanceId(e.target.value.trim())}
+                  onFocus={() => setWapiInstanceFocused(true)}
                   placeholder="Ex.: A1B2C3D4E5F6"
                   disabled={!isOwner}
+                  readOnly={!wapiInstanceFocused}
                   autoComplete="off"
                   data-form-type="other"
                 />
@@ -3017,8 +3021,10 @@ export default function Configuracoes() {
                     type={wapiShowToken ? "text" : "password"}
                     value={wapiToken}
                     onChange={(e) => setWapiToken(e.target.value.trim())}
+                    onFocus={() => setWapiTokenFocused(true)}
                     placeholder="Cole seu token aqui"
                     disabled={!isOwner}
+                    readOnly={!wapiTokenFocused}
                     className="font-mono"
                     autoComplete="new-password"
                     data-form-type="other"
