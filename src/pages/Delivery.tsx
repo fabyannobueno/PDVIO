@@ -1142,7 +1142,7 @@ export default function Delivery() {
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="p-4 sm:p-6">
+        <div className="p-4 sm:p-6 h-full">
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -1150,7 +1150,7 @@ export default function Delivery() {
               ))}
             </div>
           ) : orders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
               <div className="rounded-full bg-muted p-6">
                 <Bike className="h-10 w-10 text-muted-foreground" />
               </div>
