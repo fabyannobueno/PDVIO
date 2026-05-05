@@ -11,7 +11,8 @@ export type AuditAction =
   | "staff.updated"
   | "staff.deleted"
   | "company.updated"
-  | "product.deleted";
+  | "product.deleted"
+  | "sale.reprinted";
 
 interface LogParams {
   companyId: string;
@@ -62,4 +63,5 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   "staff.deleted": "Excluiu operador",
   "company.updated": "Atualizou empresa",
   "product.deleted": "Excluiu produto",
+  "sale.reprinted": "Reimprimiu cupom",
 };

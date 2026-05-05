@@ -48,6 +48,7 @@ const ACTION_GROUPS: Record<string, string> = {
   "staff.deleted": "destructive",
   "company.updated": "default",
   "product.deleted": "destructive",
+  "sale.reprinted": "secondary",
 };
 
 const META_KEY_LABEL: Record<string, string> = {
