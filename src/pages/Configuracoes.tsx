@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Barcode } from "@/components/Barcode";
+import { DeliveryAreas } from "@/components/configuracoes/DeliveryAreas";
 import logoPdvio from "@assets/PDVIO2_1776817647719.png";
 import { maskPhone, maskDocument, maskCpf, maskCnpj, maskRandomPixKey } from "@/lib/masks";
 import { isValidCPF } from "@/lib/document";
@@ -3005,6 +3006,16 @@ export default function Configuracoes() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Bairros de entrega */}
+          {activeCompany && (
+            <DeliveryAreas
+              companyId={activeCompany.id}
+              cidade={addr.cidade}
+              estado={addr.estado}
+              isOwner={isOwner}
+            />
+          )}
 
           {isOwner && (
             <div className="flex justify-end">

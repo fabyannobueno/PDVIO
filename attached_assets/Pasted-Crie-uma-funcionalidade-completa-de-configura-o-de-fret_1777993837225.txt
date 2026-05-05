@@ -1,0 +1,271 @@
+Crie uma funcionalidade completa de configuração de frete por bairros para um sistema de delivery/cardápio digital.
+
+Contexto:
+O sistema já possui empresas/lojas cadastradas, produtos, carrinho, checkout e uma página de configurações da empresa.
+
+A cidade e o estado da empresa já estão salvos nas configurações da empresa/loja. Portanto, a funcionalidade de bairros deve usar automaticamente a cidade e o estado já cadastrados na empresa, sem pedir novamente esses dados na tela de bairros.
+
+Objetivo:
+Criar uma tela no painel administrativo para o lojista cadastrar, editar, remover e visualizar bairros atendidos, incluindo opção de frete grátis, taxa personalizada e exibição no mapa.
+
+Funcionalidades obrigatórias:
+
+1. Buscar cidade e estado da empresa
+Ao abrir a tela de configuração de bairros, buscar os dados da empresa/loja atual.
+
+Exemplo:
+{
+  "companyId": "company_123",
+  "storeId": "store_123",
+  "name": "Açaí do Gordão",
+  "city": "Varginha",
+  "state": "MG"
+}
+
+A tela de bairros deve exibir:
+Cidade: Varginha
+Estado: MG
+
+Esses campos devem ser apenas informativos, não editáveis nessa tela.
+
+Caso a cidade ou estado não estejam configurados, exibir aviso:
+“Configure a cidade e o estado da empresa antes de cadastrar bairros de entrega.”
+
+2. Cadastro de bairros atendidos
+Cada bairro deve ter:
+- Nome do bairro
+- Status ativo/inativo
+- Frete grátis: true/false
+- Taxa de entrega
+- Pedido mínimo para frete grátis
+- Tempo estimado de entrega
+- Coordenadas aproximadas: latitude e longitude
+- Observação opcional
+
+A cidade e o estado devem ser preenchidos automaticamente com base nas configurações da empresa.
+
+Exemplo de objeto:
+{
+  "id": "neighborhood_001",
+  "companyId": "company_123",
+  "storeId": "store_123",
+  "name": "Centro",
+  "city": "Varginha",
+  "state": "MG",
+  "active": true,
+  "freeDelivery": true,
+  "deliveryFee": 0,
+  "minimumOrderForFreeDelivery": 30,
+  "estimatedDeliveryTime": "30-45 min",
+  "lat": -21.5565,
+  "lng": -45.4368,
+  "notes": "Frete grátis para pedidos acima de R$ 30,00",
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp"
+}
+
+3. Regras de frete
+Criar opções para o lojista definir por bairro:
+- Bairro ativo ou inativo
+- Frete grátis sempre
+- Frete grátis somente acima de um valor mínimo de pedido
+- Frete pago com valor fixo
+- Bairro indisponível para entrega
+
+Regras:
+- Se freeDelivery for true e minimumOrderForFreeDelivery estiver vazio ou igual a 0, o frete será grátis sempre.
+- Se freeDelivery for true e minimumOrderForFreeDelivery for maior que 0, o frete será grátis apenas se o subtotal do carrinho atingir esse valor.
+- Se freeDelivery for false, aplicar deliveryFee.
+- Se active for false, o bairro não deve aparecer como disponível para entrega.
+
+4. Tela administrativa
+Criar uma página no painel:
+ /admin/delivery-areas
+
+A tela deve conter:
+- Card informativo com cidade e estado da empresa
+- Aviso caso cidade ou estado não estejam configurados
+- Botão “Adicionar bairro”
+- Lista/tabela de bairros cadastrados
+- Busca por nome do bairro
+- Filtro: Todos, Frete grátis, Frete pago, Inativos
+- Botão editar
+- Botão remover
+- Toggle ativar/desativar bairro
+- Indicador visual “Frete grátis”
+- Campo para taxa de entrega
+- Campo para pedido mínimo de frete grátis
+- Campo para tempo estimado de entrega
+- Campo para latitude e longitude
+
+5. Mapa interativo
+Usar Leaflet com OpenStreetMap para exibir o mapa.
+
+No mapa:
+- Centralizar o mapa na cidade da empresa, caso possível.
+- Mostrar marcador para cada bairro cadastrado que tenha latitude e longitude.
+- Bairros com frete grátis devem ter marcador diferenciado.
+- Bairros com frete pago devem ter outro marcador.
+- Bairros inativos devem aparecer em cinza ou não aparecer, conforme opção do sistema.
+- Ao clicar no marcador, mostrar:
+  - Nome do bairro
+  - Cidade/Estado
+  - Status
+  - Frete grátis ou valor do frete
+  - Tempo estimado de entrega
+  - Pedido mínimo, se existir
+
+Não usar API paga de mapa.
+Não usar Google Maps pago.
+Usar Leaflet + OpenStreetMap.
+
+6. Checkout
+No checkout, quando o cliente preencher o endereço, o sistema deve verificar o bairro informado.
+
+A comparação deve ser feita apenas com os bairros da empresa/loja atual.
+
+Regras:
+- Se o bairro estiver cadastrado e ativo, permitir entrega.
+- Se o bairro tiver frete grátis, aplicar taxa de entrega R$ 0,00.
+- Se o bairro tiver pedido mínimo para frete grátis, verificar o subtotal do carrinho.
+- Se o subtotal atingir o mínimo, frete grátis.
+- Se não atingir, aplicar a taxa de entrega normal.
+- Se o bairro tiver frete pago, aplicar o valor definido.
+- Se o bairro não estiver cadastrado ou estiver inativo, exibir mensagem de entrega indisponível.
+
+Exemplo de função:
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function calculateDeliveryByNeighborhood(customerNeighborhood, cartSubtotal, deliveryAreas) {
+  const normalizedNeighborhood = normalizeText(customerNeighborhood);
+
+  const area = deliveryAreas.find(item =>
+    normalizeText(item.name) === normalizedNeighborhood &&
+    item.active === true
+  );
+
+  if (!area) {
+    return {
+      available: false,
+      deliveryFee: null,
+      freeDelivery: false,
+      message: "Entrega indisponível para este bairro."
+    };
+  }
+
+  const minimumOrder = Number(area.minimumOrderForFreeDelivery || 0);
+  const deliveryFee = Number(area.deliveryFee || 0);
+
+  if (area.freeDelivery) {
+    if (minimumOrder > 0 && cartSubtotal < minimumOrder) {
+      return {
+        available: true,
+        deliveryFee,
+        freeDelivery: false,
+        message: `Frete grátis disponível acima de R$ ${minimumOrder.toFixed(2)}.`
+      };
+    }
+
+    return {
+      available: true,
+      deliveryFee: 0,
+      freeDelivery: true,
+      message: "Frete grátis disponível para seu bairro."
+    };
+  }
+
+  return {
+    available: true,
+    deliveryFee,
+    freeDelivery: false,
+    message: `Frete de R$ ${deliveryFee.toFixed(2)} aplicado.`
+  };
+}
+
+7. Banco de dados
+Criar uma coleção/tabela chamada:
+deliveryAreas
+
+Campos:
+- id
+- companyId
+- storeId
+- name
+- city
+- state
+- active
+- freeDelivery
+- deliveryFee
+- minimumOrderForFreeDelivery
+- estimatedDeliveryTime
+- lat
+- lng
+- notes
+- createdAt
+- updatedAt
+
+A cidade e o estado devem ser copiados automaticamente das configurações da empresa no momento do cadastro/edição do bairro.
+
+Nas configurações da empresa/loja, considerar que já existe algo parecido com:
+{
+  "companyId": "company_123",
+  "storeId": "store_123",
+  "companySettings": {
+    "address": {
+      "city": "Varginha",
+      "state": "MG"
+    },
+    "deliveryConfig": {
+      "mode": "neighborhood",
+      "showDeliveryMap": true,
+      "allowUnavailableNeighborhoodOrder": false
+    }
+  }
+}
+
+8. Experiência do cliente
+Na página da loja, criar uma seção:
+“Áreas de entrega”
+
+Essa seção deve mostrar:
+- Cidade e estado da loja
+- Lista de bairros atendidos
+- Selo “Frete grátis” nos bairros gratuitos
+- Valor do frete nos bairros pagos
+- Pedido mínimo para frete grátis, se existir
+- Tempo estimado de entrega
+- Mapa com os bairros atendidos
+- Mensagem clara quando o bairro do cliente não for atendido
+
+Exemplo de texto:
+“Confira os bairros atendidos por esta loja em Varginha - MG. Alguns bairros possuem frete grátis ou taxa especial de entrega.”
+
+9. Design
+Criar uma interface moderna, limpa e responsiva.
+Usar cards, tabela organizada e mapa em destaque.
+No mobile, o mapa deve ficar abaixo da lista.
+Usar indicadores visuais:
+- Verde para frete grátis
+- Azul para frete pago
+- Cinza para inativo
+
+10. Regras importantes
+- O sistema deve funcionar sem API paga.
+- Não depender de geocodificação automática obrigatória.
+- Permitir cadastro manual de latitude e longitude.
+- Se não houver latitude/longitude, o bairro aparece apenas na lista, não no mapa.
+- Validar campos obrigatórios.
+- Evitar bairros duplicados na mesma empresa/loja.
+- Normalizar nomes de bairros para comparação no checkout.
+- Usar cidade e estado vindos das configurações da empresa.
+- Não permitir cadastrar bairros se cidade e estado da empresa não estiverem configurados.
+- Manter tudo compatível com arquitetura serverless.
+
+Resultado esperado:
+Entregar os componentes, funções, estrutura de banco de dados e integração com checkout para permitir que cada loja configure bairros com frete grátis, bairros com frete pago e bairros indisponíveis, usando automaticamente a cidade e o estado já salvos nas configurações da empresa e exibindo tudo em um mapa gratuito com Leaflet e OpenStreetMap.
