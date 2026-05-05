@@ -14,7 +14,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -53,6 +56,18 @@ import { printReceipt, getSettings as getPrinterSettings, formatSaleNumber } fro
 import type { Receipt } from "@/lib/printer";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { playWaiterCallSound, unlockPdvioAudio } from "@/lib/pdvio-sound";
+
+// ── Cancel reasons ────────────────────────────────────────────────────────────
+
+const CANCEL_REASONS = [
+  "Item fora de estoque",
+  "Restaurante fechado",
+  "Área fora da zona de entrega",
+  "Tempo de espera muito longo",
+  "Cliente não atendeu / endereço não encontrado",
+  "Pedido duplicado",
+  "Outro",
+] as const;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -195,6 +210,7 @@ function buildWhatsAppMessage(
   newStatus: DeliveryStatus,
   companyName?: string,
   companyAddress?: string,
+  cancellationReason?: string,
 ): string | null {
   const store = companyName ?? "Nossa loja";
   const orderId = `#${order.numeric_id}`;
@@ -259,7 +275,7 @@ function buildWhatsAppMessage(
     ].join("\n"),
     delivered: `🎉 *${store}*\nSeu pedido ${orderId} foi *entregue*! Obrigado pela preferência. Bom apetite! 🍽️`,
     picked_up: `🎉 *${store}*\nSeu pedido ${orderId} foi *retirado*! Obrigado pela preferência. Bom apetite! 🍽️`,
-    cancelled: `❌ *${store}*\nInfelizmente seu pedido ${orderId} foi *cancelado*. Entre em contato conosco para mais informações.`,
+    cancelled: `❌ *${store}*\nInfelizmente seu pedido ${orderId} foi *cancelado*.${cancellationReason ? `\n📋 *Motivo:* ${cancellationReason}` : ""}\nEntre em contato conosco para mais informações.`,
   };
 
   return messages[newStatus] ?? null;
@@ -665,6 +681,9 @@ export default function Delivery() {
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const [realtimeLive, setRealtimeLive] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<DeliveryOrder | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>(CANCEL_REASONS[0]);
+  const [cancelCustom, setCancelCustom] = useState("");
 
   // ── W-API credentials ──────────────────────────────────────────────────────
 
@@ -980,9 +999,13 @@ export default function Delivery() {
     onSettled: () => setAdvancingId(null),
   });
 
-  const sendStatusNotification = useCallback(async (order: DeliveryOrder, newStatus: DeliveryStatus) => {
+  const sendStatusNotification = useCallback(async (
+    order: DeliveryOrder,
+    newStatus: DeliveryStatus,
+    cancellationReason?: string,
+  ) => {
     if (!wapiCredentials || !order.customer_phone) return;
-    const message = buildWhatsAppMessage(order, newStatus, activeCompany?.name, activeCompany?.address ?? undefined);
+    const message = buildWhatsAppMessage(order, newStatus, activeCompany?.name, activeCompany?.address ?? undefined, cancellationReason);
     if (!message) return;
     const result = await sendWhatsAppMessage(wapiCredentials, order.customer_phone, message);
     if (!result.ok) {
@@ -1009,7 +1032,7 @@ export default function Delivery() {
     );
   }, [updateStatus, sendStatusNotification]);
 
-  const handleCancel = useCallback((order: DeliveryOrder) => {
+  const handleCancel = useCallback((order: DeliveryOrder, reason: string) => {
     setAdvancingId(order.id);
     updateStatus.mutate(
       { id: order.id, status: "cancelled", order },
@@ -1019,11 +1042,18 @@ export default function Delivery() {
             prev?.id === order.id ? { ...prev, status: "cancelled" } : prev
           );
           toast.success(`Pedido #${order.numeric_id} cancelado`);
-          sendStatusNotification(order, "cancelled");
+          sendStatusNotification(order, "cancelled", reason);
         },
       }
     );
   }, [updateStatus, sendStatusNotification]);
+
+  // Opens the cancel-reason dialog instead of cancelling immediately.
+  const handleCancelClick = useCallback((order: DeliveryOrder) => {
+    setCancelTarget(order);
+    setCancelReason(CANCEL_REASONS[0]);
+    setCancelCustom("");
+  }, []);
 
   // ── Print ──────────────────────────────────────────────────────────────────
 
@@ -1225,7 +1255,7 @@ export default function Delivery() {
                   order={order}
                   onOpen={setSelectedOrder}
                   onAdvance={handleAdvance}
-                  onCancel={handleCancel}
+                  onCancel={handleCancelClick}
                   advancing={advancingId === order.id}
                 />
               ))}
@@ -1292,13 +1322,80 @@ export default function Delivery() {
         order={selectedOrder}
         onClose={() => setSelectedOrder(null)}
         onAdvance={handleAdvance}
-        onCancel={handleCancel}
+        onCancel={handleCancelClick}
         onPrintReceipt={handlePrintReceipt}
         onPrintKitchen={handlePrintKitchen}
         advancing={advancingId === selectedOrder?.id}
         printing={printing}
         companyName={activeCompany?.name}
       />
+
+      {/* Cancel Reason Dialog */}
+      <Dialog open={!!cancelTarget} onOpenChange={(o) => { if (!o) setCancelTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              Cancelar pedido #{cancelTarget?.numeric_id}
+            </DialogTitle>
+            <DialogDescription>
+              Selecione o motivo do cancelamento. Ele será enviado ao cliente via WhatsApp.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-1">
+            <div className="flex flex-col gap-2">
+              {CANCEL_REASONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setCancelReason(r)}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    cancelReason === r
+                      ? "border-destructive bg-destructive/10 text-destructive font-medium"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+
+            {cancelReason === "Outro" && (
+              <div className="space-y-1.5 pt-1">
+                <Label htmlFor="cancel-custom" className="text-sm">Descreva o motivo</Label>
+                <Textarea
+                  id="cancel-custom"
+                  placeholder="Ex: problema com pagamento…"
+                  className="resize-none text-sm"
+                  rows={2}
+                  value={cancelCustom}
+                  onChange={(e) => setCancelCustom(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCancelTarget(null)}>
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelReason === "Outro" && !cancelCustom.trim()}
+              onClick={() => {
+                if (!cancelTarget) return;
+                const effectiveReason = cancelReason === "Outro" ? cancelCustom.trim() : cancelReason;
+                setCancelTarget(null);
+                handleCancel(cancelTarget, effectiveReason);
+              }}
+            >
+              Confirmar cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
