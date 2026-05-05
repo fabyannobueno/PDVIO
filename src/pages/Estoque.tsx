@@ -101,6 +101,20 @@ function fmtBRL(value: number | null | undefined) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function applyMoneyMask(raw: string): string {
+  const digits = raw.replace(/\D/g, "").replace(/^0+/, "") || "0";
+  const padded = digits.padStart(3, "0");
+  const reais = padded.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const cents = padded.slice(-2);
+  return `${reais},${cents}`;
+}
+
+function parseMoneyMask(masked: string): number | null {
+  if (!masked || masked === "0,00") return null;
+  const val = parseFloat(masked.replace(/\./g, "").replace(",", "."));
+  return isNaN(val) ? null : val;
+}
+
 const INTEGER_UNITS = ["un", "cx", "pç", "pc"];
 function fmtQty(quantity: number, unit: string) {
   const isInt = INTEGER_UNITS.includes(unit);
@@ -306,7 +320,7 @@ export default function Estoque() {
       supplier_id: entryForm.supplier_id || null,
       kind: "entry",
       quantity: qty,
-      unit_cost: entryForm.unit_cost ? parseFloat(entryForm.unit_cost.replace(",", ".")) : null,
+      unit_cost: parseMoneyMask(entryForm.unit_cost),
       reference: entryForm.reference.trim() || null,
       notes: entryForm.notes.trim() || null,
     });
@@ -900,9 +914,10 @@ export default function Estoque() {
                 <Label>Custo unitário (R$)</Label>
                 <Input
                   data-testid="input-entry-cost"
-                  inputMode="decimal"
+                  inputMode="numeric"
+                  placeholder="0,00"
                   value={entryForm.unit_cost}
-                  onChange={(e) => setEntryForm({ ...entryForm, unit_cost: e.target.value })}
+                  onChange={(e) => setEntryForm({ ...entryForm, unit_cost: e.target.value ? applyMoneyMask(e.target.value) : "" })}
                 />
               </div>
             </div>
