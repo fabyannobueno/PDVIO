@@ -2892,7 +2892,7 @@ export default function Configuracoes() {
             <CardContent>
               <div className="space-y-2">
                 {deliveryHours.map((dh, idx) => (
-                  <div key={dh.day} className="flex items-center gap-2 rounded-md border border-border p-2">
+                  <div key={dh.day} className="flex items-center gap-1.5 rounded-md border border-border p-2">
                     <Switch
                       checked={dh.isOpen}
                       onCheckedChange={(val) => {
@@ -2902,9 +2902,9 @@ export default function Configuracoes() {
                       }}
                       disabled={!isOwner}
                     />
-                    <span className="w-16 shrink-0 text-sm font-medium">{dh.day}</span>
+                    <span className="w-14 shrink-0 text-sm font-medium">{dh.day}</span>
                     {dh.isOpen ? (
-                      <div className="ml-auto flex items-center gap-1.5">
+                      <div className="ml-auto flex items-center gap-1">
                         <Input
                           type="time"
                           value={dh.openTime}
@@ -2914,9 +2914,9 @@ export default function Configuracoes() {
                             setDeliveryHours(next);
                           }}
                           disabled={!isOwner}
-                          className="w-24 sm:w-32"
+                          className="h-8 w-[5.5rem] px-1.5 text-sm sm:w-32"
                         />
-                        <span className="shrink-0 text-xs text-muted-foreground">até</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">–</span>
                         <Input
                           type="time"
                           value={dh.closeTime}
@@ -2926,7 +2926,7 @@ export default function Configuracoes() {
                             setDeliveryHours(next);
                           }}
                           disabled={!isOwner}
-                          className="w-24 sm:w-32"
+                          className="h-8 w-[5.5rem] px-1.5 text-sm sm:w-32"
                         />
                       </div>
                     ) : (
