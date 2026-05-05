@@ -327,14 +327,26 @@ export default function Estoque() {
       toast.error("Produto e quantidade são obrigatórios");
       return;
     }
+    const unitCost = parseMoneyMask(entryForm.unit_cost);
+    const productId = entryForm.product_id;
     insertMovement.mutate({
-      product_id: entryForm.product_id,
+      product_id: productId,
       supplier_id: entryForm.supplier_id || null,
       kind: "entry",
       quantity: qty,
-      unit_cost: parseMoneyMask(entryForm.unit_cost),
+      unit_cost: unitCost,
       reference: entryForm.reference.trim() || null,
       notes: entryForm.notes.trim() || null,
+    }, {
+      onSuccess: async () => {
+        if (unitCost > 0) {
+          await (supabase as any)
+            .from("products")
+            .update({ cost_price: unitCost })
+            .eq("id", productId);
+          queryClient.invalidateQueries({ queryKey: ["/api/estoque/products", activeCompany?.id] });
+        }
+      },
     });
   }
 
