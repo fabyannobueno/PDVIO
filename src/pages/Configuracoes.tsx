@@ -3111,10 +3111,10 @@ export default function Configuracoes() {
                       <Label htmlFor="wapi-test-phone">Número (com DDD)</Label>
                       <Input
                         id="wapi-test-phone"
-                        placeholder="Ex: 11999998888"
+                        placeholder="Ex: (11) 99999-8888"
                         value={wapiTestPhone}
-                        onChange={(e) => setWapiTestPhone(e.target.value.replace(/\D/g, ""))}
-                        maxLength={15}
+                        onChange={(e) => setWapiTestPhone(maskPhone(e.target.value))}
+                        maxLength={16}
                       />
                     </div>
                     <div className="space-y-1.5">
