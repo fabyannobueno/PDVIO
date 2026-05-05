@@ -910,7 +910,7 @@ export default function Estoque() {
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                   <Command>
                     <CommandInput placeholder="Buscar produto..." />
-                    <CommandList>
+                    <CommandList className="max-h-60 overflow-y-auto">
                       <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
                       <CommandGroup>
                         {products.map((p) => (
