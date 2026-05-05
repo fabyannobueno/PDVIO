@@ -212,6 +212,7 @@ interface Product {
   is_prepared: boolean;
   stock_quantity: number;
   min_stock: number;
+  cost_price: number;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -692,7 +693,7 @@ export default function Comandas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, numeric_id, name, barcode, sku, sale_price, is_promotion, promotion_price, stock_unit, is_active, is_prepared, stock_quantity, min_stock")
+        .select("id, numeric_id, name, barcode, sku, sale_price, cost_price, is_promotion, promotion_price, stock_unit, is_active, is_prepared, stock_quantity, min_stock")
         .eq("company_id", cid!)
         .eq("is_active", true)
         .order("name", { ascending: true });
@@ -1361,13 +1362,17 @@ export default function Comandas() {
         );
         const stockRows = comandaItems
           .filter((i) => !!i.product_id)
-          .map((i) => ({
-            company_id: cid!,
-            product_id: i.product_id,
-            kind: "sale",
-            quantity: -Math.abs(Number(i.quantity)),
-            reference: `Comanda ${detailComanda?.identifier ?? ""} · Venda #${saleData.id.slice(0, 8)}`,
-          }));
+          .map((i) => {
+            const prod = products.find((p) => p.id === i.product_id);
+            return {
+              company_id: cid!,
+              product_id: i.product_id,
+              kind: "sale",
+              quantity: -Math.abs(Number(i.quantity)),
+              unit_cost: prod?.cost_price ?? null,
+              reference: `Comanda ${detailComanda?.identifier ?? ""} · Venda #${saleData.id.slice(0, 8)}`,
+            };
+          });
         if (stockRows.length > 0) {
           const { error: stockErr } = await (supabase as any).from("stock_movements").insert(stockRows);
           if (stockErr) console.error("Falha ao registrar movimento de estoque:", stockErr);

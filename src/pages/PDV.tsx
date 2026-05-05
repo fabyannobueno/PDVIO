@@ -100,6 +100,7 @@ interface Product {
   is_prepared?: boolean | null;
   stock_quantity: number;
   min_stock: number;
+  cost_price: number;
 }
 
 interface ProductAddon {
@@ -388,7 +389,7 @@ export default function PDV() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id,numeric_id,name,category,sale_price,is_promotion,promotion_price,stock_unit,is_active,sku,barcode,is_prepared,stock_quantity,min_stock")
+        .select("id,numeric_id,name,category,sale_price,cost_price,is_promotion,promotion_price,stock_unit,is_active,sku,barcode,is_prepared,stock_quantity,min_stock")
         .eq("company_id", activeCompany!.id)
         .eq("is_active", true)
         .order("name");
@@ -1376,13 +1377,17 @@ export default function PDV() {
       const soldProductIds = Array.from(new Set(cart.filter((i) => !!i.productId).map((i) => i.productId!)));
       const stockRows = cart
         .filter((item) => !!item.productId)
-        .map((item) => ({
-          company_id: activeCompany!.id,
-          product_id: item.productId,
-          kind: "sale",
-          quantity: -Math.abs(item.quantity),
-          reference: `Venda #${sale.id.slice(0, 8)}`,
-        }));
+        .map((item) => {
+          const prod = products.find((p) => p.id === item.productId);
+          return {
+            company_id: activeCompany!.id,
+            product_id: item.productId,
+            kind: "sale",
+            quantity: -Math.abs(item.quantity),
+            unit_cost: prod?.cost_price ?? null,
+            reference: `Venda #${sale.id.slice(0, 8)}`,
+          };
+        });
       if (stockRows.length > 0) {
         const { error: stockErr } = await (supabase as any).from("stock_movements").insert(stockRows);
         if (stockErr) console.error("Falha ao registrar movimento de estoque:", stockErr);
