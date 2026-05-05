@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff, Lock, AlertTriangle } from "lucide-react";
 import { MoneyInput, parseMoney } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
-import { testWApiConnection, sendWhatsAppMessage } from "@/lib/whatsapp";
+import { testWApiConnection, sendWhatsAppMessage, verifyDeliveryWhatsappNumber } from "@/lib/whatsapp";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { fetchBanks, type BrasilApiBank } from "@/lib/brasilApiBanks";
@@ -176,6 +176,8 @@ export default function Configuracoes() {
   const [deliveryPickupTime, setDeliveryPickupTime] = useState("");
   const [deliveryPrimaryColor, setDeliveryPrimaryColor] = useState("#6d28d9");
   const [deliveryWhatsapp, setDeliveryWhatsapp] = useState("");
+  const [deliveryWhatsappVerified, setDeliveryWhatsappVerified] = useState(false);
+  const [whatsappVerifying, setWhatsappVerifying] = useState(false);
   const [deliveryEmail, setDeliveryEmail] = useState("");
   const [deliveryInstagram, setDeliveryInstagram] = useState("");
   const [deliveryFacebook, setDeliveryFacebook] = useState("");
@@ -518,6 +520,7 @@ export default function Configuracoes() {
         setDeliveryPickupTime(data.delivery_pickup_time ?? "");
         setDeliveryPrimaryColor(data.delivery_primary_color ?? "#6d28d9");
         setDeliveryWhatsapp(data.delivery_whatsapp ?? "");
+        setDeliveryWhatsappVerified((data as any).delivery_whatsapp_verified ?? false);
         setDeliveryInstagram(data.delivery_instagram ?? "");
         setDeliveryFacebook(data.delivery_facebook ?? "");
         setDeliveryEmail((data as any).delivery_email ?? "");
@@ -927,6 +930,29 @@ export default function Configuracoes() {
     onSuccess: () => toast.success("Credenciais W-API salvas!"),
     onError: () => toast.error("Erro ao salvar credenciais W-API"),
   });
+
+  async function handleVerifyWhatsapp() {
+    setWhatsappVerifying(true);
+    try {
+      const result = await verifyDeliveryWhatsappNumber(deliveryWhatsapp.trim());
+      if (!result.ok) {
+        toast.error(result.error ?? "Erro ao verificar número.");
+        return;
+      }
+      if (!result.exists) {
+        toast.error("Número não encontrado no WhatsApp. Verifique o DDD e tente novamente.");
+        setDeliveryWhatsappVerified(false);
+        await (supabase as any).from("companies").update({ delivery_whatsapp_verified: false }).eq("id", activeCompany!.id);
+        return;
+      }
+      setDeliveryWhatsappVerified(true);
+      await (supabase as any).from("companies").update({ delivery_whatsapp_verified: true }).eq("id", activeCompany!.id);
+      queryClient.invalidateQueries({ queryKey: ["/config/company"] });
+      toast.success("WhatsApp verificado com sucesso!");
+    } finally {
+      setWhatsappVerifying(false);
+    }
+  }
 
   async function handleTestWapi() {
     setWapiTesting(true);
@@ -2760,13 +2786,33 @@ export default function Configuracoes() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="del-whatsapp">WhatsApp da loja</Label>
-                  <Input
-                    id="del-whatsapp"
-                    value={deliveryWhatsapp}
-                    onChange={(e) => setDeliveryWhatsapp(maskPhone(e.target.value))}
-                    disabled={!isOwner}
-                    placeholder="(11) 99999-9999"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="del-whatsapp"
+                      value={deliveryWhatsapp}
+                      onChange={(e) => {
+                        setDeliveryWhatsapp(maskPhone(e.target.value));
+                        setDeliveryWhatsappVerified(false);
+                      }}
+                      disabled={!isOwner}
+                      placeholder="(11) 99999-9999"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={deliveryWhatsappVerified ? "outline" : "secondary"}
+                      disabled={!isOwner || !deliveryWhatsapp.trim() || whatsappVerifying}
+                      onClick={handleVerifyWhatsapp}
+                      className={deliveryWhatsappVerified ? "border-green-500 text-green-600 hover:text-green-600" : ""}
+                    >
+                      {whatsappVerifying
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : deliveryWhatsappVerified
+                          ? <><CheckCircle2 className="mr-1.5 h-4 w-4" />Verificado</>
+                          : "Verificar"}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="del-email">E-mail de contato</Label>

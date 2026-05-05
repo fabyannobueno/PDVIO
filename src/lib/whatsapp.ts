@@ -12,6 +12,60 @@ export interface WhatsAppSendResult {
   error?: string;
 }
 
+export interface WhatsAppVerifyResult {
+  ok: boolean;
+  exists: boolean;
+  error?: string;
+}
+
+/**
+ * Verifica se um número de telefone tem WhatsApp ativo, usando as credenciais
+ * globais VITE_WAPI_INSTANCE_ID / VITE_WAPI_TOKEN definidas no ambiente.
+ * Persiste o resultado (delivery_whatsapp_verified) na tabela companies —
+ * essa responsabilidade fica no chamador.
+ */
+export async function verifyDeliveryWhatsappNumber(
+  phone: string,
+): Promise<WhatsAppVerifyResult> {
+  const instanceId = import.meta.env.VITE_WAPI_INSTANCE_ID as string | undefined;
+  const token = import.meta.env.VITE_WAPI_TOKEN as string | undefined;
+
+  if (!instanceId || !token) {
+    return { ok: false, exists: false, error: "Credenciais W-API (VITE_WAPI_INSTANCE_ID / VITE_WAPI_TOKEN) não configuradas." };
+  }
+
+  if (!phone) {
+    return { ok: false, exists: false, error: "Número não informado." };
+  }
+
+  const clean = phone.replace(/\D/g, "");
+  const formatted = clean.startsWith("55") ? clean : `55${clean}`;
+
+  const url = `https://api.w-api.app/v1/contact/check-number?instanceId=${instanceId}&phone=${formatted}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false, exists: false, error: `Token W-API inválido ou sem permissão (HTTP ${response.status}).` };
+    }
+
+    let body: any = {};
+    try { body = await response.json(); } catch {}
+
+    if (!response.ok) {
+      return { ok: false, exists: false, error: body?.message ?? `HTTP ${response.status}` };
+    }
+
+    return { ok: true, exists: !!body?.exists };
+  } catch (err: any) {
+    return { ok: false, exists: false, error: err?.message ?? "Erro de conexão." };
+  }
+}
+
 /**
  * Envia uma mensagem de texto via W-API.
  * phone: número com DDD, com ou sem +55 (ex: "11999998888" ou "+5511999998888")
