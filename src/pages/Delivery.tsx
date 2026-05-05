@@ -1046,6 +1046,7 @@ export default function Delivery() {
         change: order.payment_method === "cash" && order.cash_received != null && order.cash_received > 0
           ? (order.change_amount ?? Math.max(0, order.cash_received - order.total))
           : undefined,
+        notes: order.notes ?? undefined,
         date: new Date(order.created_at),
       };
       await printReceipt(receipt, settings);

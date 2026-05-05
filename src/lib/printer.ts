@@ -74,6 +74,8 @@ export interface Receipt {
   saleLabel?: string;
   /** Taxa de entrega (exibida no delivery quando > 0). */
   deliveryFee?: number;
+  /** Observações do pedido (ex: "Troco para R$50,00"). */
+  notes?: string;
 }
 
 // ─── Helpers públicos ───────────────────────────────────────────────────────
@@ -561,6 +563,21 @@ export async function buildReceiptBytes(receipt: Receipt, s: PrinterSettings): P
   if (receipt.payment) chunks.push(line(padCols("Pagamento", receipt.payment, cols)));
   if (receipt.cashReceived != null) chunks.push(line(padCols("Valor recebido", money(receipt.cashReceived), cols)));
   if (receipt.change != null) chunks.push(line(padCols("Troco", money(receipt.change), cols), { bold: true }));
+  if (receipt.notes && receipt.notes.trim()) {
+    chunks.push(divider(cols));
+    chunks.push(line("OBS:", { bold: true }));
+    const noteWords = receipt.notes.trim().split(/\s+/);
+    let noteLine = "";
+    for (const w of noteWords) {
+      if ((noteLine + " " + w).trim().length > cols) {
+        if (noteLine) chunks.push(line(noteLine));
+        noteLine = w;
+      } else {
+        noteLine = noteLine ? `${noteLine} ${w}` : w;
+      }
+    }
+    if (noteLine) chunks.push(line(noteLine));
+  }
 
   chunks.push(bytes(0x0a));
   if (s.footer.trim()) {
