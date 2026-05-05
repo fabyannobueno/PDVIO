@@ -26,6 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -48,6 +57,8 @@ import {
   Package as PackageIcon,
   Search,
   ShoppingBag,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import PurchaseSuggestions from "@/components/estoque/PurchaseSuggestions";
 
@@ -169,6 +180,7 @@ export default function Estoque() {
   const [alertPage, setAlertPage] = useState(1);
   const [histPage, setHistPage] = useState(1);
   const [activeDialog, setActiveDialog] = useState<null | "entry" | "adjust" | "count" | "loss">(null);
+  const [entryProductOpen, setEntryProductOpen] = useState(false);
   const [entryForm, setEntryForm] = useState<EntryForm>({
     product_id: "",
     supplier_id: "",
@@ -879,14 +891,46 @@ export default function Estoque() {
           <form onSubmit={submitEntry} className="space-y-4">
             <div>
               <Label>Produto *</Label>
-              <Select value={entryForm.product_id} onValueChange={(v) => setEntryForm({ ...entryForm, product_id: v })}>
-                <SelectTrigger data-testid="select-entry-product"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={entryProductOpen} onOpenChange={setEntryProductOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    data-testid="select-entry-product"
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {entryForm.product_id
+                        ? (products.find((p) => p.id === entryForm.product_id)?.name ?? "Selecione um produto")
+                        : "Selecione um produto"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar produto..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {products.map((p) => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.name}
+                            onSelect={() => {
+                              setEntryForm({ ...entryForm, product_id: p.id });
+                              setEntryProductOpen(false);
+                            }}
+                          >
+                            <Check className={`mr-2 h-4 w-4 shrink-0 ${entryForm.product_id === p.id ? "opacity-100" : "opacity-0"}`} />
+                            <span className="truncate">{p.name}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label>Fornecedor</Label>
