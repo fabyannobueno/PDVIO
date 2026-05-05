@@ -101,6 +101,15 @@ function fmtBRL(value: number | null | undefined) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+const INTEGER_UNITS = ["un", "cx", "pç", "pc"];
+function fmtQty(quantity: number, unit: string) {
+  const isInt = INTEGER_UNITS.includes(unit);
+  return quantity.toLocaleString("pt-BR", {
+    minimumFractionDigits: isInt ? 0 : 3,
+    maximumFractionDigits: isInt ? 0 : 3,
+  });
+}
+
 function fmtDate(iso: string) {
   const d = new Date(iso);
   return (
@@ -756,7 +765,7 @@ export default function Estoque() {
                       </div>
                       <div className={`shrink-0 text-right font-mono text-sm ${m.quantity >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                         {m.quantity > 0 ? "+" : ""}
-                        {m.quantity.toLocaleString("pt-BR")} {unit}
+                        {fmtQty(m.quantity, unit)} {unit}
                       </div>
                     </div>
                     {(m.suppliers?.name || m.unit_cost || m.reference || m.notes) && (
@@ -814,7 +823,7 @@ export default function Estoque() {
                         <TableCell className="text-xs">{m.suppliers?.name ?? "—"}</TableCell>
                         <TableCell className={`text-right font-mono ${m.quantity >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                           {m.quantity > 0 ? "+" : ""}
-                          {m.quantity.toLocaleString("pt-BR")} {unit}
+                          {fmtQty(m.quantity, unit)} {unit}
                         </TableCell>
                         <TableCell className="text-right font-mono text-xs">{fmtBRL(m.unit_cost)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
