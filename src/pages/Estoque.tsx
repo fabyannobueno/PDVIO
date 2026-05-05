@@ -893,19 +893,19 @@ export default function Estoque() {
               <Label>Produto *</Label>
               <Popover open={entryProductOpen} onOpenChange={setEntryProductOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
+                  <button
+                    type="button"
                     role="combobox"
                     data-testid="select-entry-product"
-                    className="w-full min-w-0 overflow-hidden justify-between font-normal"
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 [&>span]:line-clamp-1"
                   >
-                    <span className="min-w-0 truncate text-left">
+                    <span>
                       {entryForm.product_id
                         ? (products.find((p) => p.id === entryForm.product_id)?.name ?? "Selecione um produto")
-                        : "Selecione um produto"}
+                        : <span className="text-muted-foreground">Selecione um produto</span>}
                     </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
+                    <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                   <Command>
