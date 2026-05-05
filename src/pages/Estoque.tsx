@@ -897,7 +897,7 @@ export default function Estoque() {
                     variant="outline"
                     role="combobox"
                     data-testid="select-entry-product"
-                    className="w-full min-w-0 justify-between font-normal"
+                    className="w-full min-w-0 overflow-hidden justify-between font-normal"
                   >
                     <span className="min-w-0 truncate text-left">
                       {entryForm.product_id
