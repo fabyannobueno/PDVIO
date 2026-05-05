@@ -671,6 +671,7 @@ export default function Delivery() {
 
   const knownIds = useRef<Set<string>>(new Set());
   const firstLoad = useRef(true);
+  const soundKnownIds = useRef<Set<string> | null>(null);
 
   // ── Audio unlock ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -746,8 +747,6 @@ export default function Delivery() {
             const newOrder = { ...payload.new, items: parseItems(payload.new.items) } as DeliveryOrder;
             if (!firstLoad.current && !knownIds.current.has(newOrder.id)) {
               knownIds.current.add(newOrder.id);
-              unlockPdvioAudio();
-              setTimeout(() => playWaiterCallSound(), 80);
               const typeLabel = newOrder.delivery_type === "delivery" ? "Delivery"
                 : newOrder.delivery_type === "dine_in" ? `Mesa · ${newOrder.table_identifier ?? ""}`
                 : "Retirada";
@@ -795,6 +794,25 @@ export default function Delivery() {
     if (isLoading || !firstLoad.current) return;
     orders.forEach((o) => knownIds.current.add(o.id));
     firstLoad.current = false;
+  }, [orders, isLoading]);
+
+  // ── Sound via query data (works with both realtime invalidation and polling) ─
+  useEffect(() => {
+    if (isLoading) return;
+    const currentIds = new Set(orders.map((o) => o.id));
+    if (soundKnownIds.current === null) {
+      soundKnownIds.current = currentIds;
+      return;
+    }
+    let hasNew = false;
+    for (const id of currentIds) {
+      if (!soundKnownIds.current.has(id)) { hasNew = true; break; }
+    }
+    soundKnownIds.current = currentIds;
+    if (hasNew) {
+      unlockPdvioAudio();
+      setTimeout(() => playWaiterCallSound(), 80);
+    }
   }, [orders, isLoading]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
