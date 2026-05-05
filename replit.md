@@ -16,6 +16,7 @@ A modern Point-of-Sale (PDV) web application for Brazilian businesses, built wit
 - `src/pages/` — Auth, Dashboard, Onboarding, Produtos, PDV, Clientes, Estoque, Fornecedores, Contas, Financeiro, ComingSoon, NotFound
 - `src/contexts/AuthContext.tsx` — Supabase auth state management
 - `src/contexts/CompanyContext.tsx` — Active company management
+- `src/contexts/OperatorContext.tsx` — Staff operator (PIN/badge) state
 - `src/integrations/supabase/client.ts` — Supabase client initialization
 - `src/integrations/supabase/types.ts` — Auto-generated Supabase DB types
 - `src/components/app/` — AppLayout, AppSidebar, AppHeader
@@ -25,17 +26,19 @@ A modern Point-of-Sale (PDV) web application for Brazilian businesses, built wit
 - `src/components/estoque/PurchaseSuggestions.tsx` — Sales-based purchase suggestions tab inside Estoque (configurable analysis window and desired coverage).
 - `src/components/relatorios/MarginReport.tsx` — Margin & profit report (top products by profit, low-margin alerts, missing-cost flag) embedded in `Relatorios`.
 - `supabase/migrations/` — Database migration SQL files (already applied to Supabase Cloud)
+- `src/services/openrouter.ts` — PDV.IA AI support chat via OpenRouter
+- `src/services/pix-api.service.ts` — PIX payment gateway integration
 
 ## Environment Variables
 
-Required (set in Replit Secrets/Env Vars):
-- `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/public key (safe for frontend — RLS enforces security)
+Set in `.replit` [userenv.shared] — available at build time as `import.meta.env.*`:
+- `VITE_SUPABASE_URL` — Supabase project URL (set)
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/public key (set, safe for frontend — RLS enforces security)
+- `VITE_URL_API_PIX` — PIX payment gateway base URL (set)
+- `VITE_CHAVE_PIX` — PIX key (chave PIX) for payment generation (set)
 
-Optional (set in Replit Secrets to enable additional features):
-- `VITE_OPENROUTER_API_KEY` — OpenRouter AI key for AI support chat
-- `VITE_URL_API_PIX` — PIX payment gateway base URL
-- `VITE_CHAVE_PIX` — PIX key (chave PIX) for payment generation
+Optional (add to Replit Secrets to enable additional features):
+- `VITE_OPENROUTER_API_KEY` — OpenRouter AI key for AI support chat (PDV.IA)
 - `VITE_COSMOS_API_KEY` — Cosmos API key for NCM product code lookup
 
 ## Development
@@ -51,31 +54,36 @@ Uses Supabase Cloud (PostgreSQL) with Row Level Security (RLS). Tables:
 - `profiles` — User profiles (auto-created on signup)
 - `companies` — Business entities
 - `company_members` — Users linked to companies with roles
-- `products` — Product catalog per company
+- `products` / `product_addons` — Product catalog per company
 - `suppliers` — Fornecedores vinculados à empresa
 - `stock_movements` — Histórico de movimentações de estoque (entrada, ajuste, contagem, perda); trigger atualiza `products.stock_quantity` automaticamente
 - `accounts` — Contas a pagar e a receber, com parcelamento, status (open/paid/cancelled) e fluxo de caixa projetado
-- `promotions` — Regras automáticas de desconto (categoria %, leve N pague M) com vigência opcional
-- `coupons` — Códigos digitados no PDV (% ou R$), com compra mínima, limite de usos e validade
+- `promotions` / `coupons` / `coupon_uses` — Promoções automáticas e cupons de desconto
 - `plans` / `subscriptions` / `invoices` — Planos da plataforma, assinaturas por empresa e faturas
 - `cash_sessions` / `cash_movements` — Controle de caixa com sessões por operador
 - `comandas` / `comanda_items` — Sistema de mesas/comandas com KDS
 - `crediario_entries` — Fiado/crediário por cliente
-- `delivery_orders` — Pedidos do cardápio digital / delivery público (status: pending → confirmed → preparing → out_for_delivery / ready_for_pickup → delivered / picked_up; tipo: delivery ou pickup; realtime habilitado)
+- `delivery_orders` — Pedidos do cardápio digital / delivery público
+- `order_reviews` — Avaliações de pedidos do cardápio digital
 - `staff_members` — Operadores com cartão + PIN (separados de company_members)
 - `cart_reservations` — Reservas de estoque em tempo real para PDV
 - `audit_logs` — Logs de auditoria para ações sensíveis
+- `support_tickets` / `support_messages` — Sistema de suporte com PDV.IA
+- `company_bank_accounts` — Contas bancárias por empresa
+- `waiter_calls` — Chamadas de garçom via QR Code de mesa
 
 ## User Flow
 
 1. `/auth` — Sign in or create account
 2. `/onboarding` — Create first company (if none exist)
-3. `/` — Dashboard (requires auth + company)
+3. `/complete-profile` — Complete user profile (CPF, birth date)
+4. `/` — Dashboard (requires auth + company)
 
 ## Replit Setup Notes
 
 - App runs on port 5000 (Vite dev server) — mapped to external port 80
-- Supabase is the sole backend — no Replit PostgreSQL is used by this app
+- Supabase is the sole backend — the provisioned Replit PostgreSQL is not used
 - Auth is Supabase Auth (email/password + magic links) — all RLS policies depend on Supabase JWTs
-- Realtime subscriptions (KDS, billing updates, cart reservations) go through Supabase Realtime WebSocket
-- `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are stored as Replit Secrets (not plaintext env vars)
+- Realtime subscriptions (KDS, billing updates, cart reservations, delivery orders) use Supabase Realtime WebSocket
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set in `.replit` [userenv.shared]
+- Deployment target is `static` (pure SPA — no server-side rendering)
