@@ -897,6 +897,7 @@ export default function Configuracoes() {
         delivery_pickup_time: deliveryPickupTime.trim() || null,
         delivery_primary_color: deliveryPrimaryColor,
         delivery_whatsapp: deliveryWhatsapp.trim() || null,
+        delivery_whatsapp_verified: deliveryWhatsappVerified,
         delivery_instagram: deliveryInstagram.trim() || null,
         delivery_facebook: deliveryFacebook.trim() || null,
         delivery_email: deliveryEmail.trim() || null,
