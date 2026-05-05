@@ -12,57 +12,55 @@ export interface WhatsAppSendResult {
   error?: string;
 }
 
-export interface WhatsAppVerifyResult {
-  ok: boolean;
-  exists: boolean;
-  error?: string;
-}
-
 /**
- * Verifica se um número de telefone tem WhatsApp ativo, usando as credenciais
- * globais VITE_WAPI_INSTANCE_ID / VITE_WAPI_TOKEN definidas no ambiente.
- * Persiste o resultado (delivery_whatsapp_verified) na tabela companies —
- * essa responsabilidade fica no chamador.
+ * Envia um código de verificação de 6 dígitos via WhatsApp para o número informado,
+ * usando as credenciais globais VITE_WAPI_INSTANCE_ID / VITE_WAPI_TOKEN.
+ * Retorna o código gerado para que o chamador possa comparar com o que o usuário digitar.
  */
-export async function verifyDeliveryWhatsappNumber(
+export async function sendWhatsAppVerificationCode(
   phone: string,
-): Promise<WhatsAppVerifyResult> {
+): Promise<WhatsAppSendResult & { code?: string }> {
   const instanceId = import.meta.env.VITE_WAPI_INSTANCE_ID as string | undefined;
   const token = import.meta.env.VITE_WAPI_TOKEN as string | undefined;
 
   if (!instanceId || !token) {
-    return { ok: false, exists: false, error: "Credenciais W-API (VITE_WAPI_INSTANCE_ID / VITE_WAPI_TOKEN) não configuradas." };
+    return { ok: false, error: "Credenciais W-API (VITE_WAPI_INSTANCE_ID / VITE_WAPI_TOKEN) não configuradas." };
   }
 
   if (!phone) {
-    return { ok: false, exists: false, error: "Número não informado." };
+    return { ok: false, error: "Número não informado." };
   }
 
+  const code = String(Math.floor(100000 + Math.random() * 900000));
   const clean = phone.replace(/\D/g, "");
   const formatted = clean.startsWith("55") ? clean : `55${clean}`;
+  const message = `🔐 Seu código de verificação PDVIO é: *${code}*\n\nInsira esse código no painel para confirmar o WhatsApp da sua loja.`;
 
-  const url = `https://api.w-api.app/v1/contact/check-number?instanceId=${instanceId}&phone=${formatted}`;
+  const url = `https://api.w-api.app/v1/message/send-text?instanceId=${instanceId}`;
 
   try {
     const response = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ phone: formatted, message, delayMessage: 0 }),
     });
 
     if (response.status === 401 || response.status === 403) {
-      return { ok: false, exists: false, error: `Token W-API inválido ou sem permissão (HTTP ${response.status}).` };
+      return { ok: false, error: `Token W-API inválido ou sem permissão (HTTP ${response.status}).` };
     }
-
-    let body: any = {};
-    try { body = await response.json(); } catch {}
 
     if (!response.ok) {
-      return { ok: false, exists: false, error: body?.message ?? `HTTP ${response.status}` };
+      let errMsg = `HTTP ${response.status}`;
+      try { const b = await response.json(); errMsg = b?.message ?? errMsg; } catch {}
+      return { ok: false, error: errMsg };
     }
 
-    return { ok: true, exists: !!body?.exists };
+    return { ok: true, code };
   } catch (err: any) {
-    return { ok: false, exists: false, error: err?.message ?? "Erro de conexão." };
+    return { ok: false, error: err?.message ?? "Erro de conexão." };
   }
 }
 

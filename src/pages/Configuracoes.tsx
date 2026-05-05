@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff, Lock, AlertTriangle } from "lucide-react";
 import { MoneyInput, parseMoney } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
-import { testWApiConnection, sendWhatsAppMessage, verifyDeliveryWhatsappNumber } from "@/lib/whatsapp";
+import { testWApiConnection, sendWhatsAppMessage, sendWhatsAppVerificationCode } from "@/lib/whatsapp";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { fetchBanks, type BrasilApiBank } from "@/lib/brasilApiBanks";
@@ -178,6 +178,10 @@ export default function Configuracoes() {
   const [deliveryWhatsapp, setDeliveryWhatsapp] = useState("");
   const [deliveryWhatsappVerified, setDeliveryWhatsappVerified] = useState(false);
   const [whatsappVerifying, setWhatsappVerifying] = useState(false);
+  const [whatsappCodeDialog, setWhatsappCodeDialog] = useState(false);
+  const [whatsappCodeInput, setWhatsappCodeInput] = useState("");
+  const [whatsappCodeConfirming, setWhatsappCodeConfirming] = useState(false);
+  const whatsappCodeRef = useRef<string>("");
   const [deliveryEmail, setDeliveryEmail] = useState("");
   const [deliveryInstagram, setDeliveryInstagram] = useState("");
   const [deliveryFacebook, setDeliveryFacebook] = useState("");
@@ -934,23 +938,37 @@ export default function Configuracoes() {
   async function handleVerifyWhatsapp() {
     setWhatsappVerifying(true);
     try {
-      const result = await verifyDeliveryWhatsappNumber(deliveryWhatsapp.trim());
-      if (!result.ok) {
-        toast.error(result.error ?? "Erro ao verificar número.");
+      const result = await sendWhatsAppVerificationCode(deliveryWhatsapp.trim());
+      if (!result.ok || !result.code) {
+        toast.error(result.error ?? "Erro ao enviar código de verificação.");
         return;
       }
-      if (!result.exists) {
-        toast.error("Número não encontrado no WhatsApp. Verifique o DDD e tente novamente.");
-        setDeliveryWhatsappVerified(false);
-        await (supabase as any).from("companies").update({ delivery_whatsapp_verified: false }).eq("id", activeCompany!.id);
-        return;
-      }
-      setDeliveryWhatsappVerified(true);
-      await (supabase as any).from("companies").update({ delivery_whatsapp_verified: true }).eq("id", activeCompany!.id);
-      queryClient.invalidateQueries({ queryKey: ["/config/company"] });
-      toast.success("WhatsApp verificado com sucesso!");
+      whatsappCodeRef.current = result.code;
+      setWhatsappCodeInput("");
+      setWhatsappCodeDialog(true);
+      toast.success("Código enviado! Verifique o WhatsApp do número informado.");
     } finally {
       setWhatsappVerifying(false);
+    }
+  }
+
+  async function handleConfirmWhatsappCode() {
+    if (whatsappCodeInput.trim() !== whatsappCodeRef.current) {
+      toast.error("Código incorreto. Tente novamente.");
+      return;
+    }
+    setWhatsappCodeConfirming(true);
+    try {
+      await (supabase as any).from("companies").update({ delivery_whatsapp_verified: true }).eq("id", activeCompany!.id);
+      queryClient.invalidateQueries({ queryKey: ["/config/company"] });
+      setDeliveryWhatsappVerified(true);
+      setWhatsappCodeDialog(false);
+      whatsappCodeRef.current = "";
+      toast.success("WhatsApp verificado com sucesso!");
+    } catch {
+      toast.error("Erro ao salvar verificação. Tente novamente.");
+    } finally {
+      setWhatsappCodeConfirming(false);
     }
   }
 
@@ -3452,6 +3470,60 @@ export default function Configuracoes() {
           </>)}
         </TabsContent>
       </Tabs>
+
+      {/* ── WhatsApp verification code dialog ──────────────────────────── */}
+      <Dialog open={whatsappCodeDialog} onOpenChange={(o) => { if (!o) { setWhatsappCodeDialog(false); whatsappCodeRef.current = ""; } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Verificar WhatsApp</DialogTitle>
+            <DialogDescription>
+              Enviamos um código de 6 dígitos para <strong>{deliveryWhatsapp}</strong>. Digite abaixo para confirmar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              placeholder="000000"
+              maxLength={6}
+              inputMode="numeric"
+              value={whatsappCodeInput}
+              onChange={(e) => setWhatsappCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              className="text-center text-2xl tracking-widest font-mono"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") handleConfirmWhatsappCode(); }}
+            />
+            <p className="text-xs text-muted-foreground text-center">
+              Não recebeu?{" "}
+              <button
+                type="button"
+                className="underline text-primary disabled:opacity-50"
+                disabled={whatsappVerifying}
+                onClick={async () => {
+                  setWhatsappVerifying(true);
+                  try {
+                    const r = await sendWhatsAppVerificationCode(deliveryWhatsapp.trim());
+                    if (r.ok && r.code) { whatsappCodeRef.current = r.code; toast.success("Novo código enviado!"); }
+                    else toast.error(r.error ?? "Erro ao reenviar.");
+                  } finally { setWhatsappVerifying(false); }
+                }}
+              >
+                {whatsappVerifying ? "Enviando…" : "Reenviar código"}
+              </button>
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setWhatsappCodeDialog(false); whatsappCodeRef.current = ""; }}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={whatsappCodeInput.length < 6 || whatsappCodeConfirming}
+              onClick={handleConfirmWhatsappCode}
+            >
+              {whatsappCodeConfirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Bank account create/edit dialog ───────────────────────────── */}
       <Dialog open={bankDialog} onOpenChange={setBankDialog}>
