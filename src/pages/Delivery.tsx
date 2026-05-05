@@ -851,6 +851,19 @@ export default function Delivery() {
   // ── Mutations ──────────────────────────────────────────────────────────────
 
   // ── Sales integration helpers ──────────────────────────────────────────────
+  // NOTE: findSaleByOrderId must be declared before createSaleForOrder so the
+  // closure reference is resolved before initialization (avoids Rollup TDZ bug).
+
+  const findSaleByOrderId = useCallback(async (orderId: string, companyId: string): Promise<string | null> => {
+    const { data } = await supabase
+      .from("sales")
+      .select("id")
+      .eq("company_id", companyId)
+      .ilike("notes", `%ref:${orderId}%`)
+      .limit(1)
+      .maybeSingle();
+    return (data?.id as string) ?? null;
+  }, []);
 
   const createSaleForOrder = useCallback(async (order: DeliveryOrder): Promise<string | null> => {
     try {
@@ -920,18 +933,7 @@ export default function Delivery() {
       console.error("[delivery→sale] erro inesperado:", err);
       return null;
     }
-  }, []);
-
-  const findSaleByOrderId = useCallback(async (orderId: string, companyId: string): Promise<string | null> => {
-    const { data } = await supabase
-      .from("sales")
-      .select("id")
-      .eq("company_id", companyId)
-      .ilike("notes", `%ref:${orderId}%`)
-      .limit(1)
-      .maybeSingle();
-    return (data?.id as string) ?? null;
-  }, []);
+  }, [findSaleByOrderId]);
 
   const applySaleStatusChange = useCallback(async (
     orderId: string,
