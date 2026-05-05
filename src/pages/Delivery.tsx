@@ -835,6 +835,11 @@ export default function Delivery() {
 
   const createSaleForOrder = useCallback(async (order: DeliveryOrder): Promise<string | null> => {
     try {
+      // Prevent duplicates: if a sale_id is already linked, or one exists by ref, return it.
+      if (order.sale_id) return order.sale_id;
+      const existingId = await findSaleByOrderId(order.id, order.company_id);
+      if (existingId) return existingId;
+
       const { data: saleData, error: saleError } = await supabase
         .from("sales")
         .insert({
@@ -858,6 +863,9 @@ export default function Delivery() {
       }
 
       const saleId = saleData.id as string;
+
+      // Link sale_id back to delivery_orders so future lookups are instant and reliable.
+      await supabase.from("delivery_orders").update({ sale_id: saleId }).eq("id", order.id);
 
       const saleItems = order.items.map((item) => ({
         sale_id: saleId,
@@ -906,8 +914,14 @@ export default function Delivery() {
     return (data?.id as string) ?? null;
   }, []);
 
-  const applySaleStatusChange = useCallback(async (orderId: string, companyId: string, completed: boolean) => {
-    const saleId = await findSaleByOrderId(orderId, companyId);
+  const applySaleStatusChange = useCallback(async (
+    orderId: string,
+    companyId: string,
+    completed: boolean,
+    knownSaleId?: string | null,
+  ) => {
+    // Use the known sale_id if available; fall back to searching by ref in notes.
+    const saleId = knownSaleId ?? await findSaleByOrderId(orderId, companyId);
     if (!saleId) return;
     if (completed) {
       await supabase.from("sales").update({ status: "completed" }).eq("id", saleId);
@@ -939,9 +953,9 @@ export default function Delivery() {
       if (isConfirming) {
         createSaleForOrder(order).catch(console.error);
       } else if (isCompleting) {
-        applySaleStatusChange(order.id, order.company_id, true).catch(console.error);
+        applySaleStatusChange(order.id, order.company_id, true, order.sale_id).catch(console.error);
       } else if (isCancelling) {
-        applySaleStatusChange(order.id, order.company_id, false).catch(console.error);
+        applySaleStatusChange(order.id, order.company_id, false, order.sale_id).catch(console.error);
       }
 
       return data[0] as { id: string; status: DeliveryStatus };
