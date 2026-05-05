@@ -2892,19 +2892,24 @@ export default function Configuracoes() {
             <CardContent>
               <div className="space-y-2">
                 {deliveryHours.map((dh, idx) => (
-                  <div key={dh.day} className="flex items-center gap-1.5 rounded-md border border-border p-2">
-                    <Switch
-                      checked={dh.isOpen}
-                      onCheckedChange={(val) => {
-                        const next = [...deliveryHours];
-                        next[idx] = { ...next[idx], isOpen: val };
-                        setDeliveryHours(next);
-                      }}
-                      disabled={!isOwner}
-                    />
-                    <span className="w-14 shrink-0 text-sm font-medium">{dh.day}</span>
-                    {dh.isOpen ? (
-                      <div className="ml-auto flex items-center gap-1">
+                  <div key={dh.day} className="rounded-md border border-border p-2">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={dh.isOpen}
+                        onCheckedChange={(val) => {
+                          const next = [...deliveryHours];
+                          next[idx] = { ...next[idx], isOpen: val };
+                          setDeliveryHours(next);
+                        }}
+                        disabled={!isOwner}
+                      />
+                      <span className="text-sm font-medium">{dh.day}</span>
+                      {!dh.isOpen && (
+                        <span className="ml-auto text-sm text-muted-foreground">Fechado</span>
+                      )}
+                    </div>
+                    {dh.isOpen && (
+                      <div className="mt-2 flex items-center gap-2 pl-1">
                         <Input
                           type="time"
                           value={dh.openTime}
@@ -2914,9 +2919,9 @@ export default function Configuracoes() {
                             setDeliveryHours(next);
                           }}
                           disabled={!isOwner}
-                          className="h-8 w-[5.5rem] px-1.5 text-sm sm:w-32"
+                          className="h-8 flex-1 px-2 text-sm"
                         />
-                        <span className="shrink-0 text-xs text-muted-foreground">–</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">até</span>
                         <Input
                           type="time"
                           value={dh.closeTime}
@@ -2926,11 +2931,9 @@ export default function Configuracoes() {
                             setDeliveryHours(next);
                           }}
                           disabled={!isOwner}
-                          className="h-8 w-[5.5rem] px-1.5 text-sm sm:w-32"
+                          className="h-8 flex-1 px-2 text-sm"
                         />
                       </div>
-                    ) : (
-                      <span className="ml-auto text-sm text-muted-foreground">Fechado</span>
                     )}
                   </div>
                 ))}
