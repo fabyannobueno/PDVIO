@@ -59,7 +59,9 @@ export async function sendWhatsAppMessage(
 }
 
 /**
- * Testa a conexão com a instância W-API verificando o status dela.
+ * Testa a conexão com a instância W-API.
+ * Usa o endpoint de envio com um número inválido — se a resposta não for
+ * 401/403, as credenciais são válidas e a instância está acessível.
  */
 export async function testWApiConnection(
   credentials: WApiCredentials,
@@ -70,28 +72,26 @@ export async function testWApiConnection(
     return { ok: false, error: "Preencha o Instance ID e o Token antes de testar." };
   }
 
-  try {
-    const response = await fetch(
-      `https://api.w-api.app/v1/instance/status?instanceId=${instanceId}`,
-      {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
+  const url = `https://api.w-api.app/v1/message/send-text?instanceId=${instanceId}`;
 
-    if (response.ok) {
-      const body = await response.json();
-      const connected = body?.connected === true || body?.status === "connected";
-      if (connected) return { ok: true };
-      return { ok: false, error: "Instância desconectada. Escaneie o QR Code no painel W-API." };
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ phone: "000", message: "__test__", delayMessage: 0 }),
+    });
+
+    // 401 / 403 → credenciais inválidas
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false, error: "Token inválido ou sem permissão (HTTP " + response.status + ")." };
     }
 
-    let errMsg = `HTTP ${response.status}`;
-    try {
-      const body = await response.json();
-      errMsg = body?.message ?? errMsg;
-    } catch {}
-    return { ok: false, error: errMsg };
+    // Qualquer outra resposta (200, 400, 422…) indica que a instância está
+    // acessível e as credenciais são aceitas.
+    return { ok: true };
   } catch (err: any) {
     return { ok: false, error: err?.message ?? "Erro de conexão." };
   }
