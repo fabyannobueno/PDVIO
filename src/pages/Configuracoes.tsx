@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Building2, User, Users, Loader2, Save, Crown, ShieldCheck, CreditCard, UtensilsCrossed, ChefHat, Search, Printer, Usb, Bluetooth, Cable, Monitor, CheckCircle2, XCircle, TestTube2, Inbox, Plus, Trash2, Pencil, ScanLine, KeyRound, Download, Landmark, ChevronsUpDown, Wallet, Banknote, QrCode, Ticket, Truck, MessageCircle, Globe, ExternalLink, Clock, Eye, EyeOff, Lock, AlertTriangle } from "lucide-react";
 import { MoneyInput, parseMoney } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
-import { testWApiConnection } from "@/lib/whatsapp";
+import { testWApiConnection, sendWhatsAppMessage } from "@/lib/whatsapp";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { fetchBanks, type BrasilApiBank } from "@/lib/brasilApiBanks";
@@ -422,6 +422,10 @@ export default function Configuracoes() {
   const [wapiTesting, setWapiTesting] = useState(false);
   const [wapiInstanceFocused, setWapiInstanceFocused] = useState(false);
   const [wapiTokenFocused, setWapiTokenFocused] = useState(false);
+  const [wapiTestModalOpen, setWapiTestModalOpen] = useState(false);
+  const [wapiTestPhone, setWapiTestPhone] = useState("");
+  const [wapiTestMessage, setWapiTestMessage] = useState("Olá! Esta é uma mensagem de teste do PDVIO. ✅");
+  const [wapiTestSending, setWapiTestSending] = useState(false);
 
   function generateDeliverySlug(name: string) {
     return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -932,6 +936,28 @@ export default function Configuracoes() {
       else toast.error(`Falha: ${result.error}`);
     } finally {
       setWapiTesting(false);
+    }
+  }
+
+  async function handleSendTestMessage() {
+    const phone = wapiTestPhone.trim();
+    const message = wapiTestMessage.trim();
+    if (!phone || !message) return;
+    setWapiTestSending(true);
+    try {
+      const result = await sendWhatsAppMessage(
+        { instanceId: wapiInstanceId.trim(), token: wapiToken.trim() },
+        phone,
+        message,
+      );
+      if (result.ok) {
+        toast.success("✅ Mensagem enviada com sucesso!");
+        setWapiTestModalOpen(false);
+      } else {
+        toast.error(`Falha no envio: ${result.error}`);
+      }
+    } finally {
+      setWapiTestSending(false);
     }
   }
 
@@ -3057,10 +3083,10 @@ export default function Configuracoes() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleTestWapi}
-                  disabled={wapiTesting || !wapiInstanceId || !wapiToken}
+                  onClick={() => setWapiTestModalOpen(true)}
+                  disabled={!wapiInstanceId || !wapiToken}
                 >
-                  {wapiTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                   Testar conexão
                 </Button>
                 {isOwner && (
@@ -3070,6 +3096,52 @@ export default function Configuracoes() {
                   </Button>
                 )}
               </div>
+
+              {/* Modal de teste de mensagem */}
+              <Dialog open={wapiTestModalOpen} onOpenChange={setWapiTestModalOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Enviar mensagem de teste</DialogTitle>
+                    <DialogDescription>
+                      Digite um número e uma mensagem para testar o envio via W-API.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="wapi-test-phone">Número (com DDD)</Label>
+                      <Input
+                        id="wapi-test-phone"
+                        placeholder="Ex: 11999998888"
+                        value={wapiTestPhone}
+                        onChange={(e) => setWapiTestPhone(e.target.value.replace(/\D/g, ""))}
+                        maxLength={15}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="wapi-test-message">Mensagem</Label>
+                      <Textarea
+                        id="wapi-test-message"
+                        rows={4}
+                        placeholder="Digite a mensagem de teste..."
+                        value={wapiTestMessage}
+                        onChange={(e) => setWapiTestMessage(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setWapiTestModalOpen(false)} disabled={wapiTestSending}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleSendTestMessage}
+                      disabled={wapiTestSending || !wapiTestPhone || !wapiTestMessage}
+                    >
+                      {wapiTestSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageCircle className="mr-2 h-4 w-4" />}
+                      Enviar teste
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 
