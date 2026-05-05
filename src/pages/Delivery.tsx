@@ -100,6 +100,8 @@ interface DeliveryOrder {
   status: DeliveryStatus;
   created_at: string;
   sale_id?: string | null;
+  cash_received?: number | null;
+  change_amount?: number | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -573,6 +575,18 @@ function OrderDetailDialog({
                 <span>Total</span>
                 <span>{fmtMoney(order.total)}</span>
               </div>
+              {order.payment_method === "cash" && order.cash_received != null && order.cash_received > 0 && (
+                <>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Valor recebido</span>
+                    <span>{fmtMoney(order.cash_received)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-green-600 dark:text-green-400">
+                    <span>Troco</span>
+                    <span>{fmtMoney(order.change_amount ?? Math.max(0, order.cash_received - order.total))}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </ScrollArea>
@@ -1022,9 +1036,16 @@ export default function Delivery() {
           };
         }),
         subtotal: order.subtotal,
+        discount: order.discount_amount > 0 ? order.discount_amount : undefined,
         deliveryFee: order.delivery_type === "delivery" && order.delivery_fee > 0 ? order.delivery_fee : undefined,
         total: order.total,
         payment: paymentLabel(order.payment_method),
+        cashReceived: order.payment_method === "cash" && order.cash_received != null && order.cash_received > 0
+          ? order.cash_received
+          : undefined,
+        change: order.payment_method === "cash" && order.cash_received != null && order.cash_received > 0
+          ? (order.change_amount ?? Math.max(0, order.cash_received - order.total))
+          : undefined,
         date: new Date(order.created_at),
       };
       await printReceipt(receipt, settings);
